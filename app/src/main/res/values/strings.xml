@@ -210,4 +210,5 @@
     <string name="now_playing">Now playing</string>
     <string name="player_loading_episode">Loading episode…</string>
     <string name="player_switch_failed">Could not load the episode</string>
+    <string name="unable_to_inflate">Unable to inflate layout</string>
 </resources>
