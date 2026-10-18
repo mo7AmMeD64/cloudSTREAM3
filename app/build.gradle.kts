@@ -137,6 +137,9 @@ dependencies {
 
     // ---- Player ----
     implementation(libs.ax.media3.exoplayer)
+    // The original CloudStream player's codec/renderers layer (software
+    // codecs, NextRenderersFactory, preview timebar).
+    implementation(libs.nextlib.media3ext)
     implementation(libs.ax.media3.exoplayer.dash)
     implementation(libs.ax.media3.exoplayer.hls)
     implementation(libs.ax.media3.ui)
