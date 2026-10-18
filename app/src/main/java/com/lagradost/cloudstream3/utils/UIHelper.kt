@@ -18,6 +18,7 @@ import androidx.core.view.WindowInsetsControllerCompat
 import androidx.core.view.updatePadding
 import com.lagradost.cloudstream3.CommonActivity
 import com.lagradost.cloudstream3.mvvm.logError
+import com.lagradost.cloudstream3.utils.BackPressedCallbackHelper.disableBackPressedCallback
 
 /**
  * The UI helpers the ported CloudStream player uses, brought over from the
@@ -142,9 +143,9 @@ object UIHelper {
         mainHandler.post {
             try {
                 if (fromBackPressedCallback != null) {
-                    com.lagradost.cloudstream3.utils.BackPressedCallbackHelper.disableBackPressedCallback(
-                        fromBackPressedCallback,
-                    )
+                    // FragmentActivity is a ComponentActivity, so the
+                    // BackPressedCallbackHelper extension resolves on this.
+                    disableBackPressedCallback(fromBackPressedCallback)
                 }
                 if (!supportFragmentManager.isStateSaved) {
                     onBackPressedDispatcher.onBackPressed()
