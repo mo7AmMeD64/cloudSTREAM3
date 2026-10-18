@@ -1,0 +1,1592 @@
+{
+  "app/src/main/java/com/lagradost/cloudstream3/AcraApplication.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9039328,
+    "ast_hash": "a0ccd87e653dfb126e3214e81329dc20",
+    "semantic_hash": "a0ccd87e653dfb126e3214e81329dc20"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/CloudStreamApp.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.903944,
+    "ast_hash": "887d65a4f11aabeff2d78305dc66fd11",
+    "semantic_hash": "887d65a4f11aabeff2d78305dc66fd11"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/CommonActivity.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9039478,
+    "ast_hash": "2e0018adc01e048b8c3d226fce9c0bff",
+    "semantic_hash": "2e0018adc01e048b8c3d226fce9c0bff"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/DownloaderTestImpl.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.90395,
+    "ast_hash": "571cd9bab21dbc5ae511c7254636d126",
+    "semantic_hash": "571cd9bab21dbc5ae511c7254636d126"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/MainActivity.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9039524,
+    "ast_hash": "93824a965464eb30781fcf202ad34427",
+    "semantic_hash": "93824a965464eb30781fcf202ad34427"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/MainActivityScreen.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9039547,
+    "ast_hash": "f73e8e721d321df6321116996f099938",
+    "semantic_hash": "f73e8e721d321df6321116996f099938"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/actions/AlwaysAskAction.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9039574,
+    "ast_hash": "0996f11c4eb30cf3a88015b7200027f3",
+    "semantic_hash": "0996f11c4eb30cf3a88015b7200027f3"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/actions/OpenInAppAction.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9039593,
+    "ast_hash": "c504c28c2706ae7c5a34337fd87a631b",
+    "semantic_hash": "c504c28c2706ae7c5a34337fd87a631b"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/actions/VideoClickAction.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9039617,
+    "ast_hash": "7357a5bbd1aaee70702a9f4426af2e71",
+    "semantic_hash": "7357a5bbd1aaee70702a9f4426af2e71"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/actions/temp/Aria2Package.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9039636,
+    "ast_hash": "e6bf68b5f3ee4607065eecaf8de68ac9",
+    "semantic_hash": "e6bf68b5f3ee4607065eecaf8de68ac9"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/actions/temp/BiglyBTPackage.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9039657,
+    "ast_hash": "d711de307e527d3f4c2eecce7b12b550",
+    "semantic_hash": "d711de307e527d3f4c2eecce7b12b550"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/actions/temp/CloudStreamPackage.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9039683,
+    "ast_hash": "c0b03d40164c790690c8d3dd24e30e9b",
+    "semantic_hash": "c0b03d40164c790690c8d3dd24e30e9b"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/actions/temp/CopyClipboardAction.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9039702,
+    "ast_hash": "999a679f7f19eb64914538b5b9396d99",
+    "semantic_hash": "999a679f7f19eb64914538b5b9396d99"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/actions/temp/JustPlayerPackage.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9039726,
+    "ast_hash": "6614eddb1ff421086f852d8350b19c92",
+    "semantic_hash": "6614eddb1ff421086f852d8350b19c92"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/actions/temp/LibreTorrentPackage.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9039748,
+    "ast_hash": "14d89e999cca79192e31d1a7db41ed3e",
+    "semantic_hash": "14d89e999cca79192e31d1a7db41ed3e"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/actions/temp/MpvKtPackage.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9039767,
+    "ast_hash": "2a3967a9fbc44676554e4d101c5a38d2",
+    "semantic_hash": "2a3967a9fbc44676554e4d101c5a38d2"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/actions/temp/MpvPackage.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9039788,
+    "ast_hash": "b0ab902c122ccc06b9d262b528685ec0",
+    "semantic_hash": "b0ab902c122ccc06b9d262b528685ec0"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/actions/temp/MpvRxPackage.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9039807,
+    "ast_hash": "eaa0861a441b2d4ac5beebb3e0574bc9",
+    "semantic_hash": "eaa0861a441b2d4ac5beebb3e0574bc9"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/actions/temp/NextPlayerPackage.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9039834,
+    "ast_hash": "3d5e318c8ff60599add941e3319a3f09",
+    "semantic_hash": "3d5e318c8ff60599add941e3319a3f09"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/actions/temp/OnlyPlayer.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9039855,
+    "ast_hash": "f64cf923f81ecaaf06f0d7df71214a24",
+    "semantic_hash": "f64cf923f81ecaaf06f0d7df71214a24"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/actions/temp/PlayInBrowserAction.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.903987,
+    "ast_hash": "9594a15667dcd6054f1001830b40dc3b",
+    "semantic_hash": "9594a15667dcd6054f1001830b40dc3b"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/actions/temp/PlayMirrorAction.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.903994,
+    "ast_hash": "c1ceeeef0fa03d55c6d853b40741ab77",
+    "semantic_hash": "c1ceeeef0fa03d55c6d853b40741ab77"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/actions/temp/ViewM3U8Action.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9040015,
+    "ast_hash": "19934fe7c02503bbc66ae6bc0657f861",
+    "semantic_hash": "19934fe7c02503bbc66ae6bc0657f861"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/actions/temp/VlcPackage.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.904004,
+    "ast_hash": "a0b7e18b0245b26fce8688cc47eef2bf",
+    "semantic_hash": "a0b7e18b0245b26fce8688cc47eef2bf"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/actions/temp/WebVideoCastPackage.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9040062,
+    "ast_hash": "f7855202353e9c3682a52dbc416b96b1",
+    "semantic_hash": "f7855202353e9c3682a52dbc416b96b1"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/actions/temp/fcast/FcastAction.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9040082,
+    "ast_hash": "d8e3205fff0e09471975fefaf9356c80",
+    "semantic_hash": "d8e3205fff0e09471975fefaf9356c80"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/actions/temp/fcast/FcastManager.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9040103,
+    "ast_hash": "ed22050af0db03eae0b930f86a053d9b",
+    "semantic_hash": "ed22050af0db03eae0b930f86a053d9b"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/actions/temp/fcast/FcastSession.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.904012,
+    "ast_hash": "6b95dd094c1337f7cab35419ec1f9aa3",
+    "semantic_hash": "6b95dd094c1337f7cab35419ec1f9aa3"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/actions/temp/fcast/Packets.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9040139,
+    "ast_hash": "9bfd3f6c5ee44b2bf072facb6bc6c237",
+    "semantic_hash": "9bfd3f6c5ee44b2bf072facb6bc6c237"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/mvvm/Lifecycle.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9040155,
+    "ast_hash": "c9faaaf7281ac024e1f666a605043a0a",
+    "semantic_hash": "c9faaaf7281ac024e1f666a605043a0a"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/network/CloudflareKiller.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9040177,
+    "ast_hash": "a7bd6e45b1c6d1cacfe5e4d287078f03",
+    "semantic_hash": "a7bd6e45b1c6d1cacfe5e4d287078f03"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/network/DdosGuardKiller.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9040194,
+    "ast_hash": "86b76d94386fe056227d89e2facccd71",
+    "semantic_hash": "86b76d94386fe056227d89e2facccd71"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/network/DohProviders.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9040213,
+    "ast_hash": "d1f3347898c3a11838338acc0adfd5aa",
+    "semantic_hash": "d1f3347898c3a11838338acc0adfd5aa"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/network/RequestsHelper.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9040234,
+    "ast_hash": "e283854ab84108f13c463f4d73841a7e",
+    "semantic_hash": "e283854ab84108f13c463f4d73841a7e"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/plugins/Plugin.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9040253,
+    "ast_hash": "38246a4fd8b7d8d9a34cedeff3b5a3eb",
+    "semantic_hash": "38246a4fd8b7d8d9a34cedeff3b5a3eb"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/plugins/PluginManager.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9040272,
+    "ast_hash": "ef53002d9b29860f09392b9dcc96e727",
+    "semantic_hash": "ef53002d9b29860f09392b9dcc96e727"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/plugins/RepositoryManager.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.904029,
+    "ast_hash": "36bb1804ecb3a8bd219ec600e68eda87",
+    "semantic_hash": "36bb1804ecb3a8bd219ec600e68eda87"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/plugins/VotingApi.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9040308,
+    "ast_hash": "4dbc8617649ec3b2c4eda76d1df6c2ca",
+    "semantic_hash": "4dbc8617649ec3b2c4eda76d1df6c2ca"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/receivers/PackageInstallerStatusReceiver.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9040325,
+    "ast_hash": "c35004be8bfb3feb44d54c743c871004",
+    "semantic_hash": "c35004be8bfb3feb44d54c743c871004"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/receivers/VideoDownloadRestartReceiver.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9040346,
+    "ast_hash": "3ad443be1266a7eff5f935191db42ec3",
+    "semantic_hash": "3ad443be1266a7eff5f935191db42ec3"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/services/BackupWorkManager.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9040363,
+    "ast_hash": "e3df869bcdc9bc94a8fa6adfde2773d7",
+    "semantic_hash": "e3df869bcdc9bc94a8fa6adfde2773d7"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/services/DownloadQueueService.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9040384,
+    "ast_hash": "53e537de585b9e41704f7fc2dea577bd",
+    "semantic_hash": "53e537de585b9e41704f7fc2dea577bd"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/services/PackageInstallerService.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.90404,
+    "ast_hash": "a22bedb960d5f31234f37ab0e8508eed",
+    "semantic_hash": "a22bedb960d5f31234f37ab0e8508eed"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/services/SubscriptionWorkManager.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9040434,
+    "ast_hash": "5ec1771a8ba99e7fd3d58ced1427922f",
+    "semantic_hash": "5ec1771a8ba99e7fd3d58ced1427922f"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/services/VideoDownloadService.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9040456,
+    "ast_hash": "7dc3369ca3bc2760da50c7d8683ab0ae",
+    "semantic_hash": "7dc3369ca3bc2760da50c7d8683ab0ae"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/subtitles/AbstractSubProvider.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9040477,
+    "ast_hash": "f5b43aae927b9649f1a590cf359652c0",
+    "semantic_hash": "f5b43aae927b9649f1a590cf359652c0"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/subtitles/AbstractSubtitleEntities.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9040496,
+    "ast_hash": "9917bc6f8f028ace6c2e61495bdb4361",
+    "semantic_hash": "9917bc6f8f028ace6c2e61495bdb4361"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/syncproviders/AccountManager.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9040515,
+    "ast_hash": "d73acadc8e0950fe9f117e1fab386549",
+    "semantic_hash": "d73acadc8e0950fe9f117e1fab386549"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/syncproviders/AuthAPI.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9040534,
+    "ast_hash": "fd65ef3a4d3eb23cb7d0c450e0d5e9c1",
+    "semantic_hash": "fd65ef3a4d3eb23cb7d0c450e0d5e9c1"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/syncproviders/AuthRepo.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9040558,
+    "ast_hash": "9112442f1370769ff174dc225c0c59dd",
+    "semantic_hash": "9112442f1370769ff174dc225c0c59dd"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/syncproviders/BackupAPI.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9040577,
+    "ast_hash": "79936a7b541f4e29d8fe99a642ef1480",
+    "semantic_hash": "79936a7b541f4e29d8fe99a642ef1480"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/syncproviders/SubtitleAPI.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9040594,
+    "ast_hash": "c016202075989dc18a1980dd50b2cbe5",
+    "semantic_hash": "c016202075989dc18a1980dd50b2cbe5"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/syncproviders/SubtitleRepo.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9040616,
+    "ast_hash": "a646c49c0c1e3e2d25d2c2aa21077471",
+    "semantic_hash": "a646c49c0c1e3e2d25d2c2aa21077471"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/syncproviders/SyncAPI.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9040632,
+    "ast_hash": "f2aac70550d6b7ff7083dd14b915c16a",
+    "semantic_hash": "f2aac70550d6b7ff7083dd14b915c16a"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/syncproviders/SyncRepo.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9040654,
+    "ast_hash": "c63a956f9f2e692f742f1a551ce80186",
+    "semantic_hash": "c63a956f9f2e692f742f1a551ce80186"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/syncproviders/providers/Addic7ed.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.904067,
+    "ast_hash": "d0528d48f7606d66dae81a8c67160c03",
+    "semantic_hash": "d0528d48f7606d66dae81a8c67160c03"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/syncproviders/providers/AniListApi.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.904069,
+    "ast_hash": "af372945de940cf17ba32d377cde785a",
+    "semantic_hash": "af372945de940cf17ba32d377cde785a"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/syncproviders/providers/KitsuApi.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9040706,
+    "ast_hash": "30690d2af319abf395f49c718d4519e7",
+    "semantic_hash": "30690d2af319abf395f49c718d4519e7"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/syncproviders/providers/LocalList.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9040728,
+    "ast_hash": "2affbe79d77fc39b9e00fc026a0bd65d",
+    "semantic_hash": "2affbe79d77fc39b9e00fc026a0bd65d"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/syncproviders/providers/MALApi.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9040744,
+    "ast_hash": "588b97c548ecaf0f3351da9eb5bffec0",
+    "semantic_hash": "588b97c548ecaf0f3351da9eb5bffec0"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/syncproviders/providers/OpenSubtitlesApi.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9040763,
+    "ast_hash": "0210730a84faf13cd566b175d4789776",
+    "semantic_hash": "0210730a84faf13cd566b175d4789776"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/syncproviders/providers/SimklApi.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.904078,
+    "ast_hash": "5fac1f98d63477035c771b298c4d46e3",
+    "semantic_hash": "5fac1f98d63477035c771b298c4d46e3"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/syncproviders/providers/SubSource.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9040802,
+    "ast_hash": "4bd9997d4241f98faa0f93cf3f5d337e",
+    "semantic_hash": "4bd9997d4241f98faa0f93cf3f5d337e"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/syncproviders/providers/Subdl.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.904082,
+    "ast_hash": "26d709fff82ecf676ca038f1a44e7a3d",
+    "semantic_hash": "26d709fff82ecf676ca038f1a44e7a3d"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/APIRepository.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.904084,
+    "ast_hash": "1f9815e2ab6890ecbb76ce189243e191",
+    "semantic_hash": "1f9815e2ab6890ecbb76ce189243e191"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/BaseAdapter.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9040859,
+    "ast_hash": "05c76f82afebf90cbcf5045e05759b30",
+    "semantic_hash": "05c76f82afebf90cbcf5045e05759b30"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/BaseFragment.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9040875,
+    "ast_hash": "9ee99787afb660b7f40b192a008b0f20",
+    "semantic_hash": "9ee99787afb660b7f40b192a008b0f20"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/ControllerActivity.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9040897,
+    "ast_hash": "e883acc359eb8f8a2acf0d8cf906374e",
+    "semantic_hash": "e883acc359eb8f8a2acf0d8cf906374e"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/CustomRecyclerViews.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9040916,
+    "ast_hash": "9814a68d592c222f2889e74873f2f931",
+    "semantic_hash": "9814a68d592c222f2889e74873f2f931"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/EasterEggMonkeFragment.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9040935,
+    "ast_hash": "43a8bf0f2e01156ff7a29d04161ea429",
+    "semantic_hash": "43a8bf0f2e01156ff7a29d04161ea429"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/MiniControllerFragment.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9040956,
+    "ast_hash": "f449b940b3cd39fd25615e84c5fd2660",
+    "semantic_hash": "f449b940b3cd39fd25615e84c5fd2660"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/NonFinalAdapterListUpdateCallback.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.904098,
+    "ast_hash": "751bea85e7d8abc21207962aba00212c",
+    "semantic_hash": "751bea85e7d8abc21207962aba00212c"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/WatchType.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9041002,
+    "ast_hash": "05ebdcd1a57ecc9baec042f75882cdba",
+    "semantic_hash": "05ebdcd1a57ecc9baec042f75882cdba"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/WebviewFragment.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.904102,
+    "ast_hash": "c0e42c4d12965efabeddcd2d872e7722",
+    "semantic_hash": "c0e42c4d12965efabeddcd2d872e7722"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/account/AccountAdapter.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.904104,
+    "ast_hash": "51ef935fbdccd0260ae38110a46814d5",
+    "semantic_hash": "51ef935fbdccd0260ae38110a46814d5"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/account/AccountHelper.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.904106,
+    "ast_hash": "e52fa235465acb4de91b9d7c0d060249",
+    "semantic_hash": "e52fa235465acb4de91b9d7c0d060249"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/account/AccountScreen.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9041078,
+    "ast_hash": "8ba937f7d4c7b46df3c039e565bf9df8",
+    "semantic_hash": "8ba937f7d4c7b46df3c039e565bf9df8"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/account/AccountSelectActivity.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9041097,
+    "ast_hash": "eaf2293fbf494cfdfffd8cd846e8dd1a",
+    "semantic_hash": "eaf2293fbf494cfdfffd8cd846e8dd1a"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/account/AccountSelectActivity2.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.904112,
+    "ast_hash": "5692220e2a2d49d5ab807c75e36cf9b6",
+    "semantic_hash": "5692220e2a2d49d5ab807c75e36cf9b6"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/account/AccountSelectLinearItemDecoration.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9041145,
+    "ast_hash": "94773f02d001e9a28581382e4843f2d1",
+    "semantic_hash": "94773f02d001e9a28581382e4843f2d1"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/account/AccountViewModel.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9041164,
+    "ast_hash": "e2f1e999f8387a64220bb7d5da46bea3",
+    "semantic_hash": "e2f1e999f8387a64220bb7d5da46bea3"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/account/AccountViewModel2.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9041183,
+    "ast_hash": "e76019745759045ee493b7205e41f05a",
+    "semantic_hash": "e76019745759045ee493b7205e41f05a"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/download/DownloadAdapter.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.90412,
+    "ast_hash": "f46b6787a2faf80adcf6a1086a4afd8e",
+    "semantic_hash": "f46b6787a2faf80adcf6a1086a4afd8e"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/download/DownloadButtonSetup.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9041219,
+    "ast_hash": "0d439ad37cf11c4326893f09437e2afd",
+    "semantic_hash": "0d439ad37cf11c4326893f09437e2afd"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/download/DownloadChildFragment.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9041233,
+    "ast_hash": "e367438e8178eb265c37189153a31d95",
+    "semantic_hash": "e367438e8178eb265c37189153a31d95"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/download/DownloadFragment.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9041255,
+    "ast_hash": "4e40b056de82bf9d4624b200ee010778",
+    "semantic_hash": "4e40b056de82bf9d4624b200ee010778"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/download/DownloadViewModel.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9041283,
+    "ast_hash": "7134ee0112afbcf3b6b3243ebe897090",
+    "semantic_hash": "7134ee0112afbcf3b6b3243ebe897090"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/download/button/BaseFetchButton.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.90413,
+    "ast_hash": "e2c3aa836b88575adfac0bf07e9a14d1",
+    "semantic_hash": "e2c3aa836b88575adfac0bf07e9a14d1"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/download/button/DownloadButton.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.904132,
+    "ast_hash": "3585cb81e04de43ffc70e29130deeed5",
+    "semantic_hash": "3585cb81e04de43ffc70e29130deeed5"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/download/button/PieFetchButton.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9041333,
+    "ast_hash": "e47573ac98983fd3e29b326c53246eee",
+    "semantic_hash": "e47573ac98983fd3e29b326c53246eee"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/download/button/ProgressBarAnimation.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9041352,
+    "ast_hash": "b3e3fc7e5383c72abd3e67559966ccaa",
+    "semantic_hash": "b3e3fc7e5383c72abd3e67559966ccaa"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/download/queue/DownloadQueueAdapter.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.904137,
+    "ast_hash": "f995aca144d2d54ca48dbf95b3aada3a",
+    "semantic_hash": "f995aca144d2d54ca48dbf95b3aada3a"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/download/queue/DownloadQueueFragment.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9041388,
+    "ast_hash": "1ebeb2b7f69b5cb7d87357705d468e00",
+    "semantic_hash": "1ebeb2b7f69b5cb7d87357705d468e00"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/download/queue/DownloadQueueViewModel.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9041405,
+    "ast_hash": "27827fed3c36faab4e1603b9b87394f8",
+    "semantic_hash": "27827fed3c36faab4e1603b9b87394f8"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/home/HomeChildItemAdapter.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9041421,
+    "ast_hash": "a4b1fcdaed20ca448a9343fb44b38d0a",
+    "semantic_hash": "a4b1fcdaed20ca448a9343fb44b38d0a"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/home/HomeFragment.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9041438,
+    "ast_hash": "d88fc3831f54963dfbf2b4428ca69b32",
+    "semantic_hash": "d88fc3831f54963dfbf2b4428ca69b32"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/home/HomeParentItemAdapter.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.904146,
+    "ast_hash": "3533e67234d31ae49d529fb6bcd7b849",
+    "semantic_hash": "3533e67234d31ae49d529fb6bcd7b849"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/home/HomeParentItemAdapterPreview.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9041474,
+    "ast_hash": "988a1268b2bb18a079f86a6c8018103d",
+    "semantic_hash": "988a1268b2bb18a079f86a6c8018103d"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/home/HomeScrollAdapter.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9041495,
+    "ast_hash": "938a7f3c38986dec9bc40572a14b342b",
+    "semantic_hash": "938a7f3c38986dec9bc40572a14b342b"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/home/HomeScrollTransformer.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.904151,
+    "ast_hash": "19a2faa79b3edff8a7cfaf446d80160d",
+    "semantic_hash": "19a2faa79b3edff8a7cfaf446d80160d"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/home/HomeViewModel.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9041529,
+    "ast_hash": "75796fe04d8a395d7be6767bcd365c98",
+    "semantic_hash": "75796fe04d8a395d7be6767bcd365c98"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/library/LibraryFragment.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9041545,
+    "ast_hash": "7e0874ba652d0e7a74936652aa23a1a8",
+    "semantic_hash": "7e0874ba652d0e7a74936652aa23a1a8"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/library/LibraryScrollTransformer.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9041564,
+    "ast_hash": "588b1d108142e3e1d4c983dfd7fbe346",
+    "semantic_hash": "588b1d108142e3e1d4c983dfd7fbe346"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/library/LibraryViewModel.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.904158,
+    "ast_hash": "fb1ca8032c578907ee2500b1c18fee24",
+    "semantic_hash": "fb1ca8032c578907ee2500b1c18fee24"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/library/LoadingPosterAdapter.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9041603,
+    "ast_hash": "c496c9ad535b0ee1a9c8ef48dbd5e3ab",
+    "semantic_hash": "c496c9ad535b0ee1a9c8ef48dbd5e3ab"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/library/PageAdapter.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.904162,
+    "ast_hash": "3a72ad513a2a1295b79a5ba05b1420f3",
+    "semantic_hash": "3a72ad513a2a1295b79a5ba05b1420f3"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/library/ViewpagerAdapter.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9041638,
+    "ast_hash": "2f6fccb3e3ae20deb4b9546f10f6e7c5",
+    "semantic_hash": "2f6fccb3e3ae20deb4b9546f10f6e7c5"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/player/AbstractPlayerFragment.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9041657,
+    "ast_hash": "d6d6b4155bbd9d583e94a4e4f7c11c11",
+    "semantic_hash": "d6d6b4155bbd9d583e94a4e4f7c11c11"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/player/CS3IPlayer.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9041674,
+    "ast_hash": "b66ca77ea55d858e08a023c73b690dd7",
+    "semantic_hash": "b66ca77ea55d858e08a023c73b690dd7"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/player/CustomSubripParser.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9041693,
+    "ast_hash": "3bd754cfb266b1a1a73e6060aa80c8a6",
+    "semantic_hash": "3bd754cfb266b1a1a73e6060aa80c8a6"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/player/CustomSubtitleDecoderFactory.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9041712,
+    "ast_hash": "afad51e84809c960c4fcbe20f5f3300f",
+    "semantic_hash": "afad51e84809c960c4fcbe20f5f3300f"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/player/DownloadFileGenerator.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.904173,
+    "ast_hash": "d02f6e87b4df794b1f33025092d6d516",
+    "semantic_hash": "d02f6e87b4df794b1f33025092d6d516"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/player/DownloadedPlayerActivity.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9041746,
+    "ast_hash": "3fcd6857ae6181b3fd84f93074c7bc04",
+    "semantic_hash": "3fcd6857ae6181b3fd84f93074c7bc04"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/player/DynamicRangeCompressor.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9041765,
+    "ast_hash": "0d33cd949d90ab781676bf3d9c269d30",
+    "semantic_hash": "0d33cd949d90ab781676bf3d9c269d30"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/player/ExtractorLinkGenerator.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9041781,
+    "ast_hash": "681a728457c1c488c1c64741a533e38d",
+    "semantic_hash": "681a728457c1c488c1c64741a533e38d"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/player/FixedNextRenderersFactory.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.90418,
+    "ast_hash": "51b4c556320212553a1147ad4f1d35ba",
+    "semantic_hash": "51b4c556320212553a1147ad4f1d35ba"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/player/FullScreenPlayer.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9041815,
+    "ast_hash": "ffc91cf4db0a5e790dfc7aa342cc2a34",
+    "semantic_hash": "ffc91cf4db0a5e790dfc7aa342cc2a34"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/player/GeneratorPlayer.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9041834,
+    "ast_hash": "2eace7365a5a68afb80e488ae57d7616",
+    "semantic_hash": "2eace7365a5a68afb80e488ae57d7616"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/player/IGenerator.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9041853,
+    "ast_hash": "85270ba5cf870b98da675dfe7f7109c9",
+    "semantic_hash": "85270ba5cf870b98da675dfe7f7109c9"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/player/IPlayer.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9041872,
+    "ast_hash": "e277d8b6c275a22721e4adba1fd50413",
+    "semantic_hash": "e277d8b6c275a22721e4adba1fd50413"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/player/LinkGenerator.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9041889,
+    "ast_hash": "ae459e8d0291acd651a7cb5cba835592",
+    "semantic_hash": "ae459e8d0291acd651a7cb5cba835592"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/player/OfflinePlaybackHelper.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9041905,
+    "ast_hash": "9e10674124b94d23f7e3d4e9a2d330c4",
+    "semantic_hash": "9e10674124b94d23f7e3d4e9a2d330c4"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/player/OutlineSpan.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9041924,
+    "ast_hash": "4af065dc5c49459a9de07b50a55006b5",
+    "semantic_hash": "4af065dc5c49459a9de07b50a55006b5"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/player/PlayerGeneratorViewModel.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9041944,
+    "ast_hash": "bf733895f554785c4b8de8a59dc627f1",
+    "semantic_hash": "bf733895f554785c4b8de8a59dc627f1"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/player/PlayerGestureHelper.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.904196,
+    "ast_hash": "72c36e1aafb3d8b714aadfb2895ab195",
+    "semantic_hash": "72c36e1aafb3d8b714aadfb2895ab195"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/player/PlayerPipHelper.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9041977,
+    "ast_hash": "7886cbd7532149e7afb33f9e62f32785",
+    "semantic_hash": "7886cbd7532149e7afb33f9e62f32785"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/player/PlayerSubtitleHelper.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9041994,
+    "ast_hash": "5dce695709a44a094ef03a2b9befcfcd",
+    "semantic_hash": "5dce695709a44a094ef03a2b9befcfcd"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/player/PlayerView.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9042013,
+    "ast_hash": "53882a8c41e9bab768497c2e7547ae6d",
+    "semantic_hash": "53882a8c41e9bab768497c2e7547ae6d"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/player/PreviewGenerator.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.904203,
+    "ast_hash": "965a370dea57289d6ab26fecde8d40d0",
+    "semantic_hash": "965a370dea57289d6ab26fecde8d40d0"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/player/RepoLinkGenerator.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9042048,
+    "ast_hash": "a64ffe7f99c20bdc46f7d887b7a24bfd",
+    "semantic_hash": "a64ffe7f99c20bdc46f7d887b7a24bfd"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/player/RoundedBackgroundColorSpan.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9042065,
+    "ast_hash": "136f69f65af638171f39a1a49d14f522",
+    "semantic_hash": "136f69f65af638171f39a1a49d14f522"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/player/SSLTrustManager.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9042082,
+    "ast_hash": "9bd2e6821d9a434803037e79efc537bb",
+    "semantic_hash": "9bd2e6821d9a434803037e79efc537bb"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/player/SubtitleOffsetItemAdapter.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.90421,
+    "ast_hash": "986a47cc4376b752306ad5764228e757",
+    "semantic_hash": "986a47cc4376b752306ad5764228e757"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/player/Torrent.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.904212,
+    "ast_hash": "da5f2ea9aae6576979a913744a95940d",
+    "semantic_hash": "da5f2ea9aae6576979a913744a95940d"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/player/UpdatedDefaultExtractorsFactory.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9042137,
+    "ast_hash": "1ad9f42a2d86e19661b033192a7a1dcc",
+    "semantic_hash": "1ad9f42a2d86e19661b033192a7a1dcc"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/player/UpdatedMatroskaExtractor.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9042156,
+    "ast_hash": "8fe83a319c422fa2b5c909a7fa537c10",
+    "semantic_hash": "8fe83a319c422fa2b5c909a7fa537c10"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/player/live/LiveHelper.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9042175,
+    "ast_hash": "c2ea8b07362b3ee90f83ac89206a3f6a",
+    "semantic_hash": "c2ea8b07362b3ee90f83ac89206a3f6a"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/player/live/LiveManager.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9042192,
+    "ast_hash": "e7948855de4150201f8acd282125f592",
+    "semantic_hash": "e7948855de4150201f8acd282125f592"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/player/live/LivePreviewTimeBar.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9042208,
+    "ast_hash": "15c475c585aa86ce7a9a66ab0753ffd4",
+    "semantic_hash": "15c475c585aa86ce7a9a66ab0753ffd4"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/player/source_priority/PriorityAdapter.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9042227,
+    "ast_hash": "5c9ab88c56cd5fbe016ad1647c411441",
+    "semantic_hash": "5c9ab88c56cd5fbe016ad1647c411441"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/player/source_priority/ProfilesAdapter.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9042242,
+    "ast_hash": "50b7374b284d02609d73fcc1bcc8eb51",
+    "semantic_hash": "50b7374b284d02609d73fcc1bcc8eb51"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/player/source_priority/QualityDataHelper.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.904226,
+    "ast_hash": "3fdb0e1c6ff6d11906664f7d5c1afdf5",
+    "semantic_hash": "3fdb0e1c6ff6d11906664f7d5c1afdf5"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/player/source_priority/QualityProfileDialog.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9042277,
+    "ast_hash": "07c2205c418cc02c05cc41b9dd3b1656",
+    "semantic_hash": "07c2205c418cc02c05cc41b9dd3b1656"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/player/source_priority/SourcePriorityDialog.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9042296,
+    "ast_hash": "2205138b9b73e14a2a864ba7561d5942",
+    "semantic_hash": "2205138b9b73e14a2a864ba7561d5942"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/player/source_priority/SourceProfileSettingsDialog.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9042318,
+    "ast_hash": "e3e7b6db0c28fdf2577ad318edc1c425",
+    "semantic_hash": "e3e7b6db0c28fdf2577ad318edc1c425"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/quicksearch/QuickSearchFragment.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9042335,
+    "ast_hash": "6dc85c873c7830dbbed10661bd01d027",
+    "semantic_hash": "6dc85c873c7830dbbed10661bd01d027"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/result/ActorAdaptor.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9042354,
+    "ast_hash": "08f607d673b00edf8227bc5b78fbb846",
+    "semantic_hash": "08f607d673b00edf8227bc5b78fbb846"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/result/EpisodeAdapter.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9042373,
+    "ast_hash": "427b371a7ac0258faef2b422bfcc15ef",
+    "semantic_hash": "427b371a7ac0258faef2b422bfcc15ef"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/result/ImageAdapter.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9042392,
+    "ast_hash": "90ffcf861c0fe870eef0f16896d9547c",
+    "semantic_hash": "90ffcf861c0fe870eef0f16896d9547c"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/result/LinearListLayout.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9042406,
+    "ast_hash": "5a70b3f998599288a796ebb648d48788",
+    "semantic_hash": "5a70b3f998599288a796ebb648d48788"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/result/ResultFragment.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9042425,
+    "ast_hash": "efaffc7260741cabaa9b19c7b39624a1",
+    "semantic_hash": "efaffc7260741cabaa9b19c7b39624a1"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/result/ResultFragmentPhone.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9042442,
+    "ast_hash": "e1261115049326df07e68f8ef34342e9",
+    "semantic_hash": "e1261115049326df07e68f8ef34342e9"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/result/ResultFragmentTv.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.904246,
+    "ast_hash": "467ffcdf47164f41e087ebae2fbf453e",
+    "semantic_hash": "467ffcdf47164f41e087ebae2fbf453e"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/result/ResultTrailerPlayer.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9042478,
+    "ast_hash": "f9a6448faba39e5f8f6f5983a4d603a9",
+    "semantic_hash": "f9a6448faba39e5f8f6f5983a4d603a9"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/result/ResultViewModel2.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9042497,
+    "ast_hash": "add12a41c96cb00227a7dda1d124d9ae",
+    "semantic_hash": "add12a41c96cb00227a7dda1d124d9ae"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/result/SelectAdaptor.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9042513,
+    "ast_hash": "530d77d21a83b7bf128e6663e3eed26d",
+    "semantic_hash": "530d77d21a83b7bf128e6663e3eed26d"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/result/SyncViewModel.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9042532,
+    "ast_hash": "99408ff6fb08243fb680a329ead25e50",
+    "semantic_hash": "99408ff6fb08243fb680a329ead25e50"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/search/SearchAdaptor.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.904255,
+    "ast_hash": "f59ef360699327065e1e98ebf6cae9ec",
+    "semantic_hash": "f59ef360699327065e1e98ebf6cae9ec"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/search/SearchFragment.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9042568,
+    "ast_hash": "ce66043038a2b9b221b110c34b2d8693",
+    "semantic_hash": "ce66043038a2b9b221b110c34b2d8693"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/search/SearchHelper.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9042585,
+    "ast_hash": "643b024909c6c5fdd6b9d62d2bac42e2",
+    "semantic_hash": "643b024909c6c5fdd6b9d62d2bac42e2"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/search/SearchHistoryAdaptor.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9042602,
+    "ast_hash": "38c02f719db3412899ba52f5fbd4257e",
+    "semantic_hash": "38c02f719db3412899ba52f5fbd4257e"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/search/SearchResultBuilder.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9042618,
+    "ast_hash": "a3c4fc48689bfb4819447a5b33ef600c",
+    "semantic_hash": "a3c4fc48689bfb4819447a5b33ef600c"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/search/SearchSuggestionAdapter.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9042637,
+    "ast_hash": "c1285c86932b77844a133d67e9e22969",
+    "semantic_hash": "c1285c86932b77844a133d67e9e22969"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/search/SearchSuggestionApi.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9042654,
+    "ast_hash": "10b3f8519937033d9fe36f9935d8f4f2",
+    "semantic_hash": "10b3f8519937033d9fe36f9935d8f4f2"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/search/SearchViewModel.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9042673,
+    "ast_hash": "fc5cdba4ed084092dbd71377c6f56608",
+    "semantic_hash": "fc5cdba4ed084092dbd71377c6f56608"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/search/SyncSearchViewModel.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.904269,
+    "ast_hash": "52b50e665db4e1c8f0afa92f9057a58d",
+    "semantic_hash": "52b50e665db4e1c8f0afa92f9057a58d"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/settings/AccountAdapter.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9042706,
+    "ast_hash": "536886af0566e54a2f6bd46da25a9405",
+    "semantic_hash": "536886af0566e54a2f6bd46da25a9405"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/settings/ApkUpdater.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9042723,
+    "ast_hash": "2fe5f8e0f02a76e9cc9b418f06931737",
+    "semantic_hash": "2fe5f8e0f02a76e9cc9b418f06931737"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/settings/GithubReleases.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9042742,
+    "ast_hash": "9ece14b82ffaa134cbff61f8cfb2ceb9",
+    "semantic_hash": "9ece14b82ffaa134cbff61f8cfb2ceb9"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/settings/Globals.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.904276,
+    "ast_hash": "e909bf1f4dddfef7ac076ec2f6c650c1",
+    "semantic_hash": "e909bf1f4dddfef7ac076ec2f6c650c1"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/settings/LogcatAdapter.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9042776,
+    "ast_hash": "1bb73a0cd6d92e37200bdbdeaea1a5b7",
+    "semantic_hash": "1bb73a0cd6d92e37200bdbdeaea1a5b7"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/settings/SettingsAccount.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.904282,
+    "ast_hash": "a3946e2b75baa5e97df399b89c241b88",
+    "semantic_hash": "a3946e2b75baa5e97df399b89c241b88"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/settings/SettingsAccount2.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.904284,
+    "ast_hash": "079efccba63f9fe7bc7cfc6128e2e866",
+    "semantic_hash": "079efccba63f9fe7bc7cfc6128e2e866"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/settings/SettingsAccountScreen.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9042857,
+    "ast_hash": "a00ee2fedd72dfe136ae15a8c1f87ff9",
+    "semantic_hash": "a00ee2fedd72dfe136ae15a8c1f87ff9"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/settings/SettingsFragment.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9042876,
+    "ast_hash": "baa87d6586de3936b86349be5dfbc351",
+    "semantic_hash": "baa87d6586de3936b86349be5dfbc351"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/settings/SettingsFragment2.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9042895,
+    "ast_hash": "d07b5bb06df8b916c3d706336a0f8b33",
+    "semantic_hash": "d07b5bb06df8b916c3d706336a0f8b33"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/settings/SettingsFragmentScreen.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9042914,
+    "ast_hash": "3948f0041f7fa6d59f1cbc819a953501",
+    "semantic_hash": "3948f0041f7fa6d59f1cbc819a953501"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/settings/SettingsGeneral.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.904293,
+    "ast_hash": "5d516e4a5be287cb6ec11d8084de23f5",
+    "semantic_hash": "5d516e4a5be287cb6ec11d8084de23f5"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/settings/SettingsGeneral2.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.904295,
+    "ast_hash": "3233df02539f90edc9ec24ca4b160e64",
+    "semantic_hash": "3233df02539f90edc9ec24ca4b160e64"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/settings/SettingsGeneralScreen.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9042964,
+    "ast_hash": "096edb791d3563c06c934243c444da73",
+    "semantic_hash": "096edb791d3563c06c934243c444da73"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/settings/SettingsPlayer.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9042983,
+    "ast_hash": "05f0893afacb0f942ae9c66803897a1a",
+    "semantic_hash": "05f0893afacb0f942ae9c66803897a1a"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/settings/SettingsPlayer2.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9043,
+    "ast_hash": "7a5f91b21ab530cf86e5e2fcdc590ea3",
+    "semantic_hash": "7a5f91b21ab530cf86e5e2fcdc590ea3"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/settings/SettingsPlayerScreen.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.904302,
+    "ast_hash": "4782a5dace2d43bb6d3a01ac04cef901",
+    "semantic_hash": "4782a5dace2d43bb6d3a01ac04cef901"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/settings/SettingsProviders.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9043036,
+    "ast_hash": "f77177ae3c78ecb1c78fb8ac45fab706",
+    "semantic_hash": "f77177ae3c78ecb1c78fb8ac45fab706"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/settings/SettingsProviders2.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9043055,
+    "ast_hash": "69f7df0df17228208e096432be1567e0",
+    "semantic_hash": "69f7df0df17228208e096432be1567e0"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/settings/SettingsProvidersScreen.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9043071,
+    "ast_hash": "c0e016afe8bb866b4827abc4a60e1ba8",
+    "semantic_hash": "c0e016afe8bb866b4827abc4a60e1ba8"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/settings/SettingsUI.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9043088,
+    "ast_hash": "131dd0067ddbeb0caadd357ce86d2e57",
+    "semantic_hash": "131dd0067ddbeb0caadd357ce86d2e57"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/settings/SettingsUI2.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9043107,
+    "ast_hash": "811c091b8f87a143a9403387b1778089",
+    "semantic_hash": "811c091b8f87a143a9403387b1778089"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/settings/SettingsUIScreen.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9043126,
+    "ast_hash": "b4e632a4d168367211f3b7883e5e50e6",
+    "semantic_hash": "b4e632a4d168367211f3b7883e5e50e6"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/settings/SettingsUpdates.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9043143,
+    "ast_hash": "33f46504d6537dbf79579ce7863dbfdf",
+    "semantic_hash": "33f46504d6537dbf79579ce7863dbfdf"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/settings/SettingsUpdates2.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9043164,
+    "ast_hash": "6473b9cbee5a4720e5729451ae04cef7",
+    "semantic_hash": "6473b9cbee5a4720e5729451ae04cef7"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/settings/SettingsUpdatesScreen.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9043186,
+    "ast_hash": "b129a6f022164db89604be2c115c7dde",
+    "semantic_hash": "b129a6f022164db89604be2c115c7dde"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/settings/extensions/ExtensionsFragment.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9043207,
+    "ast_hash": "7a1097a5110554b05aa7fff7c126f737",
+    "semantic_hash": "7a1097a5110554b05aa7fff7c126f737"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/settings/extensions/ExtensionsViewModel.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9043229,
+    "ast_hash": "556a760139e44b8d4fee48e5f5eb8e37",
+    "semantic_hash": "556a760139e44b8d4fee48e5f5eb8e37"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/settings/extensions/PluginAdapter.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9043243,
+    "ast_hash": "4867febc45df0ea28e8caac15ca51712",
+    "semantic_hash": "4867febc45df0ea28e8caac15ca51712"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/settings/extensions/PluginDetailsFragment.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9043262,
+    "ast_hash": "77c38b5e493dc6c12a084e1fba4b4b25",
+    "semantic_hash": "77c38b5e493dc6c12a084e1fba4b4b25"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/settings/extensions/PluginsFragment.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9043279,
+    "ast_hash": "729cbbf51c59c07c30d0ed5f8c347440",
+    "semantic_hash": "729cbbf51c59c07c30d0ed5f8c347440"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/settings/extensions/PluginsViewModel.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9043298,
+    "ast_hash": "ce5351c94aafed54bd0fff1cf31cc193",
+    "semantic_hash": "ce5351c94aafed54bd0fff1cf31cc193"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/settings/extensions/RepoAdapter.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9043314,
+    "ast_hash": "bdc89556c0541e5402cd04c35630e486",
+    "semantic_hash": "bdc89556c0541e5402cd04c35630e486"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/settings/logcat/LogcatDialog.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9043334,
+    "ast_hash": "5138d8659c320ac71fba62178c01d465",
+    "semantic_hash": "5138d8659c320ac71fba62178c01d465"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/settings/logcat/LogcatParser.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.904335,
+    "ast_hash": "740553c129b555515ef2917f51d9b493",
+    "semantic_hash": "740553c129b555515ef2917f51d9b493"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/settings/testing/TestFragment.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.904337,
+    "ast_hash": "69577bea15c1d2fca98080d43fc2554f",
+    "semantic_hash": "69577bea15c1d2fca98080d43fc2554f"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/settings/testing/TestFragment2.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9043386,
+    "ast_hash": "ad3aa8fd57698b3ed5676dc287cbc25c",
+    "semantic_hash": "ad3aa8fd57698b3ed5676dc287cbc25c"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/settings/testing/TestResultAdapter.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9043403,
+    "ast_hash": "159569e87dab52adf9714c6ed2004b5b",
+    "semantic_hash": "159569e87dab52adf9714c6ed2004b5b"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/settings/testing/TestScreen.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.904342,
+    "ast_hash": "41e8da29fe0fc86dc81df5ea74a391c9",
+    "semantic_hash": "41e8da29fe0fc86dc81df5ea74a391c9"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/settings/testing/TestView.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.904344,
+    "ast_hash": "298bd7659b1eb54e168c0b94b50756a2",
+    "semantic_hash": "298bd7659b1eb54e168c0b94b50756a2"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/settings/testing/TestViewModel.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9043458,
+    "ast_hash": "8d2e6097ca5b30d96db273dc1797c263",
+    "semantic_hash": "8d2e6097ca5b30d96db273dc1797c263"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/settings/testing/TestViewModel2.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9043477,
+    "ast_hash": "cbc0aed25ac78259d7aa232a23bdd36a",
+    "semantic_hash": "cbc0aed25ac78259d7aa232a23bdd36a"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/settings/utils/DirectoryPicker.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9043493,
+    "ast_hash": "a05c0ce41bb3c87da6f4ac3312a4f785",
+    "semantic_hash": "a05c0ce41bb3c87da6f4ac3312a4f785"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/setup/SetupFragmentExtensions.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9043512,
+    "ast_hash": "0f560ee700f94f811be6cab82f0da655",
+    "semantic_hash": "0f560ee700f94f811be6cab82f0da655"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/setup/SetupFragmentLanguage.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9043531,
+    "ast_hash": "a58719f6e384e2aa87963d1d58c30c4e",
+    "semantic_hash": "a58719f6e384e2aa87963d1d58c30c4e"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/setup/SetupFragmentLayout.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9043548,
+    "ast_hash": "c75a15e08defb015b56ee987a3aeb687",
+    "semantic_hash": "c75a15e08defb015b56ee987a3aeb687"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/setup/SetupFragmentMedia.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9043562,
+    "ast_hash": "e85d9a3efe6ae3b7263dbd35ddf2cd5d",
+    "semantic_hash": "e85d9a3efe6ae3b7263dbd35ddf2cd5d"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/setup/SetupFragmentProviderLanguage.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9043581,
+    "ast_hash": "c64fb00bfd33d0f02e983c230cf51626",
+    "semantic_hash": "c64fb00bfd33d0f02e983c230cf51626"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/subtitles/ChromecastSubtitlesFragment.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9043598,
+    "ast_hash": "e12421d56ed898a69e593080d86073f6",
+    "semantic_hash": "e12421d56ed898a69e593080d86073f6"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/subtitles/ChromecastSubtitlesFragment2.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9043615,
+    "ast_hash": "4904b508503b93de4b91ed6e127f9850",
+    "semantic_hash": "4904b508503b93de4b91ed6e127f9850"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/subtitles/ChromecastSubtitlesScreen.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9043632,
+    "ast_hash": "3ad3686ad41b2b37429cac411c28dc51",
+    "semantic_hash": "3ad3686ad41b2b37429cac411c28dc51"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/subtitles/SubtitlesFragment.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.904365,
+    "ast_hash": "8f19f562ec9e042f9768e8818e5fcd1c",
+    "semantic_hash": "8f19f562ec9e042f9768e8818e5fcd1c"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/subtitles/SubtitlesFragment2.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9043667,
+    "ast_hash": "5e67024969153a1bc096ca7477c5a15c",
+    "semantic_hash": "5e67024969153a1bc096ca7477c5a15c"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/ui/subtitles/SubtitlesScreen.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9043686,
+    "ast_hash": "14642606f68fd0fb1b18c0f4120b6c07",
+    "semantic_hash": "14642606f68fd0fb1b18c0f4120b6c07"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/utils/AppContextUtils.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.90437,
+    "ast_hash": "b0b7706058e137fc450063852d356fc9",
+    "semantic_hash": "b0b7706058e137fc450063852d356fc9"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/utils/BackPressedCallbackHelper.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.904372,
+    "ast_hash": "8429b55fbe4d8d0463752430cac966fc",
+    "semantic_hash": "8429b55fbe4d8d0463752430cac966fc"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/utils/BackupUtils.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9043741,
+    "ast_hash": "853ec31a3c4a0d364c71aa2f9536263b",
+    "semantic_hash": "853ec31a3c4a0d364c71aa2f9536263b"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/utils/BaseComposeFragment.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9043758,
+    "ast_hash": "0aed78e5a2bf8311ea3d170e9db92aa7",
+    "semantic_hash": "0aed78e5a2bf8311ea3d170e9db92aa7"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/utils/BiometricAuthenticator.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9043777,
+    "ast_hash": "d298fad48549520934ca041eb1bd90c2",
+    "semantic_hash": "d298fad48549520934ca041eb1bd90c2"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/utils/CastHelper.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9043791,
+    "ast_hash": "0ae68c8516169db4676dcbf17609e815",
+    "semantic_hash": "0ae68c8516169db4676dcbf17609e815"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/utils/CastOptionsProvider.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.904381,
+    "ast_hash": "1f10338574cac2994f257ea2edc685df",
+    "semantic_hash": "1f10338574cac2994f257ea2edc685df"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/utils/ConsistentLiveData.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9043827,
+    "ast_hash": "5b949c7daeb96bbbd0c3ebfc883a2ae5",
+    "semantic_hash": "5b949c7daeb96bbbd0c3ebfc883a2ae5"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/utils/DataStore.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9043844,
+    "ast_hash": "65fc314f5ee22a791a41bebc97ecac86",
+    "semantic_hash": "65fc314f5ee22a791a41bebc97ecac86"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/utils/DataStoreHelper.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.904386,
+    "ast_hash": "80a486a1998b72689a1326e294965a99",
+    "semantic_hash": "80a486a1998b72689a1326e294965a99"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/utils/Event.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.904388,
+    "ast_hash": "5507601a9dbb4bed2cdd057fe95022cf",
+    "semantic_hash": "5507601a9dbb4bed2cdd057fe95022cf"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/utils/FillerEpisodeCheck.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9043896,
+    "ast_hash": "6f1d123b7ed80ea91a0e6c7eda558a96",
+    "semantic_hash": "6f1d123b7ed80ea91a0e6c7eda558a96"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/utils/GitInfo.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9043915,
+    "ast_hash": "5dc57a9b2c1724e28527d77c1c1bff39",
+    "semantic_hash": "5dc57a9b2c1724e28527d77c1c1bff39"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/utils/IDisposable.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9043932,
+    "ast_hash": "cc271c4730b7553e3afac68f01732a01",
+    "semantic_hash": "cc271c4730b7553e3afac68f01732a01"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/utils/ImageModuleCoil.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.904395,
+    "ast_hash": "36b64934b2fe7d406c5e4988657055c9",
+    "semantic_hash": "36b64934b2fe7d406c5e4988657055c9"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/utils/ImageUtil.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9043968,
+    "ast_hash": "c7fee9553a2b4056a863acc1fd37fdf8",
+    "semantic_hash": "c7fee9553a2b4056a863acc1fd37fdf8"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/utils/InAppUpdater.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9043987,
+    "ast_hash": "22c403db0d5a081506e761e1ea81587e",
+    "semantic_hash": "22c403db0d5a081506e761e1ea81587e"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/utils/IntentHelpers.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9044003,
+    "ast_hash": "bb29ea3fefaf13e841be5b52233189c0",
+    "semantic_hash": "bb29ea3fefaf13e841be5b52233189c0"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/utils/Markdown.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9044023,
+    "ast_hash": "18614a5c9853d14fd49a5e74de180e23",
+    "semantic_hash": "18614a5c9853d14fd49a5e74de180e23"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/utils/PackageInstaller.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.904404,
+    "ast_hash": "9fc17ce1d43a9d7e2441fe1215de93ef",
+    "semantic_hash": "9fc17ce1d43a9d7e2441fe1215de93ef"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/utils/PercentageCropImageView.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9044056,
+    "ast_hash": "b59a18845e547862e4810aa841ea9bc7",
+    "semantic_hash": "b59a18845e547862e4810aa841ea9bc7"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/utils/PowerManagerAPI.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9044073,
+    "ast_hash": "38738bccc7d21c9610a44050713b01cd",
+    "semantic_hash": "38738bccc7d21c9610a44050713b01cd"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/utils/SingleSelectionHelper.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9044092,
+    "ast_hash": "094e6e6f0826984d0d86574b5ea797d1",
+    "semantic_hash": "094e6e6f0826984d0d86574b5ea797d1"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/utils/SnackbarHelper.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9044108,
+    "ast_hash": "f8262e2ac142ea31356f04e48af63ce4",
+    "semantic_hash": "f8262e2ac142ea31356f04e48af63ce4"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/utils/SubtitleUtils.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9044127,
+    "ast_hash": "90cc8adea213e236c85886d83b67d961",
+    "semantic_hash": "90cc8adea213e236c85886d83b67d961"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/utils/SyncUtil.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9044144,
+    "ast_hash": "c949dc35ae87d6c5e3facafaffcbc4e2",
+    "semantic_hash": "c949dc35ae87d6c5e3facafaffcbc4e2"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/utils/TestingUtils.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.904416,
+    "ast_hash": "428b97b7327d33e90d9fc94efdd61287",
+    "semantic_hash": "428b97b7327d33e90d9fc94efdd61287"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/utils/TextUtil.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.904418,
+    "ast_hash": "804434a411e1bc622aaa910a82769861",
+    "semantic_hash": "804434a411e1bc622aaa910a82769861"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/utils/TvChannelUtils.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9044201,
+    "ast_hash": "f44a89b880d6c7c0ba68b1fc3448387c",
+    "semantic_hash": "f44a89b880d6c7c0ba68b1fc3448387c"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/utils/UIHelper.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9044218,
+    "ast_hash": "aae7562dad49c397de34332b7e421c75",
+    "semantic_hash": "aae7562dad49c397de34332b7e421c75"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/utils/Vector2.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9044237,
+    "ast_hash": "c009ee1864ce655d6e16c0ecd3e158f2",
+    "semantic_hash": "c009ee1864ce655d6e16c0ecd3e158f2"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/utils/downloader/DownloadFileManagement.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9044254,
+    "ast_hash": "36f8168b33128ecac1d5e26f4acf279c",
+    "semantic_hash": "36f8168b33128ecac1d5e26f4acf279c"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/utils/downloader/DownloadManager.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9044273,
+    "ast_hash": "bea088d3dd17c4c4d1d79172e91bd80a",
+    "semantic_hash": "bea088d3dd17c4c4d1d79172e91bd80a"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/utils/downloader/DownloadObjects.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9044297,
+    "ast_hash": "047552ca626289c783667be8eac8b6f7",
+    "semantic_hash": "047552ca626289c783667be8eac8b6f7"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/utils/downloader/DownloadQueueManager.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.904432,
+    "ast_hash": "b9da4f59e9f7a549fcaf5092451ca872",
+    "semantic_hash": "b9da4f59e9f7a549fcaf5092451ca872"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/utils/downloader/DownloadUtils.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9044337,
+    "ast_hash": "17b35bd21a957fa1c10ec76469a77a1c",
+    "semantic_hash": "17b35bd21a957fa1c10ec76469a77a1c"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/utils/serializers/UriSerializer.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9044356,
+    "ast_hash": "d64f50c982e7ce762cfc13dcf01686a3",
+    "semantic_hash": "d64f50c982e7ce762cfc13dcf01686a3"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/utils/videoskip/AniSkip.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9044373,
+    "ast_hash": "18cf62bbdeed433eebbc27c598f49fce",
+    "semantic_hash": "18cf62bbdeed433eebbc27c598f49fce"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/utils/videoskip/AnimeSkip.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.904439,
+    "ast_hash": "5596cfcea1849a03c49d3ff511b08344",
+    "semantic_hash": "5596cfcea1849a03c49d3ff511b08344"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/utils/videoskip/IntroDbSkip.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9044409,
+    "ast_hash": "afccafb72f67de6843bf71d9eea5feda",
+    "semantic_hash": "afccafb72f67de6843bf71d9eea5feda"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/utils/videoskip/SkipAPI.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9044425,
+    "ast_hash": "a7a7f377ed0361b94aad09ebcb91c845",
+    "semantic_hash": "a7a7f377ed0361b94aad09ebcb91c845"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/utils/videoskip/TheIntroDBSkip.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9044445,
+    "ast_hash": "c6ccf165261e01c9cf073d4ef1b74108",
+    "semantic_hash": "c6ccf165261e01c9cf073d4ef1b74108"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/widget/CenterZoomLayoutManager.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9044461,
+    "ast_hash": "fa1f875285d081bb7e645f03d39887ce",
+    "semantic_hash": "fa1f875285d081bb7e645f03d39887ce"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/widget/FlowLayout.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.904448,
+    "ast_hash": "bf709655623cd83913ad7b2bde4ea394",
+    "semantic_hash": "bf709655623cd83913ad7b2bde4ea394"
+  },
+  "app/src/main/java/com/lagradost/cloudstream3/widget/LinearRecycleViewLayoutManager.kt": {
+    "mtime": 1792001082.829,
+    "seen": 1792291645.9044495,
+    "ast_hash": "9b0672a092b8d6d0eafa5d95d9c9582a",
+    "semantic_hash": "9b0672a092b8d6d0eafa5d95d9c9582a"
+  }
+}
