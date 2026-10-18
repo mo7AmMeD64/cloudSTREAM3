@@ -49,6 +49,8 @@ android {
     buildFeatures {
         compose = true
         buildConfig = true
+        // The original CloudStream player UI is ViewBinding-based XML.
+        viewBinding = true
     }
 
     packaging {
