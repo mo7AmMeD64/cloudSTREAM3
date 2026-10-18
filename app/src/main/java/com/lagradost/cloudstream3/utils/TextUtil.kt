@@ -67,6 +67,7 @@ fun txt(value: String): UiText {
     return UiText.DynamicString(value)
 }
 
+@JvmName("txtNull")
 fun txt(value: String?): UiText? {
     return value?.let { txt(it) }
 }
