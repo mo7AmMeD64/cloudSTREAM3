@@ -194,6 +194,9 @@ ax-media3-datasource-okhttp = { group = "androidx.media3", name = "media3-dataso
 ax-coil-compose = { group = "io.coil-kt", name = "coil-compose", version.ref = "axCoil" }
 ax-material-colors = { group = "com.google.android.material", name = "material", version.ref = "axMaterialColors" }
 ax-okhttp = { group = "com.squareup.okhttp3", name = "okhttp", version.ref = "axOkhttp" }
+# The ported CloudStream player UI is RecyclerView-heavy; the transitive
+# version lacks absoluteAdapterPosition and pool sharing fixes.
+ax-recyclerview = { group = "androidx.recyclerview", name = "recyclerview", version = "1.3.2" }
 ax-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "kotlinxCoroutines" }
 
 [plugins]
