@@ -140,6 +140,8 @@ dependencies {
     // The original CloudStream player's codec/renderers layer (software
     // codecs, NextRenderersFactory, preview timebar).
     implementation(libs.nextlib.media3ext)
+    // Scrub-preview timebar in the original player (rubensousa, via jitpack).
+    implementation(libs.previewseekbar.media3)
     implementation(libs.ax.media3.exoplayer.dash)
     implementation(libs.ax.media3.exoplayer.hls)
     implementation(libs.ax.media3.ui)
