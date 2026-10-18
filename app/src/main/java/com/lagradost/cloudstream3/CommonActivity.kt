@@ -62,6 +62,13 @@ object CommonActivity {
         }
     }
 
+    fun showToast(message: com.lagradost.cloudstream3.utils.UiText?, duration: Int? = null) {
+        val act = activity ?: return
+        act.runOnUiThread {
+            showToast(act, message?.asString(act), duration)
+        }
+    }
+
     fun showToast(@StringRes message: Int, duration: Int? = null) {
         val act = activity ?: return
         act.runOnUiThread {
