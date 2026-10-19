@@ -12,5 +12,18 @@
         <item name="android:navigationBarColor">@android:color/transparent</item>
         <item name="android:enforceStatusBarContrast">false</item>
         <item name="android:enforceNavigationBarContrast">false</item>
+
+        <!-- ==== the ported CloudStream player's XML UI (Theme.AppTheme items) ==== -->
+        <!-- Static dark colors, the same set the original app theme applies. -->
+        <item name="textColor">@color/textColor</item>
+        <item name="grayTextColor">@color/grayTextColor</item>
+        <item name="primaryGrayBackground">@color/primaryGrayBackground</item>
+        <item name="primaryBlackBackground">@color/primaryBlackBackground</item>
+        <item name="iconGrayBackground">@color/iconGrayBackground</item>
+        <item name="boxItemBackground">@color/boxItemBackground</item>
+        <item name="iconColor">@color/iconGrayBackground</item>
+        <item name="white">@color/white</item>
+        <item name="black">@color/black</item>
+        <item name="focusBackground">?android:attr/selectableItemBackground</item>
     </style>
 </resources>

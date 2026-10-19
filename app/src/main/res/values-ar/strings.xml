@@ -211,4 +211,5 @@
     <string name="player_loading_episode">جارٍ تحميل الحلقة…</string>
     <string name="player_switch_failed">تعذّر تحميل الحلقة</string>
     <string name="unable_to_inflate">تعذّر تحميل التخطيط</string>
+    <string name="tv_no_focus_tag">tv_no_focus_tag</string>
 </resources>

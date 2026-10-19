@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    The style set the ported CloudStream player's XML UI needs: the dialog
+    theme, the black/white material buttons, check-label list rows and the
+    settings-row items. Bodies are identical to the original styles.xml;
+    only the ported layouts' dependencies are kept.
+-->
+<resources>
+    <style name="Theme.AlertDialog" parent="ThemeOverlay.MaterialComponents.Dialog.Alert">
+        <item name="android:windowMinWidthMajor">@dimen/abc_dialog_min_width_major</item>
+        <item name="android:windowMinWidthMinor">@dimen/abc_dialog_min_width_minor</item>
+        <item name="android:windowBackground">@drawable/dialog__window_background</item>
+        <item name="textAllCaps">false</item>
+        <item name="android:textColorPrimary">?attr/grayTextColor</item>
+        <item name="buttonBarPositiveButtonStyle">@style/WhiteButton.Dialog</item>
+        <item name="buttonBarNegativeButtonStyle">@style/BlackButton.Dialog</item>
+        <item name="buttonBarNeutralButtonStyle">@style/BlackButton.Dialog</item>
+    </style>
+
+    <style name="AlertDialogCustom" parent="Theme.AlertDialog">
+        <item name="android:windowFullscreen">true</item>
+        <item name="android:textColor">?attr/textColor</item>
+        <item name="android:textColorPrimary">?attr/textColor</item>
+        <item name="android:textAllCaps">false</item>
+        <item name="textColorAlertDialogListItem">?attr/textColor</item>
+        <item name="colorControlNormal">?attr/textColor</item>
+        <item name="colorControlActivated">?attr/colorPrimary</item>
+        <item name="android:windowMinWidthMajor">@dimen/abc_dialog_min_width_major</item>
+        <item name="android:windowMinWidthMinor">@dimen/abc_dialog_min_width_minor</item>
+        <item name="android:windowBackground">@drawable/dialog__window_background</item>
+    </style>
+
+    <style name="AppTextViewStyle" parent="android:Widget.TextView">
+        <item name="android:fontFamily">@font/google_sans</item>
+    </style>
+
+    <style name="SettingsItem">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">50dp</item>
+        <item name="android:gravity">center_vertical</item>
+        <item name="android:paddingStart">20dp</item>
+        <item name="android:paddingEnd">20dp</item>
+        <item name="android:selectAllOnFocus">true</item>
+        <item name="android:background">?attr/focusBackground</item>
+        <item name="android:textColor">?attr/textColor</item>
+        <item name="android:textAppearance">?android:attr/textAppearanceListItemSmall</item>
+        <item name="drawableEndCompat">@drawable/ic_baseline_keyboard_arrow_right_24</item>
+    </style>
+
+    <style name="WatchHeaderText">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:textColor">?attr/textColor</item>
+        <item name="android:gravity">center_vertical</item>
+        <item name="android:textSize">18sp</item>
+        <item name="android:layout_marginEnd">50dp</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+
+    <style name="NiceButton">
+        <item name="android:stateListAnimator">@null</item>
+        <item name="android:padding">5dp</item>
+        <item name="android:layout_marginStart">5dp</item>
+        <item name="android:layout_marginEnd">5dp</item>
+        <item name="android:layout_height">40dp</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:textAllCaps">false</item>
+        <item name="iconGravity">textStart</item>
+        <item name="iconSize">20dp</item>
+        <item name="cornerRadius">@dimen/rounded_button_radius</item>
+        <item name="android:textSize">15sp</item>
+        <item name="android:insetTop">0dp</item>
+        <item name="android:insetBottom">0dp</item>
+        <item name="android:foreground">@drawable/outline_drawable_less</item>
+        <item name="android:tag">@string/tv_no_focus_tag</item>
+    </style>
+
+    <style name="WhiteButton" parent="NiceButton">
+        <item name="strokeColor">?attr/iconGrayBackground</item>
+        <item name="backgroundTint">?attr/textColor</item>
+        <item name="iconTint">?attr/iconGrayBackground</item>
+        <item name="android:textColor">?attr/iconGrayBackground</item>
+        <item name="rippleColor">?attr/primaryBlackBackground</item>
+    </style>
+
+    <style name="BlackButton" parent="NiceButton">
+        <item name="strokeColor">?attr/textColor</item>
+        <item name="backgroundTint">?attr/iconGrayBackground</item>
+        <item name="iconTint">?attr/textColor</item>
+        <item name="android:textColor">?attr/textColor</item>
+        <item name="rippleColor">@color/black_button_ripple</item>
+    </style>
+
+    <style name="BlackButton.Dialog" parent="BlackButton">
+        <item name="android:foreground">@drawable/outline_drawable_less_inset</item>
+        <item name="android:insetTop">@dimen/dialog_buttons_inset</item>
+        <item name="android:insetBottom">@dimen/dialog_buttons_inset</item>
+    </style>
+
+    <style name="WhiteButton.Dialog" parent="WhiteButton">
+        <item name="android:foreground">@drawable/outline_drawable_less_inset</item>
+        <item name="android:insetTop">@dimen/dialog_buttons_inset</item>
+        <item name="android:insetBottom">@dimen/dialog_buttons_inset</item>
+    </style>
+
+    <style name="CheckLabel" parent="@style/NoCheckLabel">
+        <item name="android:checkMark">?android:attr/listChoiceIndicatorSingle</item>
+        <item name="drawableStartCompat">@drawable/ic_baseline_check_24_listview</item>
+    </style>
+
+    <style name="NoCheckLabel" parent="@style/AppTextViewStyle">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:minHeight">?android:attr/listPreferredItemHeightSmall</item>
+        <item name="android:textColor">@color/text_selection_color</item>
+        <item name="android:textSize">16sp</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:gravity">center_vertical</item>
+        <item name="android:paddingStart">12dp</item>
+        <item name="android:paddingEnd">12dp</item>
+        <item name="android:ellipsize">marquee</item>
+        <item name="android:foreground">?attr/selectableItemBackgroundBorderless</item>
+        <item name="android:drawablePadding">20dp</item>
+    </style>
+</resources>

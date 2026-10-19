@@ -211,4 +211,5 @@
     <string name="player_loading_episode">Loading episode…</string>
     <string name="player_switch_failed">Could not load the episode</string>
     <string name="unable_to_inflate">Unable to inflate layout</string>
+    <string name="tv_no_focus_tag">tv_no_focus_tag</string>
 </resources>
