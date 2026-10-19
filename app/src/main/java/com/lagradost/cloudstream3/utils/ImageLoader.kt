@@ -30,7 +30,8 @@ object ImageLoader {
             this.setImageResource(imageData)
             return
         }
-        coil.load(imageData) {
+        // coil.load is an extension on ImageView in Coil 2.
+        this.load(imageData) {
             addHeader("User-Agent", USER_AGENT)
             headers?.forEach { (key, value) -> addHeader(key, value) }
             builder()
