@@ -5,6 +5,7 @@ import android.graphics.drawable.Drawable
 import android.net.Uri
 import android.widget.ImageView
 import androidx.annotation.DrawableRes
+import coil.load
 import coil.request.ImageRequest
 import com.lagradost.cloudstream3.USER_AGENT
 
