@@ -36,6 +36,7 @@ class PlayerActivity : AppCompatActivity() {
     }
 
     private lateinit var args: PlayerArgs
+    private var watchedKey: String? = null
 
     private val handler = Handler(Looper.getMainLooper())
     private val progressTicker = object : Runnable {
@@ -124,7 +125,8 @@ class PlayerActivity : AppCompatActivity() {
         else HistoryStore.updateProgress(this, entry.key, position, duration)
         AppPrefs.setPosition(this, resumeKey, position)
 
-        if (duration > 0 && position >= duration * 0.9) {
+        if (duration > 0 && position >= duration * 0.9 && watchedKey != resumeKey) {
+            watchedKey = resumeKey
             WatchedStore.setWatched(
                 context = this,
                 apiName = entry.apiName,

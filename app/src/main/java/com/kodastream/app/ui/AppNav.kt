@@ -112,7 +112,6 @@ private object Routes {
     const val EXTENSIONS = "extensions"
     const val SETTINGS = "settings"
     const val DETAILS = "details/{id}"
-    const val PLAYER = "player/{id}"
 }
 
 private data class TopLevel(
