@@ -3,4 +3,7 @@
     <!-- Referenced by options_popup_tv.xml for focus ordering; declared in the
          original provider_list.xml, which is not part of this app. -->
     <item name="toggle1" type="id" />
+    <item name="exo_controller" type="id"/>
+    <item name="exo_duration" type="id"/>
+    <item name="exo_subtitles" type="id"/>
 </resources>

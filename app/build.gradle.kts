@@ -124,6 +124,9 @@ dependencies {
     implementation(libs.ax.documentfile) // SAF DocumentFile for the download location
     implementation(libs.appcompat) // MainActivity is an AppCompatActivity, like CloudStream's
     implementation(libs.ax.recyclerview) // original player's RecyclerView UI
+    implementation(libs.constraintlayout) // player dialog layouts
+    implementation(libs.preference.ktx) // player/result preference keys
+    implementation(libs.media3.session) // original player's MediaSession
     implementation(libs.ax.lifecycle.runtime.ktx)
     implementation(libs.ax.lifecycle.viewmodel.compose)
     implementation(libs.ax.activity.compose)

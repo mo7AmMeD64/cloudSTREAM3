@@ -78,4 +78,7 @@
         <attr name="cropYCenterOffsetPct" format="float" />
         <attr name="cropXCenterOffsetPct" format="float" />
     </declare-styleable>
+    <!-- Referenced from player code; also provided by AppCompat/Material. -->
+    <attr name="backgroundTint" format="color" />
+    <attr name="colorAccent" format="color" />
 </resources>

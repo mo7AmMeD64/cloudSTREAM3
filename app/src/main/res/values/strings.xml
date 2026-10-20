@@ -215,4 +215,122 @@
     <string name="player_switch_failed">Could not load the episode</string>
     <string name="unable_to_inflate">Unable to inflate layout</string>
     <string name="tv_no_focus_tag">tv_no_focus_tag</string>
+<string name="android_tv_interface_off_seek_key">android_tv_interface_off_seek_key</string>
+<string name="android_tv_interface_on_seek_key">android_tv_interface_on_seek_key</string>
+<string name="audio_singular">Audio</string>
+<string name="auto_rotate_video_key">auto_rotate_video_key</string>
+<string name="autoplay_next_key">autoplay_next_key</string>
+<string name="compressor_enabled_key">compressor_enabled_key</string>
+<string name="compressor_makeup_hint">Turns up the overall volume by +%d dB</string>
+<string name="compressor_makeup_label">Makeup Gain: +%d dB</string>
+<string name="compressor_off">Off</string>
+<string name="compressor_on_format">On · %1$d dB / +%2$d dB</string>
+<string name="compressor_threshold_hint">Sounds louder than %d dB get turned down</string>
+<string name="compressor_threshold_label">Threshold: %d dB</string>
+<string name="double_tap_enabled_key">double_tap_enabled_key</string>
+<string name="double_tap_pause_enabled_key">double_tap_pause_enabled_key</string>
+<string name="double_tap_seek_time_key">double_tap_seek_time_key2</string>
+<string name="download_size_format" formatted="true">%1$s / %2$s</string>
+<string name="enable_skip_op_from_database">enable_skip_op_from_database</string>
+<string name="encoding_error">Encoding error</string>
+<string name="episode">Episode</string>
+<string name="episode_short">E</string>
+<string name="episode_sync_enabled_key">episode_sync_enabled_key</string>
+<string name="extra_brightness_key">extra_brightness_enabled</string>
+<string name="ffw_text_format" formatted="true">+%d</string>
+<string name="ffw_text_regular_format" formatted="true">%d</string>
+<string name="filter_sub_lang_key">filter_sub_lang_key</string>
+<string name="go_back">Go Back</string>
+<string name="go_back_30">-30</string>
+<string name="go_forward_30">+30</string>
+<string name="hide_player_control_names_key">hide_player_control_names_key</string>
+<string name="loading">Loading…</string>
+<string name="mobile_data">Mobile data</string>
+<string name="no_links_found_toast">No Links Found</string>
+<string name="no_subtitles">No Subtitles</string>
+<string name="ok">OK</string>
+<string name="pause">Pause</string>
+<string name="pip_enabled_key">pip_enabled_key</string>
+<string name="play_torrent_button">Stream Torrent</string>
+<string name="playback_speed_enabled_key">playback_speed_enabled_key</string>
+<string name="player_load_one_subtitle_online">Load first available</string>
+<string name="player_load_subtitles">Load from file</string>
+<string name="player_load_subtitles_online">Load from Internet</string>
+<string name="player_loaded_subtitles" formatted="true">Loaded %s</string>
+<string name="player_notification_channel_description">The player notification for controlling the playback from the background</string>
+<string name="player_notification_channel_name">Player notifications</string>
+<string name="player_resize_enabled_key">player_resize_enabled_key</string>
+<string name="player_speed_text_format" formatted="true">Speed (%.2fx)</string>
+<string name="prefer_limit_title_key">prefer_limit_title_key</string>
+<string name="prefer_media_type_key">prefer_media_type_key_2</string>
+<string name="prefer_title_limit_key">prefer_title_limit</string>
+<string name="preview_seekbar_key">preview_seekbar_key</string>
+<string name="profile_number">Profile %d</string>
+<string name="provider_lang_key">provider_lang_key</string>
+<string name="quality_pref_key">quality_pref_key</string>
+<string name="quality_pref_mobile_data_key">quality_pref_mobile_data_key</string>
+<string name="quality_profile_help">
+        Here you can change how the sources are ordered. If a video has a higher priority it will appear higher in the source selection.
+        The sum of the source priority and the quality priority is the video priority.
+        \n\nSource A: 3
+        \nQuality B: 7
+        \nWill have a combined video priority of 10.
+
+        \n\nNOTE: If the sum is 10 or more the player will automatically skip loading when that link is loaded!
+    </string>
+<string name="remote_error">Remote error</string>
+<string name="render_error">Renderer error</string>
+<string name="resize_fill">Stretch</string>
+<string name="resize_fit">Fit to screen</string>
+<string name="resize_zoom">Zoom</string>
+<string name="rew_text_format" formatted="true">-%d</string>
+<string name="rew_text_regular_format" formatted="true">%d</string>
+<string name="rotate_video_key">rotate_video_key</string>
+<string name="season_short">S</string>
+<string name="set_default">Set default</string>
+<string name="show_media_info_key">show_media_info</string>
+<string name="show_name_key">show_name</string>
+<string name="show_resolution_key">show_resolution</string>
+<string name="skip_loading">Skip Loading</string>
+<string name="slide_up_again_to_exceed_100">Slide up again to go beyond 100%</string>
+<string name="software_decoding_key">software_decoding_key2</string>
+<string name="source_error">Source error</string>
+<string name="speedup_key">speedup_key</string>
+<string name="subs_subtitle_languages">Subtitle Language</string>
+<string name="subtitle_offset_extra_hint_before_format">Use this if subtitles are shown %d ms too late</string>
+<string name="subtitle_offset_extra_hint_later_format">Use this if the subtitles are shown %d ms too early</string>
+<string name="subtitle_offset_extra_hint_none_format">No subtitle delay</string>
+<string name="subtitles_encoding">Subtitle encoding</string>
+<string name="subtitles_encoding_key">subtitles_encoding_key</string>
+<string name="subtitles_from_embedded">Embedded</string>
+<string name="subtitles_from_online">Online</string>
+<string name="swipe_enabled_key">swipe_enabled_key</string>
+<string name="swipe_vertical_enabled_key">swipe_vertical_enabled_key</string>
+<string name="torrent_info">This video is a Torrent, this means that your video activity can be tracked.\nMake sure you understand Torrenting before continuing.</string>
+<string name="torrent_not_accepted">Restart app and accept Stream Torrent pop-up to proceed.</string>
+<string name="torrent_preferred_media">Enable torrent in Settings/Providers/Preferred media</string>
+<string name="tv_layout_clock_key">tv_layout_clock_key</string>
+<string name="unexpected_error">Unexpected player error</string>
+<string name="unsupported_error">Unsupported error</string>
+<string name="video_buffer_disk_key">video_buffer_disk_key</string>
+<string name="video_buffer_length_key">video_buffer_length_key</string>
+<string name="video_buffer_size_key">video_buffer_size_key</string>
+<string name="video_source">Source</string>
+<string name="volume_exceeded_100">Volume has exceeded 100%</string>
+<string name="wifi">Wi-Fi</string>
+<string name="year">Year</string>
+    <string name="exo_controls_stop_description">Stop</string>
+    <string name="automatic">Automatic</string>
+    <string name="episode_watched">Watched</string>
+    <string name="season">Season</string>
+    <string name="toast_copied">copied to clipboard</string>
+<string name="skip_type_op">Opening</string>
+<string name="skip_type_ed">Ending</string>
+<string name="skip_type_recap">Recap</string>
+<string name="skip_type_mixed_op">Mixed opening</string>
+<string name="skip_type_mixed_ed">Mixed ending</string>
+<string name="skip_type_credits">Credits</string>
+<string name="skip_type_intro">Intro</string>
+<string name="skip_type_preview">Preview</string>
+<string name="skip_type_format" formatted="true">Skip %s</string>
 </resources>

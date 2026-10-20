@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+<style name="BlackLabel" parent="@style/Widget.MaterialComponents.Tooltip">
+        <item name="backgroundTint">?attr/iconGrayBackground</item>
+        <item name="android:textColor">?attr/textColor</item>
+    </style>
+<style name="DubButton" parent="@style/SearchBox">
+        <item name="android:text">@string/app_dubbed_text</item>
+        <!-- Background is set programmatically -->
+        <item name="textColor">?attr/primaryGrayBackground</item>
+        <item name="android:textColor">?attr/primaryGrayBackground</item>
+    </style>
+<style name="ExtendedFloatingActionButton">
+        <item name="elevation">0dp</item>
+        <item name="android:textStyle">bold</item>
+        <item name="backgroundTint">?attr/primaryGrayBackground</item>
+        <item name="tint">?attr/colorPrimary</item>
+        <item name="textColor">?attr/colorPrimary</item>
+        <item name="iconTint">?attr/textColor</item>
+        <item name="android:layout_margin">16dp</item>
+        <item name="android:layout_gravity">end|bottom</item>
+        <item name="textAllCaps">false</item>
+        <item name="android:gravity">center</item>
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">wrap_content</item>
+    </style>
+<style name="ResultMarqueeButtonText">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:gravity">top|center_horizontal</item>
+        <item name="android:singleLine">true</item>
+        <item name="android:scrollHorizontally">true</item>
+        <item name="android:marqueeRepeatLimit">marquee_forever</item>
+        <item name="android:ellipsize">marquee</item>
+    </style>
+<style name="RoundProgressbar">
+        <item name="indicatorTrackGapSize">0dp</item>
+        <item name="trackStopIndicatorSize">0dp</item>
+        <item name="trackColor">@color/color_primary_transparent</item>
+    </style>
+<style name="SmallBlackButton" parent="BlackButton">
+        <item name="android:layout_height">24dp</item>
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:textSize">12sp</item>
+        <item name="android:layout_marginStart">0dp</item>
+        <item name="android:layout_marginEnd">0dp</item>
+        <item name="android:stateListAnimator">@null</item>
+        <item name="iconPadding">0dp</item>
+        <item name="android:paddingTop">0dp</item>
+        <item name="android:paddingBottom">0dp</item>
+        <item name="android:minWidth">0dp</item>
+    </style>
+<style name="VideoButton">
+        <item name="android:stateListAnimator">@null</item>
+        <item name="strokeColor">@color/transparent</item>
+        <item name="backgroundTint">@color/transparent</item>
+        <item name="rippleColor">@color/video_button_ripple</item>
+        <item name="android:shadowColor">@color/transparent</item>
+
+        <item name="cornerRadius">3dp</item>
+        <item name="iconTint">@color/white</item>
+        <item name="textColor">@color/white</item>
+        <item name="android:textColor">@color/white</item>
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">45dp</item>
+        <item name="android:gravity">center</item>
+        <item name="android:layout_gravity">center</item>
+        <item name="textAllCaps">false</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:textSize">10sp</item>
+        <item name="android:layout_marginStart">10dp</item>
+        <item name="android:layout_marginEnd">10dp</item>
+    </style>
+<style name="VideoButtonTV">
+        <item name="android:tag">@string/tv_no_focus_tag</item>
+        <item name="android:stateListAnimator">@null</item>
+        <item name="strokeColor">@color/transparent</item>
+        <item name="backgroundTint">@null</item>
+        <item name="android:background">@drawable/player_button_tv</item>
+        <item name="rippleColor">@color/white</item>
+        <item name="android:shadowColor">@color/transparent</item>
+
+        <item name="iconTint">@color/player_on_button_tv</item>
+        <item name="textColor">@color/player_on_button_tv</item>
+        <item name="android:textColor">@color/player_on_button_tv</item>
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">25dp</item>
+        <item name="iconSize">16dp</item>
+        <item name="android:gravity">center</item>
+        <item name="android:layout_gravity">center</item>
+        <item name="android:baselineAligned">false</item>
+        <item name="textAllCaps">false</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:textSize">10sp</item>
+        <item name="android:layout_marginStart">4dp</item>
+        <item name="android:layout_marginEnd">4dp</item>
+        <item name="android:insetBottom">0dp</item>
+        <item name="android:insetTop">0dp</item>
+    </style>
+<style name="SearchBox">
+        <item name="android:background">@drawable/bg_color_both</item>
+        <item name="android:minWidth">40dp</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:gravity">center</item>
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:paddingLeft">7dp</item>
+        <item name="android:paddingRight">7dp</item>
+        <item name="android:paddingTop">3dp</item>
+        <item name="android:paddingBottom">3dp</item>
+        <item name="android:textSize">10sp</item>
+        <item name="textColor">?attr/textColor</item>
+        <item name="android:textColor">?attr/textColor</item>
+        <item name="android:layout_marginLeft">1dp</item>
+        <item name="android:layout_marginRight">1dp</item>
+        <item name="android:layout_marginTop">1dp</item>
+    </style>
+</resources>

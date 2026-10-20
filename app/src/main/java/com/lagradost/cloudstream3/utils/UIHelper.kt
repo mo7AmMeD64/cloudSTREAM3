@@ -2,6 +2,8 @@ package com.lagradost.cloudstream3.utils
 
 import android.app.Activity
 import android.app.Dialog
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Context
 import android.content.res.Resources
 import android.os.Build
@@ -9,6 +11,7 @@ import android.os.Handler
 import android.os.Looper
 import android.util.TypedValue
 import android.view.View
+import android.view.inputmethod.InputMethodManager
 import android.view.Window
 import androidx.annotation.AttrRes
 import androidx.annotation.ColorInt
@@ -16,6 +19,8 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.core.view.updatePadding
+import com.kodastream.app.R
+import com.lagradost.cloudstream3.CloudStreamApp.Companion.context
 import com.lagradost.cloudstream3.CommonActivity
 import com.lagradost.cloudstream3.mvvm.logError
 import com.lagradost.cloudstream3.utils.BackPressedCallbackHelper.disableBackPressedCallback
@@ -31,6 +36,27 @@ object UIHelper {
 
     val Int.toPx: Int get() = (this * Resources.getSystem().displayMetrics.density).toInt()
     val Float.toPx: Float get() = (this * Resources.getSystem().displayMetrics.density)
+
+    fun clipboardHelper(label: UiText, text: CharSequence) {
+        val ctx = context ?: return
+        try {
+            val clip = ClipData.newPlainText(label.asString(ctx), text)
+            val labelSuffix = txt(R.string.toast_copied).asString(ctx)
+            ctx.getSystemService<ClipboardManager>()?.setPrimaryClip(clip)
+            if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.S_V2) {
+                showToast("${label.asString(ctx)} $labelSuffix")
+            }
+        } catch (t: Throwable) {
+            logError(t)
+        }
+    }
+
+    fun hideKeyboard(view: View?) {
+        if (view == null) return
+        val inputMethodManager =
+            view.context.getSystemService(Activity.INPUT_METHOD_SERVICE) as InputMethodManager?
+        inputMethodManager?.hideSoftInputFromWindow(view.windowToken, 0)
+    }
 
     fun View.isRtl(): Boolean = this.layoutDirection == View.LAYOUT_DIRECTION_RTL
 
