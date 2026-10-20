@@ -395,7 +395,7 @@ class PlayerGeneratorViewModel : ViewModel() {
                         meta = gen.videos.getOrNull(index),
                         nextMeta = gen.videos.getOrNull(index + 1),
                         id = gen.getId(index),
-                        response = (gen as? RepoLinkGenerator)?.page,
+                        response = null,
                         index = index,
                         allMeta = gen.videos
                     )

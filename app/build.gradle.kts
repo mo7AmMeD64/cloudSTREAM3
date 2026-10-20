@@ -118,6 +118,9 @@ dependencies {
     implementation("me.xdrop:fuzzywuzzy:1.4.0") // used by many extensions
     implementation(libs.ax.okhttp)
     implementation(libs.ax.coroutines.android)
+    implementation(libs.kotlinx.collections.immutable) // original player immutable state
+    implementation(libs.palette.ktx) // source profile colored labels
+    implementation(libs.juniversalchardet) // subtitle charset detection
 
     // ---- Koda's UI stack: Compose + Material 3 Expressive ----
     implementation(libs.ax.core.ktx)

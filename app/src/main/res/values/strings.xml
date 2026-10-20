@@ -224,6 +224,10 @@
 <string name="compressor_makeup_hint">Turns up the overall volume by +%d dB</string>
 <string name="compressor_makeup_label">Makeup Gain: +%d dB</string>
 <string name="compressor_off">Off</string>
+<string name="compressor_on">On</string>
+<string name="compressor_preset_light">Light</string>
+<string name="compressor_preset_dialog">Dialogue Boost</string>
+<string name="compressor_preset_heavy">Heavy</string>
 <string name="compressor_on_format">On · %1$d dB / +%2$d dB</string>
 <string name="compressor_threshold_hint">Sounds louder than %d dB get turned down</string>
 <string name="compressor_threshold_label">Threshold: %d dB</string>
@@ -333,4 +337,7 @@
 <string name="skip_type_intro">Intro</string>
 <string name="skip_type_preview">Preview</string>
 <string name="skip_type_format" formatted="true">Skip %s</string>
+<string name="show_player_metadata_key">show_player_metadata_key</string>
+<string name="show_player_metadata_overlay">Show Player Metadata Overlay</string>
+<string name="torrent_not_supported">Torrent playback is not supported in this build</string>
 </resources>

@@ -724,7 +724,7 @@ open class FullScreenPlayer : AbstractPlayerFragment<FragmentPlayerBinding>(
         data class Snap(val enabled: Boolean, val threshold: Float, val makeupGain: Float)
         val snap = Snap(compressor.enabled, compressor.threshold, compressor.makeupGain)
 
-        val binding = com.lagradost.cloudstream3.databinding.CompressorDialogBinding
+        val binding = com.kodastream.app.databinding.CompressorDialogBinding
             .inflate(android.view.LayoutInflater.from(act))
 
         // ── Visual update helpers ──────────────────────────────────────────
@@ -930,11 +930,13 @@ open class FullScreenPlayer : AbstractPlayerFragment<FragmentPlayerBinding>(
         // ── Dialog lifecycle ───────────────────────────────────────────────
         val dialog = AlertDialog.Builder(act, R.style.AlertDialogCustom)
             .setView(binding.root)
-            .setOnDismissListener {
-                activity?.hideSystemUI()
-                selectCompressorDialog = null
-            }
             .create()
+            .apply {
+                setOnDismissListener {
+                    activity?.hideSystemUI()
+                    selectCompressorDialog = null
+                }
+            }
         selectCompressorDialog = dialog
 
         binding.applyBtt.setOnClickListener {

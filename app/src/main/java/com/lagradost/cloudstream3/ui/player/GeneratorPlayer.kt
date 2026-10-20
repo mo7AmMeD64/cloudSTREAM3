@@ -3,6 +3,7 @@ package com.lagradost.cloudstream3.ui.player
 import android.animation.ValueAnimator
 import android.annotation.SuppressLint
 import android.app.Dialog
+import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.content.res.ColorStateList
@@ -41,6 +42,7 @@ import androidx.media3.ui.PlayerNotificationManager.MediaDescriptionAdapter
 import androidx.preference.PreferenceManager
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.lagradost.cloudstream3.APIHolder.getApiFromNameNull
 import com.lagradost.cloudstream3.CloudStreamApp.Companion.setKey
 import com.lagradost.cloudstream3.CommonActivity.showToast
 import com.lagradost.cloudstream3.LoadResponse
@@ -1648,9 +1650,6 @@ class GeneratorPlayer : FullScreenPlayer() {
         val index = savedInstanceState?.getInt("index") ?: arguments?.getInt("index")
         val generator = generators[uuid]
 
-        unwrapBundle(savedInstanceState)
-        unwrapBundle(arguments)
-
         super.onBindingCreated(binding, savedInstanceState)
 
         // Avoid showing no links found
@@ -1688,9 +1687,6 @@ class GeneratorPlayer : FullScreenPlayer() {
                 playerBinding?.playerVideoClock?.isVisible = false
             }
         }
-
-        unwrapBundle(savedInstanceState)
-        unwrapBundle(arguments)
 
         preferredAutoSelectSubtitles = getAutoSelectLanguageTagIETF()
 

@@ -15,6 +15,7 @@ import android.view.inputmethod.InputMethodManager
 import android.view.Window
 import androidx.annotation.AttrRes
 import androidx.annotation.ColorInt
+import androidx.core.content.getSystemService
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
@@ -22,6 +23,7 @@ import androidx.core.view.updatePadding
 import com.kodastream.app.R
 import com.lagradost.cloudstream3.CloudStreamApp.Companion.context
 import com.lagradost.cloudstream3.CommonActivity
+import com.lagradost.cloudstream3.CommonActivity.showToast
 import com.lagradost.cloudstream3.mvvm.logError
 import com.lagradost.cloudstream3.utils.BackPressedCallbackHelper.disableBackPressedCallback
 
@@ -94,6 +96,7 @@ object UIHelper {
         padBottom: Boolean = true,
         padLeft: Boolean = true,
         padRight: Boolean = true,
+        fixIme: Boolean = false,
     ) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
             if (padTop) {
@@ -108,7 +111,9 @@ object UIHelper {
             val rightCheck = if (view.isRtl()) padLeft else padRight
 
             val insets = windowInsets.getInsets(
-                WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout(),
+                WindowInsetsCompat.Type.systemBars() or
+                    WindowInsetsCompat.Type.displayCutout() or
+                    if (fixIme) WindowInsetsCompat.Type.ime() else 0,
             )
 
             view.updatePadding(
