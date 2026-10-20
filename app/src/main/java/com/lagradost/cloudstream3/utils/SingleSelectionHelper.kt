@@ -17,10 +17,10 @@ import androidx.core.view.marginRight
 import androidx.core.view.marginTop
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.kodastream.app.R
-import com.lagradost.cloudstream3.databinding.BottomInputDialogBinding
-import com.lagradost.cloudstream3.databinding.BottomSelectionDialogBinding
-import com.lagradost.cloudstream3.databinding.BottomTextDialogBinding
-import com.lagradost.cloudstream3.databinding.OptionsPopupTvBinding
+import com.kodastream.app.databinding.BottomInputDialogBinding
+import com.kodastream.app.databinding.BottomSelectionDialogBinding
+import com.kodastream.app.databinding.BottomTextDialogBinding
+import com.kodastream.app.databinding.OptionsPopupTvBinding
 import com.lagradost.cloudstream3.ui.settings.Globals.EMULATOR
 import com.lagradost.cloudstream3.ui.settings.Globals.PHONE
 import com.lagradost.cloudstream3.ui.settings.Globals.TV
