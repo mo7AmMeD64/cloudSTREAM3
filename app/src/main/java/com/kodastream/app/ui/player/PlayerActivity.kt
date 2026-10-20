@@ -14,8 +14,10 @@ import com.kodastream.app.data.PlayerArgs
 import com.kodastream.app.data.WatchedStore
 import com.kodastream.app.engine.AppBootstrap
 import com.lagradost.cloudstream3.CommonActivity
+import com.lagradost.cloudstream3.SubtitleFile
 import com.lagradost.cloudstream3.TvType
 import com.lagradost.cloudstream3.ui.player.GeneratorPlayer
+import com.lagradost.cloudstream3.ui.player.PlayerSubtitleHelper
 import com.lagradost.cloudstream3.ui.result.ResultEpisode
 import com.lagradost.cloudstream3.ui.result.VideoWatchState
 import com.lagradost.cloudstream3.utils.DataStoreHelper
@@ -55,12 +57,20 @@ class PlayerActivity : AppCompatActivity() {
 
         if (savedInstanceState == null) {
             val (episodes, index) = episodesFor(this)
+            @Suppress("DEPRECATION")
+            val offlineSubs = args.offlineSubtitleUri?.let { uri ->
+                listOf(
+                    PlayerSubtitleHelper.getSubtitleData(
+                        SubtitleFile(args.subtitle ?: "Subtitle", uri)
+                    )
+                )
+            } ?: emptyList()
             supportFragmentManager.beginTransaction()
                 .replace(
                     android.R.id.content,
                     GeneratorPlayer().apply {
                         arguments = GeneratorPlayer.newInstance(
-                            KodaPlayerGenerator(episodes),
+                            KodaPlayerGenerator(episodes, offlineSubs),
                             index,
                         )
                     },
