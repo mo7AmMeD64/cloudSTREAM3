@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Referenced by options_popup_tv.xml for focus ordering; declared in the
+         original provider_list.xml, which is not part of this app. -->
+    <item name="toggle1" type="id" />
+</resources>
