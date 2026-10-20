@@ -39,6 +39,16 @@
             </intent-filter>
         </activity>
 
+        <!-- Hosts the original CloudStream player UI. -->
+        <activity
+            android:name=".ui.player.PlayerActivity"
+            android:exported="false"
+            android:launchMode="singleTask"
+            android:resizeableActivity="true"
+            android:supportsPictureInPicture="true"
+            android:theme="@style/Theme.KodaStream"
+            android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|keyboardHidden|keyboard|navigation|uiMode|density" />
+
         <!-- Keeps downloads running when the app is closed. -->
         <service
             android:name=".downloads.DownloadService"

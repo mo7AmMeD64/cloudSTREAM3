@@ -36,6 +36,8 @@ data class ResultEpisode(
     @SerialName("airDate") val airDate: Long? = null,
     @SerialName("runTime") val runTime: Int? = null,
     @SerialName("seasonData") val seasonData: SeasonData? = null,
+    /** KodaStream's history key for this episode; unused by the original UI. */
+    @SerialName("resumeKey") val resumeKey: String? = null,
 )
 
 fun ResultEpisode.getRealPosition(): Long {

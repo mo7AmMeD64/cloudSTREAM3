@@ -90,6 +90,7 @@ import com.kodastream.app.data.AppEvents
 import com.kodastream.app.data.AppPrefs
 import com.kodastream.app.data.DetailsArgs
 import com.kodastream.app.data.NavArgs
+import com.kodastream.app.data.PlayerArgs
 import com.kodastream.app.ui.components.softSpring
 import com.kodastream.app.ui.details.DetailsScreen
 import com.kodastream.app.ui.details.DetailsViewModel
@@ -97,8 +98,7 @@ import com.kodastream.app.ui.extensions.ExtensionsScreen
 import com.kodastream.app.ui.history.HistoryScreen
 import com.kodastream.app.ui.home.HomeScreen
 import com.kodastream.app.ui.library.LibraryScreen
-import com.kodastream.app.ui.player.PlayerScreen
-import com.kodastream.app.ui.player.PlayerViewModel
+import com.kodastream.app.ui.player.PlayerActivity
 import com.kodastream.app.ui.search.SearchScreen
 import com.kodastream.app.ui.settings.SettingsScreen
 import com.kodastream.app.ui.theme.ThemeViewModel
@@ -292,6 +292,11 @@ private fun AppNavGraph(
     themeViewModel: ThemeViewModel,
     contentPadding: PaddingValues,
 ) {
+    val context = LocalContext.current
+    fun openPlayer(playerArgs: PlayerArgs) {
+        context.startActivity(PlayerActivity.newIntent(context, NavArgs.put(playerArgs)))
+    }
+
     NavHost(
         navController = navController,
         startDestination = Routes.HOME,
@@ -314,18 +319,14 @@ private fun AppNavGraph(
             LibraryScreen(
                 contentPadding = contentPadding,
                 onOpenItem = navController::openDetails,
-                onResume = { playerArgs ->
-                    navController.navigate("player/${NavArgs.put(playerArgs)}")
-                },
+                onResume = { playerArgs -> openPlayer(playerArgs) },
             )
         }
         composable(Routes.HISTORY) {
             HistoryScreen(
                 contentPadding = contentPadding,
                 onOpenItem = navController::openDetails,
-                onResume = { playerArgs ->
-                    navController.navigate("player/${NavArgs.put(playerArgs)}")
-                },
+                onResume = { playerArgs -> openPlayer(playerArgs) },
             )
         }
         composable(Routes.EXTENSIONS) {
@@ -351,30 +352,7 @@ private fun AppNavGraph(
                     onBack = { navController.popBackStack() },
                     onOpenItem = navController::openDetails,
                     onOpenDownloads = { navController.navigateTopLevel(Routes.LIBRARY) },
-                    onPlay = { playerArgs ->
-                        navController.navigate("player/${NavArgs.put(playerArgs)}")
-                    },
-                )
-            }
-        }
-        composable(
-            route = Routes.PLAYER,
-            arguments = listOf(navArgument("id") { type = NavType.IntType }),
-        ) { entry ->
-            val args = NavArgs.player(entry.arguments?.getInt("id") ?: -1)
-            if (args == null) {
-                LaunchedEffect(Unit) { navController.popBackStack() }
-            } else {
-                val viewModel: PlayerViewModel = viewModel(
-                    factory = viewModelFactory {
-                        initializer {
-                            PlayerViewModel(this[APPLICATION_KEY]!!, args)
-                        }
-                    }
-                )
-                PlayerScreen(
-                    viewModel = viewModel,
-                    onBack = { navController.popBackStack() },
+                    onPlay = { playerArgs -> openPlayer(playerArgs) },
                 )
             }
         }

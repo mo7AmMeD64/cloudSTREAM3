@@ -264,6 +264,7 @@ private fun HistoryGrid(
                                     title = entry.title,
                                     subtitle = entry.subtitle,
                                     resumeKey = entry.resumeKey,
+                                    history = entry,
                                 )
                             )
                         }

@@ -154,6 +154,9 @@ class GeneratorPlayer : FullScreenPlayer() {
     private val currentMeta: Any? get() = viewModel.state.generatorState?.meta
     private val nextMeta: Any? get() = viewModel.state.generatorState?.nextMeta
 
+    /** The episode on screen, for the host activity's history bookkeeping. */
+    val currentEpisode: ResultEpisode? get() = currentMeta as? ResultEpisode
+
     private var isPlayerActive: AtomicBoolean = AtomicBoolean(false)
     private var isNextEpisode: Boolean = false // this is used to reset the watch time
 
