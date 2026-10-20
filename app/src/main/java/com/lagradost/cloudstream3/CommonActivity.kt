@@ -53,6 +53,10 @@ object CommonActivity {
     /** The player registers a global key handler (TV remotes, dials). */
     var keyEventListener: ((Pair<KeyEvent?, Boolean>) -> Boolean)? = null
 
+    /** The subtitle color picker and other dialogs talk through these. */
+    val onColorSelectedEvent = com.lagradost.cloudstream3.utils.Event<Pair<Int, Int>>()
+    val onDialogDismissedEvent = com.lagradost.cloudstream3.utils.Event<Int>()
+
     private var currentToast: Toast? = null
 
     fun showToast(message: String?, duration: Int? = null) {

@@ -145,6 +145,7 @@ dependencies {
     implementation(libs.nextlib.media3ext)
     // Scrub-preview timebar in the original player (rubensousa, via jitpack).
     implementation(libs.previewseekbar.media3)
+    implementation(libs.colorpicker) // original subtitle color picker
     implementation(libs.ax.media3.exoplayer.dash)
     implementation(libs.ax.media3.exoplayer.hls)
     implementation(libs.ax.media3.ui)

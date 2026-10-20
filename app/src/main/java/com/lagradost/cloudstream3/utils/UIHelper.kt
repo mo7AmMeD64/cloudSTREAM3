@@ -166,6 +166,36 @@ object UIHelper {
         }
     }
 
+    /** id, string */
+    @android.annotation.SuppressLint("RestrictedApi")
+    fun View.popupMenuNoIconsAndNoStringRes(
+        items: List<Pair<Int, String>>,
+        onMenuItemClick: android.view.MenuItem.() -> Unit,
+    ): android.widget.PopupMenu {
+        val ctw = android.view.ContextThemeWrapper(context, com.kodastream.app.R.style.PopupMenu)
+        val popup = android.widget.PopupMenu(
+            ctw,
+            this,
+            android.view.Gravity.NO_GRAVITY,
+            androidx.appcompat.R.attr.actionOverflowMenuStyle,
+            0,
+        )
+
+        items.forEach { (id, string) ->
+            popup.menu.add(0, id, 0, string)
+        }
+
+        (popup.menu as? androidx.appcompat.view.menu.MenuBuilder)?.setOptionalIconsVisible(true)
+
+        popup.setOnMenuItemClickListener {
+            it.onMenuItemClick()
+            true
+        }
+
+        popup.show()
+        return popup
+    }
+
     fun Activity.enableEdgeToEdgeCompat() {
         // edge-to-edge is very buggy on earlier versions
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return

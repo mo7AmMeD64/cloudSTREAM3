@@ -122,4 +122,8 @@
         <item name="android:foreground">?attr/selectableItemBackgroundBorderless</item>
         <item name="android:drawablePadding">20dp</item>
     </style>
+
+    <style name="PopupMenu" parent="@android:style/Widget.PopupMenu">
+        <item name="android:backgroundTint">?attr/primaryBlackBackground</item>
+    </style>
 </resources>

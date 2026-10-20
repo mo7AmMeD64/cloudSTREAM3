@@ -21,6 +21,7 @@
         <item name="primaryBlackBackground">@color/primaryBlackBackground</item>
         <item name="iconGrayBackground">@color/iconGrayBackground</item>
         <item name="boxItemBackground">@color/boxItemBackground</item>
+        <item name="bitDarkerGrayBackground">@color/boxItemBackground</item>
         <item name="iconColor">@color/iconGrayBackground</item>
         <item name="white">@color/white</item>
         <item name="black">@color/black</item>
