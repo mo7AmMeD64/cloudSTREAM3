@@ -6,4 +6,6 @@
     <item name="exo_controller" type="id"/>
     <item name="exo_duration" type="id"/>
     <item name="exo_subtitles" type="id"/>
+    <item name="subtitles_italic" type="id"/>
+    <item name="subtitles_remove_captions" type="id"/>
 </resources>
