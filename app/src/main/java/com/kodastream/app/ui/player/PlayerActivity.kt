@@ -207,7 +207,7 @@ class PlayerActivity : AppCompatActivity() {
             HistoryStore.current(context).firstOrNull { it.key == h.key }
         }
         episodes.forEach { episode ->
-            val duration = if (known?.resumeKey == episode.resumeKey) known.durationMs else 0L
+            val duration = known?.takeIf { it.resumeKey == episode.resumeKey }?.durationMs ?: 0L
             val position = AppPrefs.position(context, episode.resumeKey ?: "")
             if (duration > 30_000L && position > 0L) {
                 DataStoreHelper.setViewPos(episode.id, position, duration)
