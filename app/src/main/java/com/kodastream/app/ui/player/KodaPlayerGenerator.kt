@@ -43,15 +43,18 @@ class KodaPlayerGenerator(
             return true
         }
 
+        if (episode.data.isEmpty() || episode.data == "[]" || episode.data == "about:blank") return false
+
         val provider = Engine.provider(episode.apiName)
             ?: throw IllegalStateException("Provider \"${episode.apiName}\" is not loaded")
 
-        provider.loadLinks(
-            episode.data,
-            isCasting,
-            { file -> subtitleCallback(PlayerSubtitleHelper.getSubtitleData(file)) },
-            { link -> callback(link to null) },
-        )
-        return true
+        return Engine.guarded(provider.loadLinksTimeoutMs ?: 120_000L) {
+            provider.loadLinks(
+                episode.data,
+                isCasting,
+                { file -> subtitleCallback(PlayerSubtitleHelper.getSubtitleData(file)) },
+                { link -> callback(link to null) },
+            )
+        }.getOrThrow()
     }
 }

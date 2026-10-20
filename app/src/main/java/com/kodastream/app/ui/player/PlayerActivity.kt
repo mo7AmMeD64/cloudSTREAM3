@@ -18,6 +18,7 @@ import com.lagradost.cloudstream3.SubtitleFile
 import com.lagradost.cloudstream3.TvType
 import com.lagradost.cloudstream3.ui.player.GeneratorPlayer
 import com.lagradost.cloudstream3.ui.player.PlayerSubtitleHelper
+import com.lagradost.cloudstream3.ui.player.SubtitleOrigin
 import com.lagradost.cloudstream3.ui.result.ResultEpisode
 import com.lagradost.cloudstream3.ui.result.VideoWatchState
 import com.lagradost.cloudstream3.utils.DataStoreHelper
@@ -63,7 +64,7 @@ class PlayerActivity : AppCompatActivity() {
                 listOf(
                     PlayerSubtitleHelper.getSubtitleData(
                         SubtitleFile(args.subtitle ?: "Subtitle", uri)
-                    )
+                    ).copy(origin = SubtitleOrigin.DOWNLOADED_FILE)
                 )
             } ?: emptyList()
             supportFragmentManager.beginTransaction()
