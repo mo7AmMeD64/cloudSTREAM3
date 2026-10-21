@@ -98,7 +98,7 @@ open class FullScreenPlayer : AbstractPlayerFragment<FragmentPlayerBinding>(
     protected var androidTVInterfaceOnSeekTime = 30000L
     protected var playBackSpeedEnabled = false
     protected var playerResizeEnabled = false
-    protected var playerRotateEnabled = false
+    protected var playerRotateEnabled = true
     protected var rotatedManually = false
     private var hideControlsNames = false
     protected var subtitleDelay
@@ -1420,7 +1420,7 @@ open class FullScreenPlayer : AbstractPlayerFragment<FragmentPlayerBinding>(
                 )
                 playerRotateEnabled = settingsManager.getBoolean(
                     ctx.getString(R.string.rotate_video_key),
-                    false
+                    true
                 )
                 playerResizeEnabled =
                     settingsManager.getBoolean(

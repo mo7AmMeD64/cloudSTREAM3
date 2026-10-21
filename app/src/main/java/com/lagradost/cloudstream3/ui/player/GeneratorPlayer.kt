@@ -64,11 +64,8 @@ import com.lagradost.cloudstream3.mvvm.safe
 import com.lagradost.cloudstream3.ui.player.CS3IPlayer.Companion.preferredAudioTrackLanguage
 import com.lagradost.cloudstream3.ui.player.CustomDecoder.Companion.updateForcedEncoding
 import com.lagradost.cloudstream3.ui.player.PlayerSubtitleHelper.Companion.toSubtitleMimeType
-import com.lagradost.cloudstream3.ui.player.source_priority.LinkSource
-import com.lagradost.cloudstream3.ui.player.source_priority.ProfileSettings
 import com.lagradost.cloudstream3.ui.player.source_priority.QualityDataHelper
 import com.lagradost.cloudstream3.ui.player.source_priority.QualityDataHelper.getLinkPriority
-import com.lagradost.cloudstream3.ui.player.source_priority.QualityProfileDialog
 import com.lagradost.cloudstream3.ui.result.ResultEpisode
 import com.lagradost.cloudstream3.ui.setRecycledViewPool
 import com.lagradost.cloudstream3.ui.settings.Globals.EMULATOR
@@ -76,6 +73,7 @@ import com.lagradost.cloudstream3.ui.settings.Globals.PHONE
 import com.lagradost.cloudstream3.ui.settings.Globals.TV
 import com.lagradost.cloudstream3.ui.settings.Globals.isLayout
 import com.lagradost.cloudstream3.ui.subtitles.SUBTITLE_AUTO_SELECT_KEY
+import com.lagradost.cloudstream3.ui.subtitles.SubtitleStyleDialog
 import com.lagradost.cloudstream3.ui.subtitles.SubtitlesFragment
 import com.lagradost.cloudstream3.ui.subtitles.SubtitlesFragment.Companion.getAutoSelectLanguageTagIETF
 import com.lagradost.cloudstream3.utils.ImageLoader.loadImage
@@ -706,39 +704,8 @@ class GeneratorPlayer : FullScreenPlayer() {
                     this.selectSourceDialog = null
                 }
 
-                fun setProfileName(profile: Int) {
-                    binding.sourceSettingsBtt.setText(
-                        QualityDataHelper.getProfileName(
-                            profile
-                        )
-                    )
-                }
-                setProfileName(currentQualityProfile)
-
-                binding.profilesClickSettings.setOnClickListener {
-                    val activity = activity ?: return@setOnClickListener
-                    val dialog = QualityProfileDialog(
-                        activity,
-                        R.style.DialogFullscreenPlayer,
-                        viewModel.state.links.mapNotNull {
-                            it.first?.let { extractorLink ->
-                                LinkSource(
-                                    extractorLink
-                                )
-                            }
-                        },
-                        currentQualityProfile
-                    ) { profile ->
-                        currentQualityProfile = profile.id
-                        setProfileName(profile.id)
-                    }
-
-                    dialog.setOnDismissListener {
-                        viewModel.state.clearSortedLinksCache()
-                        refreshLinks(currentQualityProfile)
-                    }
-
-                    dialog.show()
+                binding.subtitleSettingsBtt.setOnClickListener {
+                    SubtitleStyleDialog().show(parentFragmentManager, "SubtitleStyle")
                 }
 
                 binding.subtitlesEncodingFormat.apply {
@@ -1557,11 +1524,8 @@ class GeneratorPlayer : FullScreenPlayer() {
         }
     }
 
-    override fun isThereEpisodes(): Boolean {
-        // Checks if there is a second episode of type ResultEpisode
-        // => There exists more than 1 episode, and they are all ResultEpisode
-        return viewModel.state.generatorState?.allMeta?.getOrNull(1) as? ResultEpisode != null
-    }
+    override fun isThereEpisodes(): Boolean =
+        (viewModel.state.generatorState?.allMeta?.size ?: 0) > 1
 
     override fun showEpisodesOverlay() {
         try {

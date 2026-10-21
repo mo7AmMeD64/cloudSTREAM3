@@ -21,44 +21,18 @@
             android:layout_weight="50"
             android:orientation="vertical">
 
-            <LinearLayout
-                android:id="@+id/profiles_click_settings"
+            <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_rowWeight="1"
                 android:layout_marginTop="10dp"
-                android:focusable="true"
-                android:foreground="@drawable/outline_drawable_forced"
-                android:gravity="center_vertical"
-                android:orientation="horizontal">
-
-                <TextView
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:paddingStart="?android:attr/listPreferredItemPaddingStart"
-                    android:paddingTop="10dp"
-                    android:paddingEnd="?android:attr/listPreferredItemPaddingEnd"
-                    android:paddingBottom="10dp"
-                    android:text="@string/pick_source"
-                    android:textColor="?attr/textColor"
-                    android:textSize="20sp"
-                    android:textStyle="bold" />
-
-                <TextView
-                    android:id="@+id/source_settings_btt"
-                    android:layout_width="wrap_content"
-                    android:layout_height="match_parent"
-                    android:layout_gravity="center"
-                    android:drawablePadding="10dp"
-                    android:gravity="center"
-                    android:minWidth="140dp"
-                    android:paddingHorizontal="10dp"
-                    android:textColor="?attr/textColor"
-                    android:textSize="15sp"
-                    app:drawableEndCompat="@drawable/ic_outline_settings_24"
-                    tools:text="@string/profile_number" />
-            </LinearLayout>
+                android:paddingStart="?android:attr/listPreferredItemPaddingStart"
+                android:paddingTop="10dp"
+                android:paddingEnd="?android:attr/listPreferredItemPaddingEnd"
+                android:paddingBottom="10dp"
+                android:text="@string/pick_source"
+                android:textColor="?attr/textColor"
+                android:textSize="20sp"
+                android:textStyle="bold" />
 
             <ListView
                 android:id="@+id/sort_providers"
@@ -68,7 +42,6 @@
                 android:background="?attr/primaryBlackBackground"
                 android:listSelector="@drawable/outline_drawable_forced"
                 android:nextFocusRight="@id/sort_subtitles"
-                android:nextFocusUp="@id/profiles_click_settings"
                 android:nextFocusDown="@id/apply_btt"
                 android:requiresFadingEdge="vertical"
                 tools:layout_height="100dp"

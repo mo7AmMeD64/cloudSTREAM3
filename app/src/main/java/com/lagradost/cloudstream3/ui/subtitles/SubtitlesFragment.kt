@@ -265,6 +265,12 @@ class SubtitlesFragment {
             this.setKey(SUBTITLE_KEY, style)
         }
 
+        /** Saves a style and applies it to the player that is currently running. */
+        fun applyAndSaveStyle(context: Context, style: SaveCaptionStyle) {
+            context.saveStyle(style)
+            applyStyleEvent.invoke(style)
+        }
+
         val defaultSubtitleStyle = SaveCaptionStyle(
             foregroundColor = getDefColor(0),
             backgroundColor = getDefColor(2),

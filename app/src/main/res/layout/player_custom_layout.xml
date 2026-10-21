@@ -1130,17 +1130,16 @@
             android:id="@+id/player_episodes_button"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:contentDescription="@string/episodes"
             android:foregroundGravity="center"
             android:src="@drawable/ic_baseline_arrow_back_ios_24"
             android:background="@drawable/video_tap_button_always_white"
-            app:tint="@android:color/white"
-            tools:ignore="ContentDescription" />
+            app:tint="@android:color/white" />
         <TextView
             android:id="@+id/player_episodes_button_text"
             style="@style/ResultMarqueeButtonText"
             android:layout_marginTop="5dp"
-            android:text="@string/episodes"
-            android:visibility="gone" />
+            android:text="@string/episodes" />
     </LinearLayout>
 
     <LinearLayout
