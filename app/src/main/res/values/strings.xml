@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">KodaStream</string>
+    <string name="app_name">cloud3STRAM</string>
 
     <!-- Navigation -->
     <string name="nav_home">Home</string>
@@ -96,6 +96,8 @@
     <string name="settings_auto_update">Update extensions at startup</string>
     <string name="settings_auto_update_summary">Checks your repositories each time the app starts.</string>
     <string name="settings_about">About</string>
+    <string name="settings_github">GitHub: github.com/mo7AmMeD64/cloudSTREAM3</string>
+    <string name="settings_donate">Donate: creators.sa/x3onq</string>
     <string name="about_text">The look comes from the Koda interface. The extension engine comes from CloudStream and is licensed under the GNU GPL v3, so this app is open source under the same license.</string>
     <string name="about_disclaimer">This app contains no content and no providers. It only loads extensions that you choose to install. You are responsible for what you watch.</string>
     <string name="cd_clear_search">Clear search</string>

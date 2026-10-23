@@ -40,6 +40,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.kodastream.app.BuildConfig
@@ -60,6 +61,7 @@ fun SettingsScreen(
     themeViewModel: ThemeViewModel,
 ) {
     val context = LocalContext.current
+    val uriHandler = LocalUriHandler.current
     var autoUpdate by remember { mutableStateOf(AppPrefs.autoUpdate(context)) }
     var navPosition by remember { mutableStateOf(AppPrefs.navPosition(context)) }
     var pauseHistory by remember { mutableStateOf(AppPrefs.pauseHistory(context)) }
@@ -356,6 +358,18 @@ fun SettingsScreen(
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+                TextButton(
+                    onClick = {
+                        uriHandler.openUri("https://github.com/mo7AmMeD64/cloudSTREAM3")
+                    },
+                ) {
+                    Text(stringResource(R.string.settings_github))
+                }
+                TextButton(
+                    onClick = { uriHandler.openUri("https://creators.sa/x3onq") },
+                ) {
+                    Text(stringResource(R.string.settings_donate))
+                }
             }
         }
     }
