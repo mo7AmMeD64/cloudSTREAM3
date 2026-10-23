@@ -47,13 +47,13 @@ jobs:
       - name: Collect APK
         run: |
           mkdir -p dist
-          cp app/build/outputs/apk/release/*.apk "dist/KodaStream-${GITHUB_RUN_NUMBER}.apk"
+          cp app/build/outputs/apk/release/*.apk "dist/cloud3STRAM-${GITHUB_RUN_NUMBER}.apk"
           ls -lh dist
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: KodaStream-apk
+          name: cloud3STRAM-apk
           path: dist/*.apk
           if-no-files-found: error
 
@@ -63,10 +63,10 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
-            gh release create "${GITHUB_REF_NAME}" dist/*.apk --title "KodaStream ${GITHUB_REF_NAME}" --generate-notes
+            gh release create "${GITHUB_REF_NAME}" dist/*.apk --title "cloud3STRAM ${GITHUB_REF_NAME}" --generate-notes
           else
             gh release create "build-${GITHUB_RUN_NUMBER}" dist/*.apk --target "${GITHUB_SHA}" \
-              --title "KodaStream build ${GITHUB_RUN_NUMBER}" --prerelease \
+              --title "cloud3STRAM build ${GITHUB_RUN_NUMBER}" --prerelease \
               --notes "First test build. Signed with the debug key."
           fi
 

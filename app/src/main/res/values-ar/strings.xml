@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">KodaStream</string>
+    <string name="app_name">cloud3STRAM</string>
 
     <!-- التنقل -->
     <string name="nav_home">الرئيسية</string>
@@ -93,6 +93,8 @@
     <string name="settings_auto_update">تحديث الإضافات عند التشغيل</string>
     <string name="settings_auto_update_summary">يفحص مستودعاتك في كل مرة يبدأ فيها التطبيق.</string>
     <string name="settings_about">حول التطبيق</string>
+    <string name="settings_github">GitHub: github.com/mo7AmMeD64/cloudSTREAM3</string>
+    <string name="settings_donate">تبرع: creators.sa/x3onq</string>
     <string name="about_text">الشكل مأخوذ من واجهة كودا، ومحرك الإضافات مأخوذ من كلاودستريم وهو مرخّص بموجب GNU GPL v3، لذلك هذا التطبيق مفتوح المصدر بالترخيص نفسه.</string>
     <string name="about_disclaimer">لا يحتوي هذا التطبيق على أي محتوى ولا أي مزوّد. هو يحمّل فقط الإضافات التي تختار تثبيتها، وأنت المسؤول عمّا تشاهده.</string>
     <string name="cd_clear_search">مسح البحث</string>
