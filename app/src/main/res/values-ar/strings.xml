@@ -128,6 +128,7 @@
     <string name="subtitle_font">الخط</string>
     <string name="font_default">افتراضي</string>
     <string name="font_import">استيراد خط…</string>
+    <string name="subs_subtitle_elevation">ارتفاع الترجمة</string>
     <string name="subtitle_font_failed">تعذّر تحميل هذا الخط</string>
     <string name="subtitle_reset">إعادة تعيين</string>
     <string name="none">بلا</string>

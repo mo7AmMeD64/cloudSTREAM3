@@ -218,6 +218,29 @@ private fun SubtitleStyleEditor(
             }
 
             item {
+                Column(Modifier.padding(horizontal = 24.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = stringResource(R.string.subs_subtitle_elevation),
+                            style = MaterialTheme.typography.titleMedium,
+                            modifier = Modifier.weight(1f),
+                        )
+                        Text(
+                            text = "${style.elevation}dp",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                    }
+                    Slider(
+                        value = style.elevation.toFloat(),
+                        onValueChange = { style = style.copy(elevation = it.toInt()) },
+                        valueRange = 0f..400f,
+                        steps = 39,
+                    )
+                }
+            }
+
+            item {
                 SwatchRow(
                     label = stringResource(R.string.subtitle_text_color),
                     swatches = textColors,
