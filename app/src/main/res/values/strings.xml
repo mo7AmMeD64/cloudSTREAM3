@@ -131,6 +131,7 @@
     <string name="subtitle_font">Font</string>
     <string name="font_default">Default</string>
     <string name="font_import">Import font…</string>
+    <string name="subtitle_font_failed">Could not load that font</string>
     <string name="subtitle_reset">Reset</string>
     <string name="none">None</string>
     <string name="nav_history">History</string>

@@ -16,7 +16,7 @@ class KodaPlayerGenerator(
     private val offlineSubtitles: List<SubtitleData> = emptyList(),
 ) : VideoGenerator<ResultEpisode>(episodes) {
     override val hasCache = false
-    override val canSkipLoading = false
+    override val canSkipLoading = true
     override fun getId(index: Int): Int? = videos.getOrNull(index)?.id
 
     override suspend fun generateLinks(

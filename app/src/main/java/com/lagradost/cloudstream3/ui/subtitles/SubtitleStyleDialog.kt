@@ -1,9 +1,12 @@
 package com.lagradost.cloudstream3.ui.subtitles
 
+import android.graphics.Typeface
 import android.os.Bundle
 import android.text.SpannableString
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -30,6 +33,8 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -51,6 +56,7 @@ import com.kodastream.app.R
 import com.kodastream.app.ui.theme.KodaStreamTheme
 import com.lagradost.cloudstream3.ui.subtitles.SubtitlesFragment.Companion.applyStyle
 import com.lagradost.cloudstream3.ui.subtitles.SubtitlesFragment.Companion.setSubtitleViewStyle
+import java.io.File
 
 /**
  * The player's subtitle style editor. It edits the same [SaveCaptionStyle] the
@@ -58,6 +64,32 @@ import com.lagradost.cloudstream3.ui.subtitles.SubtitlesFragment.Companion.setSu
  * immediately and survives the next restart.
  */
 class SubtitleStyleDialog : DialogFragment() {
+    private val pickedFontPath = mutableStateOf<String?>(null)
+
+    private val fontPicker = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri == null) return@registerForActivityResult
+        val ctx = context ?: return@registerForActivityResult
+        val target = File(ctx.filesDir, "customfont.ttf")
+        val temp = File(ctx.cacheDir, "customfont.tmp")
+        val path = runCatching {
+            temp.delete()
+            ctx.contentResolver.openInputStream(uri)?.use { input ->
+                temp.outputStream().use { output -> input.copyTo(output) }
+            } ?: error("No input stream")
+            Typeface.createFromFile(temp)
+            target.delete()
+            check(temp.renameTo(target)) { "Could not save font" }
+            target.absolutePath
+        }.onFailure {
+            temp.delete()
+        }.getOrNull()
+
+        pickedFontPath.value = path
+        if (path == null) {
+            Toast.makeText(ctx, R.string.subtitle_font_failed, Toast.LENGTH_SHORT).show()
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setStyle(STYLE_NO_TITLE, R.style.DialogFullscreenPlayer)
@@ -77,6 +109,16 @@ class SubtitleStyleDialog : DialogFragment() {
             KodaStreamTheme {
                 SubtitleStyleEditor(
                     initial = SubtitlesFragment.getCurrentSavedStyle(),
+                    pickedFontPath = pickedFontPath,
+                    onPickFont = {
+                        fontPicker.launch(
+                            arrayOf(
+                                "font/*",
+                                "application/x-font-ttf",
+                                "application/x-font-opentype",
+                            )
+                        )
+                    },
                     onApply = { style ->
                         SubtitlesFragment.applyAndSaveStyle(requireContext(), style)
                         dismiss()
@@ -121,10 +163,19 @@ private val edgeColors = listOf(
 @Composable
 private fun SubtitleStyleEditor(
     initial: SaveCaptionStyle,
+    pickedFontPath: MutableState<String?>,
+    onPickFont: () -> Unit,
     onApply: (SaveCaptionStyle) -> Unit,
     onCancel: () -> Unit,
 ) {
     var style by remember { mutableStateOf(initial) }
+
+    LaunchedEffect(pickedFontPath.value) {
+        pickedFontPath.value?.let { path ->
+            style = style.copy(font = SubtitleFont.Custom, typefaceFilePath = path)
+            pickedFontPath.value = null
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -241,6 +292,13 @@ private fun SubtitleStyleEditor(
                                     style = style.copy(font = null, typefaceFilePath = null)
                                 },
                                 label = { Text(stringResource(R.string.font_default)) },
+                            )
+                        }
+                        item {
+                            FilterChip(
+                                selected = style.typefaceFilePath != null,
+                                onClick = onPickFont,
+                                label = { Text(stringResource(R.string.font_import)) },
                             )
                         }
                         items(SubtitleFont.entries.filter { it.resource != 0 }) { font ->

@@ -507,7 +507,7 @@ open class FullScreenPlayer : AbstractPlayerFragment<FragmentPlayerBinding>(
         player.seekTime(85000) // skip 85s
     }
 
-    private fun showSubtitleOffsetDialog() {
+    protected fun showSubtitleOffsetDialog() {
         val ctx = context ?: return
         // Pause player because the subtitles cannot be continuously updated to follow playback.
         player.handleEvent(

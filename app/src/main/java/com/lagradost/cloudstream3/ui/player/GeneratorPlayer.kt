@@ -708,6 +708,10 @@ class GeneratorPlayer : FullScreenPlayer() {
                     SubtitleStyleDialog().show(parentFragmentManager, "SubtitleStyle")
                 }
 
+                binding.subtitleOffsetBtt.setOnClickListener {
+                    showSubtitleOffsetDialog()
+                }
+
                 binding.subtitlesEncodingFormat.apply {
                     val settingsManager = PreferenceManager.getDefaultSharedPreferences(ctx)
 

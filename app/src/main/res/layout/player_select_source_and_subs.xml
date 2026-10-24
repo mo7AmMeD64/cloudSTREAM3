@@ -181,6 +181,18 @@
 
 
         <com.google.android.material.button.MaterialButton
+            android:id="@+id/subtitle_offset_btt"
+            style="@style/WhiteButton"
+            android:layout_width="wrap_content"
+            android:layout_gravity="center_vertical|start"
+            android:text="@string/subtitle_offset" />
+
+        <Space
+            android:layout_width="0dp"
+            android:layout_height="1dp"
+            android:layout_weight="1" />
+
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/apply_btt"
             style="@style/WhiteButton"
             android:layout_width="wrap_content"
