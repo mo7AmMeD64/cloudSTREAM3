@@ -2,10 +2,13 @@ package com.kodastream.app.ui.home
 
 import android.app.Application
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.MutableTransitionState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -35,6 +38,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
@@ -46,6 +51,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.kodastream.app.R
+import com.kodastream.app.data.AppPrefs
 import com.kodastream.app.engine.Engine
 import com.kodastream.app.engine.readableMessage
 import com.kodastream.app.ui.components.EmptyBox
@@ -58,6 +64,13 @@ import com.kodastream.app.ui.components.SectionHeader
 import com.kodastream.app.ui.components.SkeletonBox
 import com.kodastream.app.ui.components.SkeletonPulseProvider
 import com.kodastream.app.ui.components.staggeredEnter
+import com.kodastream.app.ui.home.hero.HeroStyle
+import com.kodastream.app.ui.home.hero.HomeHeroReservedSpace
+import com.kodastream.app.ui.home.hero.HomeHeroSection
+import com.kodastream.app.ui.home.hero.LocalScreenActive
+import com.kodastream.app.ui.home.hero.rememberHeroStretchState
+import com.kodastream.app.ui.home.hero.rememberHomeHeroState
+import com.kodastream.app.ui.home.hero.toHeroItem
 import com.kodastream.app.ui.sources.SourceViewModel
 import com.kodastream.app.ui.theme.ArtworkStatusBarIcons
 import com.lagradost.cloudstream3.MainAPI
@@ -294,6 +307,18 @@ private fun HomeShelves(
     onRetry: () -> Unit,
     onViewMore: (HomeRow) -> Unit,
 ) {
+    val context = LocalContext.current
+    val screenActive = LocalScreenActive.current
+    // Re-read on return, so a Settings change applies without an app restart.
+    val heroStyle = remember(screenActive) { HeroStyle.parse(AppPrefs.homeHeroStyle(context)) }
+    val isCinematic = heroStyle == HeroStyle.CINEMATIC
+    val showCinematicHero = isCinematic && (hero.isNotEmpty() || loading)
+    val heroItems = remember(hero) { hero.map { it.toHeroItem() } }
+    val cinematicHeroItems = if (isCinematic) {
+        rememberHomeHeroState(heroItems, selectedSource)
+    } else {
+        heroItems
+    }
     val chooseSourceLabel = stringResource(R.string.cd_choose_source)
     val listState = rememberLazyListState()
     val topInset = with(LocalDensity.current) { contentPadding.calculateTopPadding().roundToPx() }
@@ -304,121 +329,158 @@ private fun HomeShelves(
                 ?.let { it.offset < topInset } == true
         }
     }
-    ArtworkStatusBarIcons(overArtwork = heroUnderBar)
-    LazyColumn(
-        state = listState,
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(
-            top = contentPadding.calculateTopPadding(),
-            bottom = contentPadding.calculateBottomPadding() + 16.dp,
-        ),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        item(key = "title") {
-            Column(
-                modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 12.dp, bottom = 4.dp),
-            ) {
-                Text(
-                    text = stringResource(R.string.home_title),
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Black,
-                    color = MaterialTheme.colorScheme.onBackground,
-                    modifier = Modifier.semantics { heading() },
-                )
-                // With the chip row gone, this line names the provider and opens the sheet.
-                if (selectedSource != null) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .heightIn(min = 48.dp)
-                            .clip(MaterialTheme.shapes.small)
-                            .clickable(onClickLabel = chooseSourceLabel, onClick = onOpenSources),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text(
-                            text = selectedSource,
-                            style = MaterialTheme.typography.labelLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
+    ArtworkStatusBarIcons(overArtwork = heroUnderBar && !(isCinematic && hero.isEmpty()))
+
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+        val stretchState = if (isCinematic) rememberHeroStretchState(listState) else null
+        LazyColumn(
+            state = listState,
+            modifier = Modifier
+                .fillMaxSize()
+                .then(
+                    if (stretchState != null) {
+                        Modifier.nestedScroll(stretchState.nestedScrollConnection)
+                    } else {
+                        Modifier
+                    },
+                ),
+            contentPadding = PaddingValues(
+                top = if (showCinematicHero) 0.dp else contentPadding.calculateTopPadding(),
+                bottom = contentPadding.calculateBottomPadding() + 16.dp,
+            ),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            if (showCinematicHero) {
+                item(key = "hero") {
+                    Crossfade(
+                        targetState = hero.isEmpty(),
+                        animationSpec = tween(320),
+                        label = "HomeHeroLoading",
+                    ) { empty ->
+                        if (empty) {
+                            HomeHeroReservedSpace(viewportHeight = maxHeight)
+                        } else {
+                            HomeHeroSection(
+                                items = cinematicHeroItems,
+                                viewportHeight = maxHeight,
+                                mobileBelowSectionHeightHint = null,
+                                listState = listState,
+                                stretchPx = { stretchState?.stretchPx ?: 0f },
+                                onItemClick = { item -> item.source?.let(onOpenItem) },
+                            )
+                        }
                     }
                 }
             }
-        }
 
-        if (hero.isNotEmpty()) {
-            item(key = "hero") {
-                HomeHero(items = hero, onOpen = onOpenItem)
-            }
-        }
-
-        if (rows.isEmpty() && loading) {
-            // One hero-sized placeholder at the carousel's real height, then a
-            // shelf: the chrome is already on screen and stays put.
-            item(key = "skeleton") {
-                SkeletonPulseProvider {
-                    Column {
-                        SkeletonBox(
-                            modifier = Modifier
-                                .padding(horizontal = 16.dp)
-                                .fillMaxWidth()
-                                .height(480.dp),
-                            shape = MaterialTheme.shapes.extraLarge,
-                        )
-                        Spacer(Modifier.height(24.dp))
-                        SkeletonBox(
-                            modifier = Modifier
-                                .padding(start = 16.dp)
-                                .size(width = 160.dp, height = 24.dp),
-                            shape = MaterialTheme.shapes.small,
-                        )
-                        Spacer(Modifier.height(12.dp))
-                        PosterShelfSkeleton()
-                    }
-                }
-            }
-        } else if (rows.isEmpty()) {
-            item(key = "error") {
-                Box(Modifier.fillMaxWidth().height(360.dp)) {
-                    ErrorBox(
-                        message = error?.takeIf { it.isNotBlank() }
-                            ?: stringResource(R.string.nothing_found),
-                        onRetry = onRetry,
-                    )
-                }
-            }
-        }
-
-        itemsIndexed(
-            items = rows,
-            key = { _, row -> row.key },
-            contentType = { _, _ -> "shelf" },
-        ) { index, row ->
-            // The expanded screen turns hasNext off when a page ends or fails,
-            // and that hides the button here without reloading Home.
-            val canViewMore = row.hasNext &&
-                sections[sectionKey(selectedSource.orEmpty(), row.key)]?.hasNext != false
-            val viewMore: (() -> Unit)? = if (canViewMore) ({ onViewMore(row) }) else null
-            // The first three shelves rise in once; later ones just appear, and
-            // a provider switch reuses the already-settled rows.
-            if (index < 3) {
-                val entrance = remember { MutableTransitionState(false).apply { targetState = true } }
-                AnimatedVisibility(
-                    visibleState = entrance,
-                    enter = staggeredEnter(index),
+            item(key = "title") {
+                Column(
+                    modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 12.dp, bottom = 4.dp),
                 ) {
+                    Text(
+                        text = stringResource(R.string.home_title),
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Black,
+                        color = MaterialTheme.colorScheme.onBackground,
+                        modifier = Modifier.semantics { heading() },
+                    )
+                    // With the chip row gone, this line names the provider and opens the sheet.
+                    if (selectedSource != null) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(min = 48.dp)
+                                .clip(MaterialTheme.shapes.small)
+                                .clickable(onClickLabel = chooseSourceLabel, onClick = onOpenSources),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(
+                                text = selectedSource,
+                                style = MaterialTheme.typography.labelLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                    }
+                }
+            }
+
+            if (!showCinematicHero && hero.isNotEmpty() && heroStyle != HeroStyle.OFF) {
+                item(key = "hero") {
+                    HomeHero(items = hero, onOpen = onOpenItem)
+                }
+            }
+
+            if (rows.isEmpty() && loading) {
+                // The carousel needs its own placeholder; the cinematic hero
+                // already reserved the exact same space above the title.
+                item(key = "skeleton") {
+                    SkeletonPulseProvider {
+                        Column {
+                            if (heroStyle == HeroStyle.CAROUSEL) {
+                                SkeletonBox(
+                                    modifier = Modifier
+                                        .padding(horizontal = 16.dp)
+                                        .fillMaxWidth()
+                                        .height(480.dp),
+                                    shape = MaterialTheme.shapes.extraLarge,
+                                )
+                                Spacer(Modifier.height(24.dp))
+                            }
+                            SkeletonBox(
+                                modifier = Modifier
+                                    .padding(start = 16.dp)
+                                    .size(width = 160.dp, height = 24.dp),
+                                shape = MaterialTheme.shapes.small,
+                            )
+                            Spacer(Modifier.height(12.dp))
+                            PosterShelfSkeleton()
+                        }
+                    }
+                }
+            } else if (rows.isEmpty()) {
+                item(key = "error") {
+                    Box(Modifier.fillMaxWidth().height(360.dp)) {
+                        ErrorBox(
+                            message = error?.takeIf { it.isNotBlank() }
+                                ?: stringResource(R.string.nothing_found),
+                            onRetry = onRetry,
+                        )
+                    }
+                }
+            }
+
+            itemsIndexed(
+                items = rows,
+                key = { _, row -> row.key },
+                contentType = { _, _ -> "shelf" },
+            ) { index, row ->
+                // The expanded screen turns hasNext off when a page ends or fails,
+                // and that hides the button here without reloading Home.
+                val canViewMore = row.hasNext &&
+                    sections[sectionKey(selectedSource.orEmpty(), row.key)]?.hasNext != false
+                val viewMore: (() -> Unit)? = if (canViewMore) ({ onViewMore(row) }) else null
+                // The first three shelves rise in once; later ones just appear, and
+                // a provider switch reuses the already-settled rows.
+                if (index < 3) {
+                    val entrance = remember { MutableTransitionState(false).apply { targetState = true } }
+                    AnimatedVisibility(
+                        visibleState = entrance,
+                        enter = staggeredEnter(index),
+                    ) {
+                        Shelf(row = row, onOpenItem = onOpenItem, onViewMore = viewMore)
+                    }
+                } else {
                     Shelf(row = row, onOpenItem = onOpenItem, onViewMore = viewMore)
                 }
-            } else {
-                Shelf(row = row, onOpenItem = onOpenItem, onViewMore = viewMore)
             }
-        }
 
-        if (rows.isNotEmpty() && loading) {
-            item(key = "more") {
-                Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
-                    LoadingIndicator(Modifier.size(32.dp))
+            if (rows.isNotEmpty() && loading) {
+                item(key = "more") {
+                    Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
+                        LoadingIndicator(Modifier.size(32.dp))
+                    }
                 }
             }
         }

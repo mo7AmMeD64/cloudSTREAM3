@@ -213,3 +213,11 @@ private fun typeLabel(type: TvType?): String? = when (type) {
     null -> null
     else -> type.name
 }
+
+/** The same labels for the cinematic hero's [com.kodastream.app.ui.home.hero.HeroItem.type]. */
+@Composable
+internal fun typeLabel(type: String): String = when (type.trim().lowercase()) {
+    "movie" -> stringResource(R.string.type_movie)
+    "series" -> stringResource(R.string.type_series)
+    else -> type.replaceFirstChar(Char::uppercase)
+}

@@ -60,6 +60,7 @@ import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -76,6 +77,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import android.app.Application
 import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.APPLICATION_KEY
@@ -103,6 +105,7 @@ import com.kodastream.app.ui.history.HistoryScreen
 import com.kodastream.app.ui.home.ExpandedHomeViewModel
 import com.kodastream.app.ui.home.HomeScreen
 import com.kodastream.app.ui.home.SectionScreen
+import com.kodastream.app.ui.home.hero.LocalScreenActive
 import com.kodastream.app.ui.library.LibraryScreen
 import com.kodastream.app.ui.player.PlayerActivity
 import com.kodastream.app.ui.search.SearchScreen
@@ -373,16 +376,21 @@ private fun AppNavGraph(
         startDestination = Routes.HOME,
         modifier = Modifier.fillMaxSize(),
     ) {
-        composable(Routes.HOME) {
-            HomeScreen(
-                contentPadding = contentPadding,
-                onOpenItem = navController::openDetails,
-                onOpenExtensions = { navController.navigateTopLevel(Routes.EXTENSIONS) },
-                onOpenSources = onOpenSources,
-                sourceViewModel = sources,
-                expandedViewModel = expanded,
-                onOpenSection = { navController.navigate(Routes.SECTION) },
-            )
+        composable(Routes.HOME) { entry ->
+            val lifecycleState by entry.lifecycle.currentStateFlow.collectAsState()
+            CompositionLocalProvider(
+                LocalScreenActive provides lifecycleState.isAtLeast(Lifecycle.State.RESUMED),
+            ) {
+                HomeScreen(
+                    contentPadding = contentPadding,
+                    onOpenItem = navController::openDetails,
+                    onOpenExtensions = { navController.navigateTopLevel(Routes.EXTENSIONS) },
+                    onOpenSources = onOpenSources,
+                    sourceViewModel = sources,
+                    expandedViewModel = expanded,
+                    onOpenSection = { navController.navigate(Routes.SECTION) },
+                )
+            }
         }
         composable(Routes.SEARCH) {
             SearchScreen(
