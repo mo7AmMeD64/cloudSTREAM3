@@ -114,6 +114,7 @@ class PlayerActivity : AppCompatActivity() {
         handler.removeCallbacks(progressTicker)
         handler.removeCallbacks(hideBars)
         recordProgress()
+        HistoryStore.flush(this)
         // A hold that never got its ACTION_UP (focus loss, rotation) must not
         // stick at 2x; the gesture helper only restores on touch end.
         restorePlaybackSpeed()
@@ -140,6 +141,7 @@ class PlayerActivity : AppCompatActivity() {
     override fun onDestroy() {
         handler.removeCallbacks(progressTicker)
         handler.removeCallbacks(hideBars)
+        HistoryStore.flush(this)
         super.onDestroy()
     }
 
