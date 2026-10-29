@@ -43,6 +43,7 @@
     <!-- Home -->
     <string name="home_empty_title">No extensions yet</string>
     <string name="home_empty_hint">Add a repository in the Extensions tab and install a provider to see content here.</string>
+    <string name="home_view_details">View Details</string>
 
     <!-- Search -->
     <string name="search_hint">Search every provider</string>
@@ -122,6 +123,13 @@
     <string name="settings_wallpaper_colors">Use wallpaper colors</string>
     <string name="settings_wallpaper_colors_summary">Take the colors from your wallpaper (Android 12 and later).</string>
     <string name="settings_palette_style">Color style</string>
+    <string name="settings_home_hero">Home hero</string>
+    <string name="hero_style_carousel">Carousel</string>
+    <string name="hero_style_carousel_desc">Material carousel with neighbouring posters</string>
+    <string name="hero_style_cinematic">Cinematic</string>
+    <string name="hero_style_cinematic_desc">Full-screen backdrops with logo and details (loads a little more data)</string>
+    <string name="hero_style_off">Off</string>
+    <string name="hero_style_off_desc">No hero, start with the shelves</string>
     <string name="palette_style_tonal_spot">Tonal spot</string>
     <string name="palette_style_vibrant">Vibrant</string>
     <string name="palette_style_expressive">Expressive</string>
@@ -136,6 +144,7 @@
     <string name="settings_donate_summary">creators.sa/x3onq</string>
     <string name="about_text">The look comes from the Koda interface. The extension engine comes from CloudStream and is licensed under the GNU GPL v3, so this app is open source under the same license.</string>
     <string name="about_disclaimer">This app contains no content and no providers. It only loads extensions that you choose to install. You are responsible for what you watch.</string>
+    <string name="about_nuvio">The cinematic hero is ported from Nuvio.</string>
     <string name="cd_clear_search">Clear search</string>
     <string name="nav_library">Library</string>
     <string name="library_favorites">Favorites</string>
@@ -433,4 +442,24 @@
     <string name="cd_share">Share</string>
     <string name="cd_poster">Poster for %1$s</string>
     <string name="cd_trailer">Play trailer %1$d</string>
+
+    <!-- Cinematic hero status labels -->
+    <string name="series_status_ended">Ended</string>
+    <string name="series_status_continuing">Ongoing</string>
+    <string name="series_status_current">Current</string>
+    <string name="series_status_cancelled">Cancelled</string>
+    <string name="series_status_released">Released</string>
+    <string name="series_status_planned">Planned</string>
+    <string name="series_status_rumored">Rumored</string>
+    <string name="series_status_in_production">In Production</string>
+    <string name="series_status_post_production">Post Production</string>
+    <string name="movie_status_ended">Ended</string>
+    <string name="movie_status_continuing">Ongoing</string>
+    <string name="movie_status_current">Current</string>
+    <string name="movie_status_cancelled">Cancelled</string>
+    <string name="movie_status_released">Released</string>
+    <string name="movie_status_planned">Planned</string>
+    <string name="movie_status_rumored">Rumored</string>
+    <string name="movie_status_in_production">In Production</string>
+    <string name="movie_status_post_production">Post Production</string>
 </resources>

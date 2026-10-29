@@ -40,6 +40,7 @@
     <!-- الرئيسية -->
     <string name="home_empty_title">لا توجد إضافات بعد</string>
     <string name="home_empty_hint">أضف مستودعاً من تبويب الإضافات وثبّت مزوّداً ليظهر المحتوى هنا.</string>
+    <string name="home_view_details">عرض التفاصيل</string>
 
     <!-- البحث -->
     <string name="search_hint">ابحث في كل المزوّدين</string>
@@ -119,6 +120,13 @@
     <string name="settings_wallpaper_colors">استخدام ألوان الخلفية</string>
     <string name="settings_wallpaper_colors_summary">خذ الألوان من خلفية جهازك (أندرويد 12 وما بعده).</string>
     <string name="settings_palette_style">نمط الألوان</string>
+    <string name="settings_home_hero">شكل الرئيسية</string>
+    <string name="hero_style_carousel">دوّار</string>
+    <string name="hero_style_carousel_desc">دوّار من مواد مع بوسترات مجاورة</string>
+    <string name="hero_style_cinematic">سينمائي</string>
+    <string name="hero_style_cinematic_desc">خلفيات بملء الشاشة مع الشعار والتفاصيل (يحمّل بيانات أكثر قليلاً)</string>
+    <string name="hero_style_off">إيقاف</string>
+    <string name="hero_style_off_desc">بدون واجهة، ابدأ من الرفوف</string>
     <string name="palette_style_tonal_spot">نغمة هادئة</string>
     <string name="palette_style_vibrant">نابض</string>
     <string name="palette_style_expressive">تعبيري</string>
@@ -133,6 +141,7 @@
     <string name="settings_donate_summary">creators.sa/x3onq</string>
     <string name="about_text">الشكل مأخوذ من واجهة كودا، ومحرك الإضافات مأخوذ من كلاودستريم وهو مرخّص بموجب GNU GPL v3، لذلك هذا التطبيق مفتوح المصدر بالترخيص نفسه.</string>
     <string name="about_disclaimer">لا يحتوي هذا التطبيق على أي محتوى ولا أي مزوّد. هو يحمّل فقط الإضافات التي تختار تثبيتها، وأنت المسؤول عمّا تشاهده.</string>
+    <string name="about_nuvio">الواجهة السينمائية منقولة من Nuvio.</string>
     <string name="cd_clear_search">مسح البحث</string>
     <string name="nav_library">المكتبة</string>
     <string name="library_favorites">المفضلة</string>
@@ -305,4 +314,24 @@
     <string name="cd_share">مشاركة</string>
     <string name="cd_poster">ملصق %1$s</string>
     <string name="cd_trailer">تشغيل الإعلان %1$d</string>
+
+    <!-- تسميات حالة الواجهة السينمائية -->
+    <string name="series_status_ended">مكتمل</string>
+    <string name="series_status_continuing">مستمر</string>
+    <string name="series_status_current">الحالي</string>
+    <string name="series_status_cancelled">ملغى</string>
+    <string name="series_status_released">تم الإصدار</string>
+    <string name="series_status_planned">مخطط له</string>
+    <string name="series_status_rumored">إشاعة</string>
+    <string name="series_status_in_production">قيد الإنتاج</string>
+    <string name="series_status_post_production">مراحل ما بعد الإنتاج</string>
+    <string name="movie_status_ended">منتهي</string>
+    <string name="movie_status_continuing">مستمر</string>
+    <string name="movie_status_current">يعرض حاليا</string>
+    <string name="movie_status_cancelled">ملغي</string>
+    <string name="movie_status_released">صادر</string>
+    <string name="movie_status_planned">مُخطط له</string>
+    <string name="movie_status_rumored">إشاعة</string>
+    <string name="movie_status_in_production">قيد الانتاج</string>
+    <string name="movie_status_post_production">مابعد الانتاج</string>
 </resources>
