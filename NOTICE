@@ -1,0 +1,32 @@
+KodaStream includes code ported from Nuvio
+(https://github.com/NuvioMedia/NuvioMobile), licensed under the GNU General
+Public License v3.0.
+
+Copied files and their new locations:
+
+- composeApp/src/commonMain/kotlin/com/nuvio/app/features/home/components/HomeHeroSection.kt
+  -> app/src/main/java/com/kodastream/app/ui/home/hero/NuvioHeroSection.kt
+- composeApp/src/commonMain/kotlin/com/nuvio/app/features/home/components/HomeHeroMetaRows.kt
+  -> app/src/main/java/com/kodastream/app/ui/home/hero/NuvioHeroMetaRows.kt
+- composeApp/src/commonMain/kotlin/com/nuvio/app/core/ui/HeroStretchOverscroll.kt
+  -> app/src/main/java/com/kodastream/app/ui/home/hero/HeroStretchOverscroll.kt
+- composeApp/src/commonMain/kotlin/com/nuvio/app/core/ui/ScreenActivity.kt
+  -> app/src/main/java/com/kodastream/app/ui/home/hero/ScreenActivity.kt
+- composeApp/src/commonMain/kotlin/com/nuvio/app/features/home/HomeHeroMetaRepository.kt
+  -> app/src/main/java/com/kodastream/app/ui/home/hero/HeroMetaRepository.kt
+- composeApp/src/commonMain/kotlin/com/nuvio/app/features/details/components/DetailMetaInfo.kt
+  (DetailHeroMetaBadge, MetaBadgeText and ImdbYellow only)
+  -> app/src/main/java/com/kodastream/app/ui/home/hero/HeroBadges.kt
+- composeApp/src/commonMain/kotlin/com/nuvio/app/core/i18n/MediaStatusLabel.kt
+  -> app/src/main/java/com/kodastream/app/ui/home/hero/MediaStatusLabel.kt
+
+Adaptations for KodaStream: package and import changes; Coil 2.7 image loading
+with ImageRequest headers and request sizes; Android string resources instead
+of Compose Multiplatform resources; Nuvio's MetaPreview replaced by a HeroItem
+mapped from CloudStream SearchResponse and LoadResponse; details enrichment
+uses Engine.load; MDBList ratings, the IMDb logo and AppFeaturePolicy removed;
+RTL sign handling and status-bar/cutout insets added; Nuvio's vertical-bar
+padding helpers replaced by plain horizontal padding from the ported layout.
+
+The KodaStream project as a whole is licensed under the GNU General Public
+License v3.0 (see LICENSE).
