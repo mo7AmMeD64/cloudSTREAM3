@@ -18,10 +18,12 @@ import com.kodastream.app.data.AppPrefs
 import com.kodastream.app.data.DownloadLocations
 import com.kodastream.app.data.DownloadStore
 import com.kodastream.app.engine.Engine
+import com.lagradost.api.Log
 import com.lagradost.cloudstream3.USER_AGENT
 import com.lagradost.cloudstream3.app
 import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.cloudstream3.utils.ExtractorLinkType
+import com.lagradost.cloudstream3.utils.HlsPlaylistParser
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -390,21 +392,12 @@ class DownloadService : Service() {
 
         val playlistUrl = record.linkUrl
         var text = fetchText(playlistUrl, record)
+        var mediaPlaylistUrl = playlistUrl
         if (text.contains("#EXT-X-STREAM-INF")) {
-            // Master playlist: follow the widest-bandwidth variant.
-            val lines = text.lines().filter { it.isNotBlank() }
-            var best: Pair<Long, String>? = null
-            for (i in lines.indices) {
-                val line = lines[i]
-                if (line.startsWith("#EXT-X-STREAM-INF")) {
-                    val variant = lines.getOrNull(i + 1) ?: continue
-                    if (variant.startsWith("#")) continue
-                    val bandwidth = Regex("BANDWIDTH=(\\d+)").find(line)?.groupValues?.get(1)?.toLongOrNull() ?: 0
-                    if (best == null || bandwidth > best.first) best = bandwidth to variant
-                }
-            }
-            val variant = best?.second ?: throw IOException("No variant in the master playlist")
-            text = fetchText(absolute(playlistUrl, variant), record)
+            val variantUrl = selectDownloadVariant(text, playlistUrl)
+                ?: throw IOException("No variant in the master playlist")
+            mediaPlaylistUrl = variantUrl
+            text = fetchText(variantUrl, record)
         }
 
         var mediaSequence = 0L
@@ -422,11 +415,11 @@ class DownloadService : Service() {
                     }
                     val keyUri = Regex("URI=\"([^\"]+)\"").find(trimmed)?.groupValues?.get(1) ?: ""
                     val iv = Regex("IV=0[xX]([0-9a-fA-F]+)").find(trimmed)?.groupValues?.get(1) ?: ""
-                    currentKey = absolute(playlistUrl, keyUri) to iv
+                    currentKey = absolute(mediaPlaylistUrl, keyUri) to iv
                 }
 
                 trimmed.isNotEmpty() && !trimmed.startsWith("#") ->
-                    segments.add(Segment(absolute(playlistUrl, trimmed), currentKey))
+                    segments.add(Segment(absolute(mediaPlaylistUrl, trimmed), currentKey))
             }
         }
         if (segments.isEmpty()) throw IOException("No segments in the playlist")
@@ -628,3 +621,84 @@ class DownloadService : Service() {
         }
     }
 }
+
+/**
+ * Pure helper for selecting the best HLS variant to download.
+ * Filters for standalone-playable variants (declares or muxes audio, non-trickplay),
+ * selecting the highest resolution tie-broken by averageBitrate (then peakBitrate).
+ * If no standalone variant is found, falls back to the highest bandwidth variant and logs a warning.
+ * Returns null if the playlist is not a master playlist.
+ */
+internal fun selectDownloadVariant(playlistText: String, baseUrl: String): String? {
+    val parsed = try {
+        HlsPlaylistParser.parse(baseUrl, playlistText)
+    } catch (_: Throwable) {
+        null
+    }
+
+    if (parsed != null && parsed.variants.isNotEmpty()) {
+        val standalone = parsed.variants.filter { it.isPlayableStandalone(parsed) }
+        val chosen = if (standalone.isNotEmpty()) {
+            standalone.maxWithOrNull(
+                compareBy<HlsPlaylistParser.Variant>(
+                    { v ->
+                        if (v.format.width > 0 && v.format.height > 0) {
+                            v.format.width.toLong() * v.format.height.toLong()
+                        } else {
+                            0L
+                        }
+                    },
+                    { it.format.averageBitrate },
+                    { it.format.peakBitrate }
+                )
+            )
+        } else {
+            logWarning("DownloadService", "No standalone-playable HLS variant found; falling back to highest bandwidth")
+            parsed.variants.maxByOrNull { it.format.peakBitrate }
+        }
+        return chosen?.let { extractVariantUrl(it) }
+    }
+
+    if (playlistText.contains("#EXT-X-STREAM-INF")) {
+        logWarning("DownloadService", "HlsPlaylistParser found no variants; falling back to regex highest bandwidth")
+        val lines = playlistText.lines().filter { it.isNotBlank() }
+        var best: Pair<Long, String>? = null
+        for (i in lines.indices) {
+            val line = lines[i]
+            if (line.startsWith("#EXT-X-STREAM-INF")) {
+                val variant = lines.getOrNull(i + 1) ?: continue
+                if (variant.startsWith("#")) continue
+                val bandwidth = Regex("BANDWIDTH=(\\d+)").find(line)?.groupValues?.get(1)?.toLongOrNull() ?: 0L
+                if (best == null || bandwidth > best.first) best = bandwidth to variant
+            }
+        }
+        return best?.second?.let {
+            try {
+                URI(baseUrl).resolve(it).toString()
+            } catch (_: Throwable) {
+                it
+            }
+        }
+    }
+
+    return null
+}
+
+private fun logWarning(tag: String, message: String) {
+    try {
+        Log.w(tag, message)
+    } catch (_: Throwable) {
+        println("WARNING $tag: $message")
+    }
+}
+
+private fun extractVariantUrl(variant: HlsPlaylistParser.Variant): String? {
+    try {
+        val method = variant.javaClass.methods.firstOrNull { it.name == "getUrl" }
+        val result = method?.invoke(variant)?.toString()
+        if (!result.isNullOrBlank()) return result
+    } catch (_: Throwable) {
+    }
+    return Regex("""url=([^,\)]+)""").find(variant.toString())?.groupValues?.get(1)
+}
+
