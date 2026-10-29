@@ -182,14 +182,12 @@ class DownloadService : Service() {
         when (intent?.action) {
             ACTION_PAUSE -> {
                 active.remove(id)?.cancel()
-                id?.let { DownloadStore.update(this, it) { d -> d.copy(state = DownloadStore.STATE_PAUSED) } }
+                id?.let { DownloadStore.updateState(this, it, DownloadStore.STATE_PAUSED) }
             }
 
             ACTION_RESUME -> {
                 id?.let {
-                    DownloadStore.update(this, it) { d ->
-                        d.copy(state = DownloadStore.STATE_QUEUED, error = null)
-                    }
+                    DownloadStore.updateState(this, it, DownloadStore.STATE_QUEUED)
                 }
                 pump()
             }
@@ -207,9 +205,7 @@ class DownloadService : Service() {
 
             ACTION_RETRY -> {
                 id?.let {
-                    DownloadStore.update(this, it) { d ->
-                        d.copy(state = DownloadStore.STATE_QUEUED, error = null)
-                    }
+                    DownloadStore.updateState(this, it, DownloadStore.STATE_QUEUED)
                 }
                 pump()
             }
@@ -217,7 +213,7 @@ class DownloadService : Service() {
             ACTION_PAUSE_ALL -> {
                 active.keys.toList().forEach { key ->
                     active.remove(key)?.cancel()
-                    DownloadStore.update(this, key) { d -> d.copy(state = DownloadStore.STATE_PAUSED) }
+                    DownloadStore.updateState(this, key, DownloadStore.STATE_PAUSED)
                 }
             }
 
@@ -240,6 +236,7 @@ class DownloadService : Service() {
     }
 
     override fun onDestroy() {
+        DownloadStore.flush(this)
         AppPrefs.prefs(this).unregisterOnSharedPreferenceChangeListener(prefListener)
         if (networkCallbackRegistered) {
             try {
@@ -269,7 +266,7 @@ class DownloadService : Service() {
             // A service restart adopts records stuck mid-download.
             DownloadStore.current(this)
                 .filter { it.state == DownloadStore.STATE_DOWNLOADING && it.id !in active }
-                .forEach { DownloadStore.update(this, it.id) { d -> d.copy(state = DownloadStore.STATE_QUEUED) } }
+                .forEach { DownloadStore.updateState(this, it.id, DownloadStore.STATE_QUEUED) }
 
             val wifiOnly = AppPrefs.downloadWifiOnly(this)
             val max = AppPrefs.downloadMaxConcurrent(this)
@@ -290,9 +287,7 @@ class DownloadService : Service() {
                         } catch (e: CancellationException) {
                             throw e
                         } catch (t: Throwable) {
-                            DownloadStore.update(this@DownloadService, download.id) { d ->
-                                d.copy(state = DownloadStore.STATE_FAILED, error = t.message)
-                            }
+                            DownloadStore.updateState(this@DownloadService, download.id, DownloadStore.STATE_FAILED, t.message)
                         } finally {
                             synchronized(active) {
                                 active.remove(download.id)
@@ -306,6 +301,7 @@ class DownloadService : Service() {
             if (active.isEmpty()) {
                 val anyQueued = DownloadStore.current(this).any { it.state == DownloadStore.STATE_QUEUED }
                 if (!anyQueued) {
+                    DownloadStore.flush(this)
                     stopForeground(STOP_FOREGROUND_REMOVE)
                     stopSelf()
                 }
@@ -315,7 +311,7 @@ class DownloadService : Service() {
 
     private suspend fun runDownload(id: String) {
         val record = DownloadStore.find(this, id) ?: return
-        DownloadStore.update(this, id) { it.copy(state = DownloadStore.STATE_DOWNLOADING, error = null) }
+        DownloadStore.updateState(this, id, DownloadStore.STATE_DOWNLOADING)
 
         // One folder per title: resolved once (reusing a sibling episode's
         // folder when there is one) and kept on the record from then on.
@@ -346,28 +342,24 @@ class DownloadService : Service() {
                 if (record.posterUrl != null && DownloadStore.find(this, id)?.posterUri == null) {
                     downloadPoster(id)
                 }
-                DownloadStore.update(this, id) { it.copy(state = DownloadStore.STATE_DONE, error = null) }
+                DownloadStore.updateState(this, id, DownloadStore.STATE_DONE)
                 updateNotification()
                 return
             } catch (e: CancellationException) {
                 throw e
             } catch (e: NotEnoughSpaceException) {
-                DownloadStore.update(this, id) { d ->
-                    d.copy(state = DownloadStore.STATE_FAILED, error = getString(R.string.download_error_space))
-                }
+                DownloadStore.updateState(this, id, DownloadStore.STATE_FAILED, getString(R.string.download_error_space))
                 updateNotification()
                 return
             } catch (t: Throwable) {
                 if (AppPrefs.downloadWifiOnly(this) && !isOnWifi()) {
-                    DownloadStore.update(this, id) { d -> d.copy(state = DownloadStore.STATE_QUEUED) }
+                    DownloadStore.updateState(this, id, DownloadStore.STATE_QUEUED)
                     updateNotification()
                     return
                 }
                 attempt++
                 if (attempt >= 5) {
-                    DownloadStore.update(this, id) { d ->
-                        d.copy(state = DownloadStore.STATE_FAILED, error = t.message ?: t.javaClass.simpleName)
-                    }
+                    DownloadStore.updateState(this, id, DownloadStore.STATE_FAILED, t.message ?: t.javaClass.simpleName)
                     updateNotification()
                     return
                 }
@@ -448,15 +440,13 @@ class DownloadService : Service() {
                     val now = System.currentTimeMillis()
                     if (now - lastPublish > 900) {
                         lastPublish = now
-                        DownloadStore.update(this, id) { d ->
-                            d.copy(receivedBytes = received, totalBytes = total)
-                        }
+                        DownloadStore.updateProgress(this, id, received, total)
                         updateNotification()
                     }
                 }
                 output.flush()
             }
-            DownloadStore.update(this, id) { d -> d.copy(receivedBytes = received, totalBytes = total) }
+            DownloadStore.updateProgress(this, id, received, total)
         }
     }
 
@@ -512,15 +502,21 @@ class DownloadService : Service() {
         DownloadStore.update(this, id) { d -> d.copy(fileUri = uri, hlsTotal = segments.size) }
 
         var index = if (record.hlsSegment > 0) record.hlsSegment else 0
+        var receivedBytes = record.receivedBytes
         DownloadLocations.openOutput(this, uri, append = resume).use { output ->
             if (initUrl != null && !record.hlsInitWritten && record.hlsSegment == 0) {
                 checkAlive(job)
                 val initBytes = fetchBytes(initUrl, record)
                 output.write(initBytes)
                 output.flush()
-                DownloadStore.update(this, id) { d ->
-                    d.copy(hlsInitWritten = true, receivedBytes = d.receivedBytes + initBytes.size)
-                }
+                receivedBytes += initBytes.size
+                DownloadStore.updateProgress(
+                    context = this,
+                    id = id,
+                    bytes = receivedBytes,
+                    total = 0L,
+                    hlsInitWritten = true,
+                )
             }
 
             while (index < segments.size) {
@@ -547,9 +543,14 @@ class DownloadService : Service() {
                 }
                 output.write(bytes)
                 index++
-                DownloadStore.update(this, id) { d ->
-                    d.copy(hlsSegment = index, receivedBytes = d.receivedBytes + bytes.size)
-                }
+                receivedBytes += bytes.size
+                DownloadStore.updateProgress(
+                    context = this,
+                    id = id,
+                    bytes = receivedBytes,
+                    total = 0L,
+                    hlsSegment = index,
+                )
                 updateNotification()
             }
             output.flush()

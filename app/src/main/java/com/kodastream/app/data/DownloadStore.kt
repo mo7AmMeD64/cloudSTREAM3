@@ -97,7 +97,24 @@ object DownloadStore {
     @Volatile
     private var loaded = false
 
+    @Volatile
+    private var appContext: Context? = null
+
+    // Serialization of the download list happens here, never on the main thread.
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+
+    private val debouncer = Debouncer(delayMs = 2_000L, maxDelayMs = 2_000L, scope = scope) {
+        val list = _entries.value.orEmpty()
+        appContext?.let { ctx ->
+            ctx.setKey(STORE_KEY, list)
+        }
+    }
+
+    val isDirty: Boolean
+        get() = debouncer.isDirty
+
     fun current(context: Context): List<Download> {
+        appContext = context.applicationContext
         if (!loaded) {
             loaded = true
             _entries.value = context.getKey<List<Download>>(STORE_KEY).orEmpty()
@@ -117,6 +134,41 @@ object DownloadStore {
         return true
     }
 
+    /** State transitions (QUEUED->DOWNLOADING, DOWNLOADING->PAUSED, etc.) persist synchronously without debounce. */
+    fun updateState(context: Context, id: String, newState: String, error: String? = null) {
+        appContext = context.applicationContext
+        val next = current(context).map {
+            if (it.id == id) it.copy(state = newState, error = error) else it
+        }
+        publish(context, next)
+    }
+
+    /** Progress ticks update memory immediately and schedule a debounced write to avoid disk thrash. */
+    fun updateProgress(
+        context: Context,
+        id: String,
+        bytes: Long,
+        total: Long = 0L,
+        hlsSegment: Int? = null,
+        hlsInitWritten: Boolean? = null,
+    ) {
+        appContext = context.applicationContext
+        val next = current(context).map { entry ->
+            if (entry.id == id) {
+                entry.copy(
+                    receivedBytes = bytes,
+                    totalBytes = if (total > 0L) total else entry.totalBytes,
+                    hlsSegment = hlsSegment ?: entry.hlsSegment,
+                    hlsInitWritten = hlsInitWritten ?: entry.hlsInitWritten,
+                )
+            } else {
+                entry
+            }
+        }
+        _entries.value = next
+        debouncer.schedule()
+    }
+
     fun update(context: Context, id: String, transform: (Download) -> Download) {
         publish(context, current(context).map { if (it.id == id) transform(it) else it })
     }
@@ -129,12 +181,18 @@ object DownloadStore {
         publish(context, emptyList())
     }
 
+    /** Flushes any pending debounced progress updates synchronously to disk if dirty. */
+    fun flush(context: Context) {
+        appContext = context.applicationContext
+        debouncer.flush()
+    }
+
     private fun publish(context: Context, next: List<Download>) {
+        appContext = context.applicationContext
+        debouncer.cancel()
         _entries.value = next
         scope.launch { context.setKey(STORE_KEY, next) }
     }
-
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 }
 
 /**

@@ -17,6 +17,7 @@ import kotlinx.coroutines.launch
  */
 class Debouncer(
     val delayMs: Long,
+    val maxDelayMs: Long = 0L,
     private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
     private val writer: () -> Unit,
 ) {
@@ -25,20 +26,35 @@ class Debouncer(
         private set
 
     private var job: Job? = null
+    private var firstScheduleEpochMs: Long = 0L
 
     /**
-     * Marks dirty and schedules a write after [delayMs] of inactivity.
-     * If a write was already pending, its countdown is reset.
+     * Marks dirty and schedules a write after [delayMs] of inactivity, or after
+     * at most [maxDelayMs] from the initial schedule if [maxDelayMs] > 0.
+     * If a write was already pending and [maxDelayMs] is not exceeded, its countdown is reset.
      */
     fun schedule() {
         synchronized(this) {
+            val now = System.currentTimeMillis()
+            if (!isDirty || firstScheduleEpochMs == 0L) {
+                firstScheduleEpochMs = now
+            }
             isDirty = true
             job?.cancel()
+
+            val effectiveDelay = if (maxDelayMs > 0L) {
+                val deadline = firstScheduleEpochMs + maxDelayMs
+                (deadline - now).coerceIn(0L, delayMs)
+            } else {
+                delayMs
+            }
+
             job = scope.launch {
-                delay(delayMs)
+                delay(effectiveDelay)
                 synchronized(this@Debouncer) {
                     if (isDirty) {
                         isDirty = false
+                        firstScheduleEpochMs = 0L
                         job = null
                         writer()
                     }
@@ -56,6 +72,7 @@ class Debouncer(
         synchronized(this) {
             job?.cancel()
             job = null
+            firstScheduleEpochMs = 0L
             shouldWrite = isDirty
             isDirty = false
         }
@@ -71,6 +88,7 @@ class Debouncer(
         synchronized(this) {
             job?.cancel()
             job = null
+            firstScheduleEpochMs = 0L
             isDirty = false
         }
     }
