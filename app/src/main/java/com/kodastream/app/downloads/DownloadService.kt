@@ -319,9 +319,9 @@ class DownloadService : Service() {
     private fun downloadDirect(id: String, job: Job?) {
         val record = DownloadStore.find(this, id) ?: return
         val resume = record.receivedBytes > 0
-        val uri = DownloadLocations.ensureTarget(this, record, fresh = !resume)
+        var uri = DownloadLocations.ensureTarget(this, record, fresh = !resume)
             ?: throw IOException("Cannot create the target file")
-        val startOffset = if (resume) DownloadLocations.fileLength(this, uri) else 0L
+        var startOffset = if (resume) DownloadLocations.fileLength(this, uri) else 0L
 
         val headers = safeHeaders(record.headers)
         val request = Request.Builder()
@@ -336,7 +336,17 @@ class DownloadService : Service() {
             .build()
 
         clientFor(record).newCall(request).execute().use { response ->
-            if (!response.isSuccessful) throw IOException("HTTP ${response.code}")
+            val decision = resumeDecision(startOffset, response.code)
+            if (decision == ResumeAction.ERROR) throw IOException("HTTP ${response.code}")
+
+            if (decision == ResumeAction.RESTART_FROM_ZERO) {
+                logWarning("DownloadService", "Server ignored Range, restarting from 0")
+                DownloadLocations.delete(this, uri)
+                uri = DownloadLocations.ensureTarget(this, record, fresh = true)
+                    ?: throw IOException("Cannot create the target file")
+                startOffset = 0L
+            }
+
             val contentLength = response.body?.contentLength() ?: -1L
             val partial = response.code == 206
             val total = when {
@@ -632,6 +642,26 @@ class DownloadService : Service() {
         } catch (_: SecurityException) {
             // POST_NOTIFICATIONS denied: the work continues, unseen.
         }
+    }
+}
+
+enum class ResumeAction {
+    APPEND,
+    RESTART_FROM_ZERO,
+    ERROR
+}
+
+/**
+ * Pure helper for deciding how to resume or start a direct download based on the
+ * initial file offset and the server's HTTP response code.
+ */
+internal fun resumeDecision(startOffset: Long, responseCode: Int): ResumeAction {
+    if (startOffset < 0L) return ResumeAction.ERROR
+    return when {
+        startOffset == 0L && (responseCode == 200 || responseCode == 206) -> ResumeAction.APPEND
+        startOffset > 0L && responseCode == 206 -> ResumeAction.APPEND
+        startOffset > 0L && responseCode == 200 -> ResumeAction.RESTART_FROM_ZERO
+        else -> ResumeAction.ERROR
     }
 }
 
