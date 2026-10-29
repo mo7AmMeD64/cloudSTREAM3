@@ -16,6 +16,7 @@ object AppPrefs {
     private const val KEY_PROVIDER = "selected_provider"
     private const val KEY_AUTO_UPDATE = "auto_update_extensions"
     private const val KEY_NAV_POSITION = "nav_position"
+    const val KEY_UI_STYLE = "ui_style"
     private const val KEY_HOME_HERO_STYLE = "home_hero_style"
     private const val KEY_SPEED = "playback_speed"
     private const val KEY_PAUSE_HISTORY = "pause_history"
@@ -41,12 +42,18 @@ object AppPrefs {
 
     const val NAV_SIDE = "side"
     const val NAV_BOTTOM = "bottom"
+    const val UI_STYLE_MATERIAL = "material"
+    const val UI_STYLE_GLASS = "glass"
     const val LANGUAGE_SYSTEM = "system"
 
     private val _navPosition = MutableStateFlow<String?>(null)
+    private val _uiStyle = MutableStateFlow<String?>(null)
 
     /** The bar position, as a flow so the shell can switch layouts the moment it changes. */
     val navPosition: StateFlow<String?> = _navPosition.asStateFlow()
+
+    /** The UI style ("material" or "glass"), as a flow so the shell can update immediately. */
+    val uiStyle: StateFlow<String?> = _uiStyle.asStateFlow()
 
     /** Where the navigation bar sits. Side (left) is the default. */
     fun navPosition(context: Context): String =
@@ -57,6 +64,17 @@ object AppPrefs {
     fun setNavPosition(context: Context, value: String) {
         _navPosition.value = value
         prefs(context).edit { putString(KEY_NAV_POSITION, value) }
+    }
+
+    /** The navigation UI style: "material" (default) or "glass". */
+    fun uiStyle(context: Context): String =
+        _uiStyle.value
+            ?: prefs(context).getString(KEY_UI_STYLE, null)?.also { _uiStyle.value = it }
+            ?: UI_STYLE_MATERIAL
+
+    fun setUiStyle(context: Context, value: String) {
+        _uiStyle.value = value
+        prefs(context).edit { putString(KEY_UI_STYLE, value) }
     }
 
     /** "carousel", "cinematic" or "off"; unknown values are resolved by the caller. */

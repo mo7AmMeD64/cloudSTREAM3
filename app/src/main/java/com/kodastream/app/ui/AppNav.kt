@@ -15,6 +15,7 @@ import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -53,6 +54,7 @@ import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.VideoLibrary
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.FloatingToolbarDefaults
 import androidx.compose.material3.HorizontalFloatingToolbar
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -69,6 +71,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
@@ -478,11 +481,30 @@ private fun FloatingSideBar(
     onOpenSources: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val context = LocalContext.current
+    val uiStyleState by AppPrefs.uiStyle.collectAsState(initial = AppPrefs.uiStyle(context))
+    val isGlass = (uiStyleState ?: AppPrefs.uiStyle(context)) == AppPrefs.UI_STYLE_GLASS
+    val shape = RoundedCornerShape(50)
+
     Surface(
-        modifier = modifier,
-        shape = RoundedCornerShape(50),
-        color = MaterialTheme.colorScheme.surfaceContainerHigh,
-        tonalElevation = 2.dp,
+        modifier = if (isGlass) {
+            modifier
+                .shadow(elevation = 8.dp, shape = shape)
+                .border(
+                    width = 1.dp,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.15f),
+                    shape = shape,
+                )
+        } else {
+            modifier
+        },
+        shape = shape,
+        color = if (isGlass) {
+            MaterialTheme.colorScheme.surface.copy(alpha = 0.65f)
+        } else {
+            MaterialTheme.colorScheme.surfaceContainerHigh
+        },
+        tonalElevation = if (isGlass) 0.dp else 2.dp,
     ) {
         Column(
             modifier = Modifier
@@ -603,8 +625,32 @@ private fun SideNavItem(
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun FloatingNavPill(selectedRoute: String?, onSelect: (String) -> Unit) {
+    val context = LocalContext.current
+    val uiStyleState by AppPrefs.uiStyle.collectAsState(initial = AppPrefs.uiStyle(context))
+    val isGlass = (uiStyleState ?: AppPrefs.uiStyle(context)) == AppPrefs.UI_STYLE_GLASS
+    val pillShape = CircleShape
+
     HorizontalFloatingToolbar(
         expanded = true,
+        modifier = if (isGlass) {
+            Modifier
+                .shadow(elevation = 8.dp, shape = pillShape)
+                .border(
+                    width = 1.dp,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.15f),
+                    shape = pillShape,
+                )
+        } else {
+            Modifier
+        },
+        colors = if (isGlass) {
+            FloatingToolbarDefaults.standardFloatingToolbarColors(
+                toolbarContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.65f),
+            )
+        } else {
+            FloatingToolbarDefaults.standardFloatingToolbarColors()
+        },
+        expandedShadowElevation = if (isGlass) 0.dp else FloatingToolbarDefaults.ContainerExpandedElevation,
         content = {
             topLevelDestinations.forEach { destination ->
                 val selected = selectedRoute == destination.route

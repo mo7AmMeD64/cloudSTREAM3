@@ -158,6 +158,9 @@
     <string name="settings_navigation">Navigation bar position</string>
     <string name="nav_position_side">Side</string>
     <string name="nav_position_bottom">Bottom</string>
+    <string name="settings_ui_style">UI style</string>
+    <string name="settings_ui_style_material">Material 3</string>
+    <string name="settings_ui_style_glass">Glass</string>
     <string name="search_scope_all">All sources</string>
     <string name="cd_resize">Resize mode</string>
     <string name="playback_speed">Playback speed</string>

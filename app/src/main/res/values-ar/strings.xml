@@ -155,6 +155,9 @@
     <string name="settings_navigation">موضع شريط التنقل</string>
     <string name="nav_position_side">الجانب</string>
     <string name="nav_position_bottom">الأسفل</string>
+    <string name="settings_ui_style">نمط الواجهة</string>
+    <string name="settings_ui_style_material">Material 3</string>
+    <string name="settings_ui_style_glass">زجاجي</string>
     <string name="search_scope_all">كل المصادر</string>
     <string name="cd_resize">وضع التحجيم</string>
     <string name="playback_speed">سرعة التشغيل</string>

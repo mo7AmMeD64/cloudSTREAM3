@@ -13,4 +13,11 @@ class AppPrefsTest {
     fun downloadWifiOnlyKeyConstant() {
         assertEquals("download_wifi_only", AppPrefs.KEY_DL_WIFI)
     }
+
+    @Test
+    fun uiStyleKeyAndValueConstants() {
+        assertEquals("ui_style", AppPrefs.KEY_UI_STYLE)
+        assertEquals("material", AppPrefs.UI_STYLE_MATERIAL)
+        assertEquals("glass", AppPrefs.UI_STYLE_GLASS)
+    }
 }

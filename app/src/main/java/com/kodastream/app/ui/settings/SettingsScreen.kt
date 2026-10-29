@@ -94,6 +94,7 @@ fun SettingsScreen(
     val uriHandler = LocalUriHandler.current
     var autoUpdate by remember { mutableStateOf(AppPrefs.autoUpdate(context)) }
     var navPosition by remember { mutableStateOf(AppPrefs.navPosition(context)) }
+    var uiStyle by remember { mutableStateOf(AppPrefs.uiStyle(context)) }
     var pauseHistory by remember { mutableStateOf(AppPrefs.pauseHistory(context)) }
     var keepScreenOn by remember { mutableStateOf(AppPrefs.keepScreenOn(context)) }
     var allowInvalidSsl by remember { mutableStateOf(AppPrefs.allowInvalidSsl(context)) }
@@ -155,7 +156,7 @@ fun SettingsScreen(
             }
 
             item(key = "appearance") {
-                val count = 4 + if (resolvedDark) 1 else 0
+                val count = 5 + if (resolvedDark) 1 else 0
                 SettingsGroup(stringResource(R.string.settings_appearance)) {
                     ChoiceRow(
                         index = 0,
@@ -215,8 +216,29 @@ fun SettingsScreen(
                             navPosition = position
                         },
                     )
-                    NavigationRow(
+                    ChoiceRow(
                         index = if (resolvedDark) 4 else 3,
+                        count = count,
+                        icon = Icons.Rounded.Tune,
+                        title = stringResource(R.string.settings_ui_style),
+                        options = listOf(AppPrefs.UI_STYLE_MATERIAL, AppPrefs.UI_STYLE_GLASS),
+                        selected = uiStyle,
+                        label = { style ->
+                            stringResource(
+                                if (style == AppPrefs.UI_STYLE_GLASS) {
+                                    R.string.settings_ui_style_glass
+                                } else {
+                                    R.string.settings_ui_style_material
+                                }
+                            )
+                        },
+                        onSelect = { style ->
+                            AppPrefs.setUiStyle(context, style)
+                            uiStyle = style
+                        },
+                    )
+                    NavigationRow(
+                        index = if (resolvedDark) 5 else 4,
                         count = count,
                         icon = Icons.Rounded.ViewCarousel,
                         title = stringResource(R.string.settings_home_hero),
