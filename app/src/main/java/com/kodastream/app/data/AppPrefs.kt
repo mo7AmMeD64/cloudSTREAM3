@@ -16,6 +16,7 @@ object AppPrefs {
     private const val KEY_PROVIDER = "selected_provider"
     private const val KEY_AUTO_UPDATE = "auto_update_extensions"
     private const val KEY_NAV_POSITION = "nav_position"
+    private const val KEY_HOME_HERO_STYLE = "home_hero_style"
     private const val KEY_SPEED = "playback_speed"
     private const val KEY_PAUSE_HISTORY = "pause_history"
     private const val KEY_DL_TREE = "download_tree_uri"
@@ -55,6 +56,14 @@ object AppPrefs {
     fun setNavPosition(context: Context, value: String) {
         _navPosition.value = value
         prefs(context).edit { putString(KEY_NAV_POSITION, value) }
+    }
+
+    /** "carousel", "cinematic" or "off"; unknown values are resolved by the caller. */
+    fun homeHeroStyle(context: Context): String =
+        prefs(context).getString(KEY_HOME_HERO_STYLE, null) ?: "carousel"
+
+    fun setHomeHeroStyle(context: Context, value: String) {
+        prefs(context).edit { putString(KEY_HOME_HERO_STYLE, value) }
     }
 
     /** The player's chosen speed, remembered between episodes. */

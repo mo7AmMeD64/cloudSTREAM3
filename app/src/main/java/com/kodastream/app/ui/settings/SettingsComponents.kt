@@ -284,6 +284,7 @@ private fun RadioRow(
     icon: ImageVector,
     title: String,
     selected: Boolean,
+    supporting: String? = null,
     onClick: () -> Unit,
 ) {
     SegmentedListItem(
@@ -292,6 +293,11 @@ private fun RadioRow(
         shapes = ListItemDefaults.segmentedShapes(index = index, count = count),
         colors = settingsRowColors(),
         leadingContent = { RowIcon(icon) },
+        supportingContent = if (supporting != null) {
+            { Text(supporting, maxLines = 2) }
+        } else {
+            null
+        },
         trailingContent = {
             RadioButton(selected = selected, onClick = null)
         },
@@ -311,6 +317,7 @@ internal fun <T> ChoiceDialog(
     label: @Composable (T) -> String,
     onSelect: (T) -> Unit,
     onDismiss: () -> Unit,
+    description: (@Composable (T) -> String)? = null,
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -324,6 +331,7 @@ internal fun <T> ChoiceDialog(
                         icon = icon,
                         title = label(option),
                         selected = option == selected,
+                        supporting = description?.invoke(option),
                         onClick = { onSelect(option) },
                     )
                 }

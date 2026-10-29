@@ -38,6 +38,7 @@ import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Speed
 import androidx.compose.material.icons.rounded.Translate
 import androidx.compose.material.icons.rounded.Tune
+import androidx.compose.material.icons.rounded.ViewCarousel
 import androidx.compose.material.icons.rounded.ViewSidebar
 import androidx.compose.material.icons.rounded.VolunteerActivism
 import androidx.compose.material.icons.rounded.Wifi
@@ -69,6 +70,7 @@ import com.kodastream.app.R
 import com.kodastream.app.data.AppPrefs
 import com.kodastream.app.data.DownloadLocations
 import com.kodastream.app.data.SearchHistoryStore
+import com.kodastream.app.ui.home.hero.HeroStyle
 import com.kodastream.app.ui.theme.APP_PALETTES
 import com.kodastream.app.ui.theme.DYNAMIC_PALETTE_ID
 import com.kodastream.app.ui.theme.PALETTE_CATEGORIES
@@ -99,6 +101,8 @@ fun SettingsScreen(
     var appLanguage by remember { mutableStateOf(AppPrefs.appLanguage(context)) }
     var languageDialog by remember { mutableStateOf(false) }
     var styleDialog by remember { mutableStateOf(false) }
+    var heroStyle by remember { mutableStateOf(HeroStyle.parse(AppPrefs.homeHeroStyle(context))) }
+    var heroDialog by remember { mutableStateOf(false) }
 
     val resolvedDark = when (themeViewModel.mode) {
         ThemeMode.SYSTEM -> isSystemInDarkTheme()
@@ -147,7 +151,7 @@ fun SettingsScreen(
             }
 
             item(key = "appearance") {
-                val count = 3 + if (resolvedDark) 1 else 0
+                val count = 4 + if (resolvedDark) 1 else 0
                 SettingsGroup(stringResource(R.string.settings_appearance)) {
                     ChoiceRow(
                         index = 0,
@@ -206,6 +210,14 @@ fun SettingsScreen(
                             AppPrefs.setNavPosition(context, position)
                             navPosition = position
                         },
+                    )
+                    NavigationRow(
+                        index = if (resolvedDark) 4 else 3,
+                        count = count,
+                        icon = Icons.Rounded.ViewCarousel,
+                        title = stringResource(R.string.settings_home_hero),
+                        supporting = stringResource(heroStyle.labelRes),
+                        onClick = { heroDialog = true },
                     )
                 }
             }
@@ -440,6 +452,23 @@ fun SettingsScreen(
             onDismiss = { styleDialog = false },
         )
     }
+
+    if (heroDialog) {
+        ChoiceDialog(
+            title = stringResource(R.string.settings_home_hero),
+            options = HeroStyle.entries,
+            selected = heroStyle,
+            icon = Icons.Rounded.ViewCarousel,
+            label = { style -> stringResource(style.labelRes) },
+            description = { style -> stringResource(style.descriptionRes) },
+            onSelect = { style ->
+                AppPrefs.setHomeHeroStyle(context, style.storageId)
+                heroStyle = style
+                heroDialog = false
+            },
+            onDismiss = { heroDialog = false },
+        )
+    }
 }
 
 @Composable
@@ -569,6 +598,11 @@ private fun AboutFooterRow(index: Int, count: Int) {
             )
             Text(
                 text = stringResource(R.string.about_disclaimer),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                text = stringResource(R.string.about_nuvio),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
