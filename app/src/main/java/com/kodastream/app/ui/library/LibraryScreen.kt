@@ -6,6 +6,7 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -16,10 +17,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -34,6 +33,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -59,6 +59,13 @@ import kotlinx.coroutines.launch
 /** The shelves the library keeps. */
 enum class LibrarySection { FAVORITES, WATCHLIST, DOWNLOADS }
 
+/** Tabs in display order with their labels, so an index and a count cannot disagree. */
+private val LIBRARY_TABS = listOf(
+    LibrarySection.FAVORITES to R.string.library_favorites,
+    LibrarySection.WATCHLIST to R.string.library_watchlist,
+    LibrarySection.DOWNLOADS to R.string.nav_downloads,
+)
+
 class LibraryViewModel(application: Application) : AndroidViewModel(application) {
     private val _favorites = MutableStateFlow<List<LibraryItem>>(emptyList())
     val favorites: StateFlow<List<LibraryItem>> = _favorites.asStateFlow()
@@ -80,7 +87,6 @@ class LibraryViewModel(application: Application) : AndroidViewModel(application)
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LibraryScreen(
     contentPadding: PaddingValues,
@@ -114,34 +120,33 @@ fun LibraryScreen(
             .padding(top = contentPadding.calculateTopPadding() + 12.dp),
     ) {
         // The section switch sits in a row of its own so the filter can slide
-        // in under it without moving anything when it is not needed.
+        // in under it without moving anything when it is not needed. Three
+        // labels do not fit beside the side bar, so the chips scroll instead.
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(start = 16.dp, end = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            SingleChoiceSegmentedButtonRow(modifier = Modifier.weight(1f)) {
-                SegmentedButton(
-                    selected = section == LibrarySection.FAVORITES,
-                    onClick = { section = LibrarySection.FAVORITES },
-                    shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
-                ) {
-                    Text(stringResource(R.string.library_favorites))
-                }
-                SegmentedButton(
-                    selected = section == LibrarySection.WATCHLIST,
-                    onClick = { section = LibrarySection.WATCHLIST },
-                    shape = SegmentedButtonDefaults.itemShape(index = 1, count = 3),
-                ) {
-                    Text(stringResource(R.string.library_watchlist))
-                }
-                SegmentedButton(
-                    selected = section == LibrarySection.DOWNLOADS,
-                    onClick = { section = LibrarySection.DOWNLOADS },
-                    shape = SegmentedButtonDefaults.itemShape(index = 2, count = 3),
-                ) {
-                    Text(stringResource(R.string.nav_downloads))
+            Row(
+                modifier = Modifier
+                    .weight(1f)
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                LIBRARY_TABS.forEach { (tab, label) ->
+                    FilterChip(
+                        selected = section == tab,
+                        onClick = { section = tab },
+                        label = {
+                            Text(
+                                text = stringResource(label),
+                                maxLines = 1,
+                                softWrap = false,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        },
+                    )
                 }
             }
             if (section != LibrarySection.DOWNLOADS) {
