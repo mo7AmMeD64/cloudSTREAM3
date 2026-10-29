@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- shortEdges repeats here because the v29 variant replaces the v28 one. -->
+    <style name="Theme.KodaStream.Player" parent="Theme.KodaStream.Player.Base">
+        <item name="android:windowLayoutInDisplayCutoutMode">shortEdges</item>
+        <item name="android:enforceNavigationBarContrast">false</item>
+    </style>
+</resources>

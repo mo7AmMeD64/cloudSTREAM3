@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <plurals name="links_hidden">
+        <item quantity="one">%d hidden link</item>
+        <item quantity="other">%d hidden links</item>
+    </plurals>
+</resources>

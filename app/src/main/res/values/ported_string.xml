@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+<string name="audio_tracks">Audio tracks</string>
+<string name="compressor">Compressor</string>
+<string name="filler" formatted="true">Filler</string>
+<string name="go_back_img_des">Go back</string>
+<string name="help">Help</string>
+<string name="home_change_provider_img_des">Change Provider</string>
+<string name="next_episode">Next episode</string>
+<string name="no_subtitles_loaded">No subtitles loaded yet</string>
+<string name="pick_source">Sources</string>
+<string name="pick_subtitle">Subtitles</string>
+<string name="player_is_live">Live</string>
+<string name="profile_background_des">Profile background</string>
+<string name="profile_hide_error_sources">Hide sources with errors</string>
+<string name="profile_hide_negative_sources">Hide sources with a negative priority</string>
+<string name="profile_settings">Profile settings</string>
+<string name="qualities">Qualities</string>
+<string name="reset_btn">Reset</string>
+<string name="restart">Restart</string>
+<string name="rotate_video">Rotate</string>
+<string name="sort_close">Close</string>
+<string name="sort_save">Save</string>
+<string name="source_priority">Source priority</string>
+<string name="subtitle_offset">Sync subs</string>
+<string name="subtitle_offset_hint">1000 ms</string>
+<string name="subtitle_offset_title">Subtitle delay</string>
+<string name="subtitles_settings">Subtitle Settings</string>
+<string name="title_settings">Settings</string>
+<string name="torrent_singular">Torrent</string>
+<string name="tracks">Tracks</string>
+<string name="use">Use</string>
+<string name="video_aspect_ratio_resize">Resize</string>
+<string name="video_lock">Lock</string>
+<string name="video_skip_op">Skip OP</string>
+<string name="video_tracks">Video tracks</string>
+<string name="app_dubbed_text">Dub</string>
+</resources>

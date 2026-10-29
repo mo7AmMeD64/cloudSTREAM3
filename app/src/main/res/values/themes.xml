@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+        Parent is a Material Components theme (an AppCompat theme underneath), which
+        is what lets extension dialogs that expect an AppCompat activity work.
+        System bars are made transparent here, at window creation, because some OEM
+        skins ignore the runtime setters (same lesson as in Koda).
+    -->
+    <style name="Theme.KodaStream" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="android:windowDrawsSystemBarBackgrounds">true</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:enforceStatusBarContrast">false</item>
+        <item name="android:enforceNavigationBarContrast">false</item>
+
+        <!-- ==== the ported CloudStream player's XML UI (Theme.AppTheme items) ==== -->
+        <!-- Static dark colors, the same set the original app theme applies. -->
+        <item name="textColor">@color/textColor</item>
+        <item name="grayTextColor">@color/grayTextColor</item>
+        <item name="primaryGrayBackground">@color/primaryGrayBackground</item>
+        <item name="primaryBlackBackground">@color/primaryBlackBackground</item>
+        <item name="iconGrayBackground">@color/iconGrayBackground</item>
+        <item name="boxItemBackground">@color/boxItemBackground</item>
+        <item name="bitDarkerGrayBackground">@color/boxItemBackground</item>
+        <item name="iconColor">@color/iconGrayBackground</item>
+        <item name="white">@color/white</item>
+        <item name="black">@color/black</item>
+        <item name="focusBackground">?android:attr/selectableItemBackground</item>
+    </style>
+
+    <!--
+        The player is always dark and edge-to-edge, independent of the in-app
+        theme. The version-qualified variants add the API 28 cutout mode and
+        the API 29 navigation-bar contrast opt-out; this base stays valid on
+        minSdk 26.
+    -->
+    <style name="Theme.KodaStream.Player.Base" parent="Theme.KodaStream">
+        <item name="android:windowBackground">@android:color/black</item>
+        <item name="android:colorBackground">@android:color/black</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowDrawsSystemBarBackgrounds">true</item>
+    </style>
+
+    <style name="Theme.KodaStream.Player" parent="Theme.KodaStream.Player.Base" />
+</resources>

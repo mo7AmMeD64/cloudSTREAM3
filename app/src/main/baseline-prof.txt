@@ -1,0 +1,7 @@
+# KodaStream's startup and main UI paths. Wildcards keep this file small and
+# let AGP resolve every matching method at build time, so it does not go stale
+# when a composable is renamed or a screen gains a function.
+HSPLcom/kodastream/app/**;->**(**)**
+HSPLandroidx/compose/**;->**(**)**
+HSPLandroidx/navigation/**;->**(**)**
+HSPLandroidx/media3/**;->**(**)**

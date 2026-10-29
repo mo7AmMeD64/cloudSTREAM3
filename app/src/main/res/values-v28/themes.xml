@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Draw into the display cutout so no theme-colored band appears beside the video. -->
+    <style name="Theme.KodaStream.Player" parent="Theme.KodaStream.Player.Base">
+        <item name="android:windowLayoutInDisplayCutoutMode">shortEdges</item>
+    </style>
+</resources>
