@@ -446,6 +446,7 @@ private fun Shelf(
                     item = item,
                     horizontal = row.horizontal,
                     onClick = { onOpenItem(item) },
+                    cardWidth = if (row.horizontal) 220.dp else 128.dp,
                 )
             }
         }

@@ -25,6 +25,7 @@ object AppPrefs {
     private const val KEY_DL_FOLDERS_DONE = "download_folders_migrated"
     private const val KEY_EXTERNAL_MANAGER = "external_download_manager"
     private const val KEY_KEEP_SCREEN_ON = "keep_screen_on"
+    private const val KEY_POSTER_SIZE = "poster_size_step"
     private const val KEY_SETUP_DONE = "setup_done"
     private const val KEY_APP_LANGUAGE = "app_language"
     private const val KEY_UPDATE_CHECK = "update_last_check"
@@ -132,6 +133,14 @@ object AppPrefs {
 
     fun setLastDownloadServer(context: Context, value: String) {
         prefs(context).edit { putString(KEY_DL_SERVER, value) }
+    }
+
+    /** The poster size step shared by History and the Library grids. */
+    fun posterSizeStep(context: Context): Int =
+        posterStepOrFallback(prefs(context).getInt(KEY_POSTER_SIZE, POSTER_SIZE_DEFAULT_STEP))
+
+    fun setPosterSizeStep(context: Context, step: Int) {
+        prefs(context).edit { putInt(KEY_POSTER_SIZE, posterStepOrFallback(step)) }
     }
 
     /** Package name of the external download manager used last, if any. */

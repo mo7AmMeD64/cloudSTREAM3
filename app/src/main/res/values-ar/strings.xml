@@ -176,6 +176,10 @@
     <string name="history_undo">تراجع</string>
     <string name="cd_remove_history">إزالة من السجل</string>
     <string name="cd_history_clear">مسح كل السجل</string>
+    <string name="poster_size">حجم البوستر</string>
+    <string name="poster_size_smaller">بوسترات أصغر</string>
+    <string name="poster_size_larger">بوسترات أكبر</string>
+    <string name="poster_size_state">الخطوة %1$d من %2$d</string>
     <string name="history_clear_all">مسح السجل</string>
     <string name="history_clear_confirm_title">مسح كل السجل؟</string>
     <string name="history_clear_confirm_text">سيتم حذف جميع العناصر ولا يمكن التراجع عن ذلك.</string>

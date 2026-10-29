@@ -60,6 +60,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
@@ -132,6 +133,7 @@ fun PosterCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     horizontal: Boolean = false,
+    cardWidth: Dp? = null,
 ) {
     PosterCard(
         name = item.name,
@@ -141,6 +143,7 @@ fun PosterCard(
         onClick = onClick,
         modifier = modifier,
         horizontal = horizontal,
+        cardWidth = cardWidth,
     )
 }
 
@@ -157,8 +160,8 @@ fun PosterCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     horizontal: Boolean = false,
+    cardWidth: Dp? = null,
 ) {
-    val cardWidth = if (horizontal) 220.dp else 128.dp
     val ratio = if (horizontal) 16f / 9f else 2f / 3f
     val interactionSource = remember { MutableInteractionSource() }
     val pressed by interactionSource.collectIsPressedAsState()
@@ -172,7 +175,7 @@ fun PosterCard(
     val scope = rememberCoroutineScope()
     Surface(
         modifier = modifier
-            .width(cardWidth)
+            .then(if (cardWidth != null) Modifier.width(cardWidth) else Modifier)
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale

@@ -179,6 +179,10 @@
     <string name="history_undo">Undo</string>
     <string name="cd_remove_history">Remove from history</string>
     <string name="cd_history_clear">Clear all history</string>
+    <string name="poster_size">Poster size</string>
+    <string name="poster_size_smaller">Smaller posters</string>
+    <string name="poster_size_larger">Larger posters</string>
+    <string name="poster_size_state">Step %1$d of %2$d</string>
     <string name="history_clear_all">Clear history</string>
     <string name="history_clear_confirm_title">Clear all history?</string>
     <string name="history_clear_confirm_text">Every entry will be deleted. This cannot be undone.</string>

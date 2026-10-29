@@ -25,23 +25,29 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.kodastream.app.R
 import com.kodastream.app.data.AppEvents
+import com.kodastream.app.data.AppPrefs
 import com.kodastream.app.data.DetailsArgs
 import com.kodastream.app.data.LibraryStore
 import com.kodastream.app.data.LibraryStore.LibraryItem
 import com.kodastream.app.data.PlayerArgs
+import com.kodastream.app.data.posterMinWidth
 import com.kodastream.app.ui.components.EmptyBox
 import com.kodastream.app.ui.components.PosterCard
+import com.kodastream.app.ui.components.PosterSizeButton
 import com.kodastream.app.ui.components.SEARCH_FIELD_MIN_ITEMS
 import com.kodastream.app.ui.components.SearchEmptyState
 import com.kodastream.app.ui.components.SearchField
@@ -81,10 +87,12 @@ fun LibraryScreen(
     onOpenItem: (DetailsArgs) -> Unit,
     onResume: (PlayerArgs) -> Unit,
 ) {
+    val context = LocalContext.current
     val viewModel: LibraryViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
     val favorites by viewModel.favorites.collectAsState()
     val watchlist by viewModel.watchlist.collectAsState()
     var section by rememberSaveable { mutableStateOf(LibrarySection.FAVORITES) }
+    var posterStep by remember { mutableIntStateOf(AppPrefs.posterSizeStep(context)) }
 
     // "View" from a download snackbar lands here, on the Downloads tab.
     LaunchedEffect(Unit) {
@@ -107,8 +115,13 @@ fun LibraryScreen(
     ) {
         // The section switch sits in a row of its own so the filter can slide
         // in under it without moving anything when it is not needed.
-        Row(Modifier.padding(horizontal = 16.dp)) {
-            SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 16.dp, end = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            SingleChoiceSegmentedButtonRow(modifier = Modifier.weight(1f)) {
                 SegmentedButton(
                     selected = section == LibrarySection.FAVORITES,
                     onClick = { section = LibrarySection.FAVORITES },
@@ -130,6 +143,15 @@ fun LibraryScreen(
                 ) {
                     Text(stringResource(R.string.nav_downloads))
                 }
+            }
+            if (section != LibrarySection.DOWNLOADS) {
+                PosterSizeButton(
+                    step = posterStep,
+                    onStepChange = { step ->
+                        posterStep = step
+                        AppPrefs.setPosterSizeStep(context, step)
+                    },
+                )
             }
         }
 
@@ -175,7 +197,7 @@ fun LibraryScreen(
             )
 
             else -> LazyVerticalGrid(
-                columns = GridCells.Adaptive(minSize = 128.dp),
+                columns = GridCells.Adaptive(minSize = posterMinWidth(posterStep)),
                 contentPadding = PaddingValues(
                     start = 16.dp,
                     end = 16.dp,
@@ -203,7 +225,9 @@ fun LibraryScreen(
                                 )
                             )
                         },
-                        modifier = Modifier.animateItem(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .animateItem(),
                     )
                 }
             }

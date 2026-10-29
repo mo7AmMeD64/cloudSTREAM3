@@ -889,7 +889,11 @@ private fun DetailsContent(
                             key = { _, item -> "${item.apiName}|${item.url}" },
                             contentType = { _, _ -> "poster" },
                         ) { _, item ->
-                            PosterCard(item = item, onClick = { onOpenItem(item) })
+                            PosterCard(
+                                item = item,
+                                onClick = { onOpenItem(item) },
+                                cardWidth = 128.dp,
+                            )
                         }
                     }
                 }

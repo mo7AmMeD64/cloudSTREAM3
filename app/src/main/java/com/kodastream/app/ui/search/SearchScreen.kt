@@ -252,7 +252,11 @@ fun SearchScreen(
                                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                             ) {
                                 items(group.items) { item ->
-                                    PosterCard(item = item, onClick = { onOpenItem(item) })
+                                    PosterCard(
+                                        item = item,
+                                        onClick = { onOpenItem(item) },
+                                        cardWidth = 128.dp,
+                                    )
                                 }
                             }
                         }

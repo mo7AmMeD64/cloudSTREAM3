@@ -44,6 +44,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -57,13 +58,16 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.kodastream.app.R
+import com.kodastream.app.data.AppPrefs
 import com.kodastream.app.data.DetailsArgs
 import com.kodastream.app.data.HistoryStore
 import com.kodastream.app.data.HistoryStore.HistoryEntry
 import com.kodastream.app.data.PlayerArgs
 import com.kodastream.app.data.WatchedStore
+import com.kodastream.app.data.posterMinWidth
 import com.kodastream.app.engine.Engine
 import com.kodastream.app.ui.components.EmptyBox
+import com.kodastream.app.ui.components.PosterSizeButton
 import com.kodastream.app.ui.components.PosterTitle
 import com.kodastream.app.ui.components.RemoteImage
 import com.kodastream.app.ui.components.SectionHeader
@@ -99,6 +103,7 @@ fun HistoryScreen(
     val snackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     var showClearDialog by remember { mutableStateOf(false) }
+    var posterStep by remember { mutableIntStateOf(AppPrefs.posterSizeStep(context)) }
 
     Box(Modifier.fillMaxSize()) {
         Column(
@@ -119,6 +124,13 @@ fun HistoryScreen(
                     modifier = Modifier.weight(1f),
                 )
                 if (history.isNotEmpty()) {
+                    PosterSizeButton(
+                        step = posterStep,
+                        onStepChange = { step ->
+                            posterStep = step
+                            AppPrefs.setPosterSizeStep(context, step)
+                        },
+                    )
                     IconButton(onClick = { showClearDialog = true }) {
                         Icon(
                             imageVector = Icons.Rounded.DeleteSweep,
@@ -145,6 +157,7 @@ fun HistoryScreen(
                 HistoryGrid(
                     history = history,
                     watchedKeys = watchedKeys,
+                    posterStep = posterStep,
                     contentPadding = contentPadding,
                     onOpenItem = onOpenItem,
                     onResume = onResume,
@@ -199,6 +212,7 @@ fun HistoryScreen(
 private fun HistoryGrid(
     history: List<HistoryEntry>,
     watchedKeys: Set<String>,
+    posterStep: Int,
     contentPadding: PaddingValues,
     onOpenItem: (DetailsArgs) -> Unit,
     onResume: (PlayerArgs) -> Unit,
@@ -223,7 +237,7 @@ private fun HistoryGrid(
     }
 
     LazyVerticalGrid(
-        columns = GridCells.Adaptive(minSize = 128.dp),
+        columns = GridCells.Adaptive(minSize = posterMinWidth(posterStep)),
         contentPadding = PaddingValues(
             start = 16.dp,
             end = 16.dp,
