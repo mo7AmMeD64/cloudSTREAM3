@@ -465,4 +465,45 @@
     <string name="movie_status_rumored">Rumored</string>
     <string name="movie_status_in_production">In Production</string>
     <string name="movie_status_post_production">Post Production</string>
+
+    <!-- Player Settings -->
+    <string name="settings_player">Player</string>
+    <string name="settings_player_title">Player Settings</string>
+    <string name="settings_player_summary">Playback, gestures, video decoding, buffers, subtitles</string>
+    <string name="player_settings_title">Player</string>
+    <string name="player_double_tap_seek">Double-tap to seek</string>
+    <string name="player_double_tap_seek_summary">Double-tap edges of screen to skip backward or forward</string>
+    <string name="player_double_tap_pause">Double-tap to pause</string>
+    <string name="player_double_tap_pause_summary">Double-tap the center of screen to play or pause</string>
+    <string name="player_seek_time">Double-tap seek duration</string>
+    <string name="player_seek_time_format">%d seconds</string>
+    <string name="player_autoplay_next">Autoplay next episode</string>
+    <string name="player_autoplay_next_summary">Automatically start the next episode when current finishes</string>
+    <string name="player_auto_rotate">Auto-rotate video</string>
+    <string name="player_auto_rotate_summary">Match screen orientation to video aspect ratio</string>
+    <string name="player_pip">Picture-in-Picture</string>
+    <string name="player_pip_summary">Continue playback in a floating window when switching apps</string>
+
+    <string name="settings_video">Video</string>
+    <string name="player_decoding_mode">Decoding mode</string>
+    <string name="player_decoding_auto">Automatic</string>
+    <string name="player_decoding_hw_sw">Hardware + Software (prefer HW)</string>
+    <string name="player_decoding_hw_only">Hardware only</string>
+    <string name="player_decoding_sw_hw">Software + Hardware (prefer SW)</string>
+    <string name="player_buffer_size">RAM buffer size</string>
+    <string name="player_buffer_disk">Disk buffer size</string>
+    <string name="player_buffer_length">Buffer length</string>
+    <string name="player_buffer_default">Default</string>
+    <string name="player_buffer_mb_format">%d MB</string>
+    <string name="player_buffer_sec_format">%d seconds</string>
+    <string name="player_preview_seekbar">Seekbar thumbnails</string>
+    <string name="player_preview_seekbar_summary">Show preview frames when seeking on the timeline</string>
+
+    <string name="settings_subtitles_audio">Subtitles &amp; Audio</string>
+    <string name="player_subtitles_encoding">Subtitle encoding</string>
+    <string name="player_subtitles_encoding_summary">Character encoding used for subtitle text</string>
+    <string name="player_preferred_audio_lang">Preferred audio language</string>
+    <string name="player_preferred_audio_lang_summary">Default language track when multiple are available</string>
+    <string name="player_subtitles_style">Subtitle appearance</string>
+    <string name="player_subtitles_style_summary">Customize subtitle font, size, colors, and background</string>
 </resources>

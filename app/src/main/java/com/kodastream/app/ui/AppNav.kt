@@ -109,19 +109,21 @@ import com.kodastream.app.ui.home.hero.LocalScreenActive
 import com.kodastream.app.ui.library.LibraryScreen
 import com.kodastream.app.ui.player.PlayerActivity
 import com.kodastream.app.ui.search.SearchScreen
+import com.kodastream.app.ui.settings.PlayerSettingsScreen
 import com.kodastream.app.ui.settings.SettingsScreen
 import com.kodastream.app.ui.sources.SourceSheet
 import com.kodastream.app.ui.sources.SourceViewModel
 import com.kodastream.app.ui.theme.ThemeViewModel
 import com.lagradost.cloudstream3.SearchResponse
 
-private object Routes {
+object Routes {
     const val HOME = "home"
     const val SEARCH = "search"
     const val LIBRARY = "library"
     const val HISTORY = "history"
     const val EXTENSIONS = "extensions"
     const val SETTINGS = "settings"
+    const val PLAYER_SETTINGS = "player_settings"
     const val SECTION = "section"
     const val DETAILS = "details/{id}"
 }
@@ -417,7 +419,17 @@ private fun AppNavGraph(
             ExtensionsScreen(contentPadding = contentPadding)
         }
         composable(Routes.SETTINGS) {
-            SettingsScreen(contentPadding = contentPadding, themeViewModel = themeViewModel)
+            SettingsScreen(
+                contentPadding = contentPadding,
+                themeViewModel = themeViewModel,
+                onOpenPlayerSettings = { navController.navigate(Routes.PLAYER_SETTINGS) },
+            )
+        }
+        composable(Routes.PLAYER_SETTINGS) {
+            PlayerSettingsScreen(
+                contentPadding = contentPadding,
+                onBack = { navController.popBackStack() },
+            )
         }
         composable(Routes.SECTION) {
             SectionScreen(

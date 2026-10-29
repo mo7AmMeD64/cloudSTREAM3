@@ -337,4 +337,45 @@
     <string name="movie_status_rumored">إشاعة</string>
     <string name="movie_status_in_production">قيد الانتاج</string>
     <string name="movie_status_post_production">مابعد الانتاج</string>
+
+    <!-- إعدادات المشغل -->
+    <string name="settings_player">المشغل</string>
+    <string name="settings_player_title">إعدادات المشغل</string>
+    <string name="settings_player_summary">التشغيل، الإيماءات، فك تشفير الفيديو، التخزين المؤقت، الترجمة</string>
+    <string name="player_settings_title">المشغل</string>
+    <string name="player_double_tap_seek">النقر المزدوج للتقديم والترجيع</string>
+    <string name="player_double_tap_seek_summary">انقر نقرًا مزدوجًا على جوانب الشاشة للتقديم أو الترجيع</string>
+    <string name="player_double_tap_pause">النقر المزدوج للإيقاف المؤقت</string>
+    <string name="player_double_tap_pause_summary">انقر نقرًا مزدوجًا في وسط الشاشة للتشغيل أو الإيقاف المؤقت</string>
+    <string name="player_seek_time">مدة التقديم والترجيع</string>
+    <string name="player_seek_time_format">%d ثوانٍ</string>
+    <string name="player_autoplay_next">تشغيل الحلقة التالية تلقائيًا</string>
+    <string name="player_autoplay_next_summary">بدء تشغيل الحلقة التالية تلقائيًا عند انتهاء الحلقة الحالية</string>
+    <string name="player_auto_rotate">تدوير الفيديو تلقائيًا</string>
+    <string name="player_auto_rotate_summary">مطابقة اتجاه الشاشة لأبعاد الفيديو</string>
+    <string name="player_pip">صورة داخل صورة</string>
+    <string name="player_pip_summary">متابعة التشغيل في نافذة عائمة عند الخروج من التطبيق</string>
+
+    <string name="settings_video">الفيديو</string>
+    <string name="player_decoding_mode">وضع فك التشفير</string>
+    <string name="player_decoding_auto">تلقائي</string>
+    <string name="player_decoding_hw_sw">عتاد + برمجي (تفضيل العتاد)</string>
+    <string name="player_decoding_hw_only">عتاد فقط</string>
+    <string name="player_decoding_sw_hw">برمجي + عتاد (تفضيل البرمجي)</string>
+    <string name="player_buffer_size">حجم التخزين المؤقت للذاكرة (RAM)</string>
+    <string name="player_buffer_disk">حجم التخزين المؤقت للقرص</string>
+    <string name="player_buffer_length">مدة التخزين المؤقت</string>
+    <string name="player_buffer_default">الافتراضي</string>
+    <string name="player_buffer_mb_format">%d ميغابايت</string>
+    <string name="player_buffer_sec_format">%d ثوانٍ</string>
+    <string name="player_preview_seekbar">معاينة شريط التقديم</string>
+    <string name="player_preview_seekbar_summary">عرض إطارات المعاينة أثناء التمرير على الشريط الزمني</string>
+
+    <string name="settings_subtitles_audio">الترجمة والصوت</string>
+    <string name="player_subtitles_encoding">ترميز الترجمة</string>
+    <string name="player_subtitles_encoding_summary">ترميز الأحرف المستخدم لنصوص الترجمة</string>
+    <string name="player_preferred_audio_lang">لغة الصوت المفضلة</string>
+    <string name="player_preferred_audio_lang_summary">المسار الصوتي الافتراضي عند توفر عدة لغات</string>
+    <string name="player_subtitles_style">مظهر الترجمة</string>
+    <string name="player_subtitles_style_summary">تخصيص خط ولون وحجم وخلفية الترجمة</string>
 </resources>

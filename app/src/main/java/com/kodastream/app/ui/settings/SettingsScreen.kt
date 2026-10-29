@@ -33,6 +33,7 @@ import androidx.compose.material.icons.rounded.Folder
 import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Palette
+import androidx.compose.material.icons.rounded.PlayCircle
 import androidx.compose.material.icons.rounded.Restore
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Security
@@ -87,6 +88,7 @@ private const val DONATE_URL = "https://creators.sa/x3onq"
 fun SettingsScreen(
     contentPadding: PaddingValues,
     themeViewModel: ThemeViewModel,
+    onOpenPlayerSettings: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val uriHandler = LocalUriHandler.current
@@ -256,6 +258,19 @@ fun SettingsScreen(
                         title = stringResource(R.string.settings_palette_style),
                         supporting = stringResource(themeViewModel.style.labelRes),
                         onClick = { styleDialog = true },
+                    )
+                }
+            }
+
+            item(key = "player") {
+                SettingsGroup(stringResource(R.string.settings_player)) {
+                    NavigationRow(
+                        index = 0,
+                        count = 1,
+                        icon = Icons.Rounded.PlayCircle,
+                        title = stringResource(R.string.settings_player_title),
+                        supporting = stringResource(R.string.settings_player_summary),
+                        onClick = onOpenPlayerSettings,
                     )
                 }
             }
