@@ -67,6 +67,23 @@ class UpdateCheckerTest {
     }
 
     @Test
+    fun v07InstallIsOfferedV08() {
+        // The shipped v0.8.0 release, as /releases/latest returns it.
+        val update = offered(
+            release = release(
+                tag = "v0.8.0",
+                apkUrl = "https://github.com/mo7AmMeD64/cloudSTREAM3/releases/download/v0.8.0/cloud3-105.apk",
+            ),
+            current = "0.7.0",
+        )
+        assertEquals("0.8.0", update?.version)
+        assertEquals(
+            "https://github.com/mo7AmMeD64/cloudSTREAM3/releases/download/v0.8.0/cloud3-105.apk",
+            update?.url,
+        )
+    }
+
+    @Test
     fun skippedVersionIsNotOffered() {
         assertNull(offered(skipped = "0.6.0"))
     }
