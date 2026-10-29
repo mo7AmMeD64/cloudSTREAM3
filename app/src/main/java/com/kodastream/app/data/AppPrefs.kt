@@ -20,7 +20,7 @@ object AppPrefs {
     private const val KEY_SPEED = "playback_speed"
     private const val KEY_PAUSE_HISTORY = "pause_history"
     private const val KEY_DL_TREE = "download_tree_uri"
-    private const val KEY_DL_WIFI = "download_wifi_only"
+    const val KEY_DL_WIFI = "download_wifi_only"
     private const val KEY_DL_MAX = "download_max_concurrent"
     private const val KEY_DL_SERVER = "download_last_server"
     private const val KEY_DL_FOLDERS_DONE = "download_folders_migrated"
@@ -168,7 +168,7 @@ object AppPrefs {
         prefs(context).edit { putString(KEY_EXTERNAL_MANAGER, packageName) }
     }
 
-    private fun prefs(context: Context) = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+    internal fun prefs(context: Context) = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
     fun selectedProvider(context: Context): String? = prefs(context).getString(KEY_PROVIDER, null)
 

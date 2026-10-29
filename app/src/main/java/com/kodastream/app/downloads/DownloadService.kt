@@ -7,9 +7,13 @@ import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.content.SharedPreferences
 import android.content.pm.ServiceInfo
-import android.net.Uri
 import android.net.ConnectivityManager
+import android.net.Network
+import android.net.NetworkCapabilities
+import android.net.NetworkRequest
+import android.net.Uri
 import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
@@ -85,6 +89,36 @@ class DownloadService : Service() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val active = HashMap<String, Job>()
     private lateinit var notifications: NotificationManager
+    private var connectivityManager: ConnectivityManager? = null
+    private var networkCallbackRegistered = false
+
+    private val networkCallback = object : ConnectivityManager.NetworkCallback() {
+        override fun onAvailable(network: Network) {
+            val cm = connectivityManager ?: getSystemService(ConnectivityManager::class.java)
+            val caps = cm?.getNetworkCapabilities(network)
+            if (caps == null || caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)) {
+                pump()
+            }
+        }
+
+        override fun onCapabilitiesChanged(network: Network, networkCapabilities: NetworkCapabilities) {
+            if (networkCapabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)) {
+                pump()
+            }
+        }
+
+        override fun onLost(network: Network) {
+            if (AppPrefs.downloadWifiOnly(this@DownloadService)) {
+                pump()
+            }
+        }
+    }
+
+    private val prefListener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+        if (key == AppPrefs.KEY_DL_WIFI) {
+            pump()
+        }
+    }
 
     /**
      * The same client the player would play this link through: the engine's
@@ -126,6 +160,19 @@ class DownloadService : Service() {
             NotificationManager.IMPORTANCE_LOW,
         )
         notifications.createNotificationChannel(channel)
+
+        connectivityManager = getSystemService(ConnectivityManager::class.java)
+        try {
+            val request = NetworkRequest.Builder()
+                .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
+                .build()
+            connectivityManager?.registerNetworkCallback(request, networkCallback)
+            networkCallbackRegistered = true
+        } catch (e: Exception) {
+            logWarning("DownloadService", "Failed to register network callback: ${e.message}")
+        }
+
+        AppPrefs.prefs(this).registerOnSharedPreferenceChangeListener(prefListener)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -193,6 +240,14 @@ class DownloadService : Service() {
     }
 
     override fun onDestroy() {
+        AppPrefs.prefs(this).unregisterOnSharedPreferenceChangeListener(prefListener)
+        if (networkCallbackRegistered) {
+            try {
+                connectivityManager?.unregisterNetworkCallback(networkCallback)
+            } catch (_: Exception) {
+            }
+            networkCallbackRegistered = false
+        }
         scope.cancel()
         super.onDestroy()
     }
@@ -210,41 +265,50 @@ class DownloadService : Service() {
 
     /** Starts queued work up to the concurrency limit, then stops when idle. */
     private fun pump() {
-        // A service restart adopts records stuck mid-download.
-        DownloadStore.current(this)
-            .filter { it.state == DownloadStore.STATE_DOWNLOADING && it.id !in active }
-            .forEach { DownloadStore.update(this, it.id) { d -> d.copy(state = DownloadStore.STATE_QUEUED) } }
+        synchronized(active) {
+            // A service restart adopts records stuck mid-download.
+            DownloadStore.current(this)
+                .filter { it.state == DownloadStore.STATE_DOWNLOADING && it.id !in active }
+                .forEach { DownloadStore.update(this, it.id) { d -> d.copy(state = DownloadStore.STATE_QUEUED) } }
 
-        val wifiOnly = AppPrefs.downloadWifiOnly(this)
-        val max = AppPrefs.downloadMaxConcurrent(this)
-        val onWifi = isOnWifi()
+            val wifiOnly = AppPrefs.downloadWifiOnly(this)
+            val max = AppPrefs.downloadMaxConcurrent(this)
+            val onWifi = isOnWifi()
 
-        DownloadStore.current(this)
-            .filter { it.state == DownloadStore.STATE_QUEUED }
-            .takeWhile { active.size < max && (!wifiOnly || onWifi) }
-            .forEach { download ->
-                active[download.id] = scope.launch {
-                    try {
-                        runDownload(download.id)
-                    } catch (e: CancellationException) {
-                        throw e
-                    } catch (t: Throwable) {
-                        DownloadStore.update(this@DownloadService, download.id) { d ->
-                            d.copy(state = DownloadStore.STATE_FAILED, error = t.message)
-                        }
-                    } finally {
-                        active.remove(download.id)
-                        pump()
-                    }
-                }
+            if (wifiOnly && !onWifi && active.isNotEmpty()) {
+                active.values.toList().forEach { it.cancel() }
+                return
             }
 
-        updateNotification()
-        if (active.isEmpty()) {
-            val anyQueued = DownloadStore.current(this).any { it.state == DownloadStore.STATE_QUEUED }
-            if (!anyQueued) {
-                stopForeground(STOP_FOREGROUND_REMOVE)
-                stopSelf()
+            DownloadStore.current(this)
+                .filter { it.state == DownloadStore.STATE_QUEUED }
+                .takeWhile { active.size < max && (!wifiOnly || onWifi) }
+                .forEach { download ->
+                    active[download.id] = scope.launch {
+                        try {
+                            runDownload(download.id)
+                        } catch (e: CancellationException) {
+                            throw e
+                        } catch (t: Throwable) {
+                            DownloadStore.update(this@DownloadService, download.id) { d ->
+                                d.copy(state = DownloadStore.STATE_FAILED, error = t.message)
+                            }
+                        } finally {
+                            synchronized(active) {
+                                active.remove(download.id)
+                            }
+                            pump()
+                        }
+                    }
+                }
+
+            updateNotification()
+            if (active.isEmpty()) {
+                val anyQueued = DownloadStore.current(this).any { it.state == DownloadStore.STATE_QUEUED }
+                if (!anyQueued) {
+                    stopForeground(STOP_FOREGROUND_REMOVE)
+                    stopSelf()
+                }
             }
         }
     }
@@ -294,6 +358,11 @@ class DownloadService : Service() {
                 updateNotification()
                 return
             } catch (t: Throwable) {
+                if (AppPrefs.downloadWifiOnly(this) && !isOnWifi()) {
+                    DownloadStore.update(this, id) { d -> d.copy(state = DownloadStore.STATE_QUEUED) }
+                    updateNotification()
+                    return
+                }
                 attempt++
                 if (attempt >= 5) {
                     DownloadStore.update(this, id) { d ->
@@ -608,15 +677,36 @@ class DownloadService : Service() {
             .setOngoing(true)
             .setContentTitle(getString(R.string.download_notification_channel))
 
-        if (running.isEmpty()) {
-            builder.setContentText(getString(R.string.download_queued))
-        } else {
-            val first = running.first()
-            val fraction = first.progressFraction
-            builder.setContentTitle(first.title)
-                .setProgress(100, (fraction.coerceAtLeast(0f) * 100).toInt(), fraction < 0f)
-                .setContentText(getString(R.string.download_notification_count, running.size + queued))
+        val wifiOnly = AppPrefs.downloadWifiOnly(this)
+        val onWifi = isOnWifi()
+        val notifState = resolveDownloadNotificationState(
+            hasRunning = running.isNotEmpty(),
+            hasQueued = queued > 0,
+            wifiOnly = wifiOnly,
+            onWifi = onWifi,
+        )
+
+        when (notifState) {
+            DownloadNotificationState.WAITING_FOR_WIFI -> {
+                val first = running.firstOrNull() ?: all.firstOrNull { it.state == DownloadStore.STATE_QUEUED }
+                if (first != null) {
+                    builder.setContentTitle(first.title)
+                }
+                builder.setContentText(getString(R.string.download_waiting_wifi))
+            }
+            DownloadNotificationState.DOWNLOADING -> {
+                val first = running.first()
+                val fraction = first.progressFraction
+                builder.setContentTitle(first.title)
+                    .setProgress(100, (fraction.coerceAtLeast(0f) * 100).toInt(), fraction < 0f)
+                    .setContentText(getString(R.string.download_notification_count, running.size + queued))
+            }
+            DownloadNotificationState.QUEUED,
+            DownloadNotificationState.IDLE -> {
+                builder.setContentText(getString(R.string.download_queued))
+            }
         }
+
         if (running.isNotEmpty() || queued > 0) {
             builder.addAction(
                 actionPending(
@@ -762,4 +852,40 @@ private fun extractVariantUrl(variant: HlsPlaylistParser.Variant): String? {
     }
     return Regex("""url=([^,\)]+)""").find(variant.toString())?.groupValues?.get(1)
 }
+
+enum class DownloadNotificationState {
+    IDLE,
+    WAITING_FOR_WIFI,
+    DOWNLOADING,
+    QUEUED,
+}
+
+/**
+ * Pure helper to resolve the foreground notification display state based on running/queued counts
+ * and Wi-Fi gating conditions.
+ */
+internal fun resolveDownloadNotificationState(
+    hasRunning: Boolean,
+    hasQueued: Boolean,
+    wifiOnly: Boolean,
+    onWifi: Boolean,
+): DownloadNotificationState {
+    if (wifiOnly && !onWifi && (hasRunning || hasQueued)) {
+        return DownloadNotificationState.WAITING_FOR_WIFI
+    }
+    if (hasRunning) {
+        return DownloadNotificationState.DOWNLOADING
+    }
+    if (hasQueued) {
+        return DownloadNotificationState.QUEUED
+    }
+    return DownloadNotificationState.IDLE
+}
+
+/**
+ * Pure helper to check if downloads should be blocked waiting for Wi-Fi.
+ */
+internal fun shouldBlockForWifi(wifiOnly: Boolean, onWifi: Boolean): Boolean =
+    wifiOnly && !onWifi
+
 

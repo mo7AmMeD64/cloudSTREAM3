@@ -231,6 +231,7 @@
     <string name="download_failed">فشل</string>
     <string name="download_paused">متوقف مؤقتًا</string>
     <string name="download_queued">في قائمة الانتظار</string>
+    <string name="download_waiting_wifi">في انتظار الواي فاي</string>
     <string name="download_downloading">جارٍ التنزيل %d%%</string>
     <string name="download_done">تم التنزيل</string>
     <string name="downloads_empty_title">لا توجد تنزيلات بعد</string>

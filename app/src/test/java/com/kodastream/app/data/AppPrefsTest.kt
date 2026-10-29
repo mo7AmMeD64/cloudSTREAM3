@@ -8,4 +8,9 @@ class AppPrefsTest {
     fun allowInvalidSslKeyConstant() {
         assertEquals("allow_invalid_ssl", AppPrefs.KEY_ALLOW_INVALID_SSL)
     }
+
+    @Test
+    fun downloadWifiOnlyKeyConstant() {
+        assertEquals("download_wifi_only", AppPrefs.KEY_DL_WIFI)
+    }
 }
