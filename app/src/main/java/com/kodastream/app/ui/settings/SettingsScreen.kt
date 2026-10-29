@@ -35,6 +35,7 @@ import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.Restore
 import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material.icons.rounded.Security
 import androidx.compose.material.icons.rounded.Speed
 import androidx.compose.material.icons.rounded.Translate
 import androidx.compose.material.icons.rounded.Tune
@@ -93,6 +94,7 @@ fun SettingsScreen(
     var navPosition by remember { mutableStateOf(AppPrefs.navPosition(context)) }
     var pauseHistory by remember { mutableStateOf(AppPrefs.pauseHistory(context)) }
     var keepScreenOn by remember { mutableStateOf(AppPrefs.keepScreenOn(context)) }
+    var allowInvalidSsl by remember { mutableStateOf(AppPrefs.allowInvalidSsl(context)) }
     var holdToSpeedUp by remember { mutableStateOf(AppPrefs.holdToSpeedUp(context)) }
     var downloadWifiOnly by remember { mutableStateOf(AppPrefs.downloadWifiOnly(context)) }
     var downloadConcurrent by remember { mutableStateOf(AppPrefs.downloadMaxConcurrent(context)) }
@@ -262,7 +264,7 @@ fun SettingsScreen(
                 SettingsGroup(stringResource(R.string.settings_playback)) {
                     SwitchRow(
                         index = 0,
-                        count = 2,
+                        count = 3,
                         icon = Icons.Rounded.Speed,
                         title = stringResource(R.string.settings_keep_screen_on),
                         supporting = stringResource(R.string.settings_keep_screen_on_summary),
@@ -274,7 +276,19 @@ fun SettingsScreen(
                     )
                     SwitchRow(
                         index = 1,
-                        count = 2,
+                        count = 3,
+                        icon = Icons.Rounded.Security,
+                        title = stringResource(R.string.settings_allow_invalid_ssl),
+                        supporting = stringResource(R.string.settings_allow_invalid_ssl_summary),
+                        checked = allowInvalidSsl,
+                        onCheckedChange = { value ->
+                            AppPrefs.setAllowInvalidSsl(context, value)
+                            allowInvalidSsl = value
+                        },
+                    )
+                    SwitchRow(
+                        index = 2,
+                        count = 3,
                         icon = Icons.Rounded.FastForward,
                         title = stringResource(R.string.settings_hold_speedup),
                         supporting = stringResource(R.string.settings_hold_speedup_summary),

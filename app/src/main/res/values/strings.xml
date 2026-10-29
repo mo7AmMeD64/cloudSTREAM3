@@ -250,6 +250,8 @@
     <string name="settings_playback">Playback</string>
     <string name="settings_keep_screen_on">Keep screen on</string>
     <string name="settings_keep_screen_on_summary">Prevents the screen from turning off while watching</string>
+    <string name="settings_allow_invalid_ssl">Allow invalid SSL</string>
+    <string name="settings_allow_invalid_ssl_summary">Allow the player to accept invalid SSL certificates. Only enable if a source fails with SSL errors. Reduces security.</string>
     <string name="settings_hold_speedup">Hold to speed up</string>
     <string name="settings_hold_speedup_summary">Press and hold the video to play at 2x; release to go back.</string>
     <string name="downloads_episodes_count">%d episodes</string>

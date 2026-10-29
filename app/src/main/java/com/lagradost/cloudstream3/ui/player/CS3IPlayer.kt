@@ -80,6 +80,7 @@ import com.lagradost.cloudstream3.CloudStreamApp.Companion.setKey
 import com.lagradost.cloudstream3.CommonActivity.activity
 import com.lagradost.cloudstream3.ErrorLoadingException
 import com.kodastream.app.R
+import com.kodastream.app.data.AppPrefs
 import com.lagradost.cloudstream3.TvType
 import com.lagradost.cloudstream3.USER_AGENT
 import com.lagradost.cloudstream3.app
@@ -157,7 +158,7 @@ class CS3IPlayer : IPlayer {
             it.isCommandAvailable(Player.COMMAND_GET_CURRENT_MEDIA_ITEM) && it.isCurrentMediaItemSeekable
         } ?: false
 
-    private var ignoreSSL: Boolean = true
+    private var ignoreSSL: Boolean = false
     private var playBackSpeed: Float = 1.0f
 
     /**
@@ -1700,6 +1701,7 @@ class CS3IPlayer : IPlayer {
 
             currentLink = link
 
+            ignoreSSL = AppPrefs.allowInvalidSsl(context)
             if (ignoreSSL) {
                 // Disables ssl check
                 val sslContext: SSLContext = SSLContext.getInstance("TLS")

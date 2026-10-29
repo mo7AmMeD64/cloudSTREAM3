@@ -26,6 +26,7 @@ object AppPrefs {
     private const val KEY_DL_FOLDERS_DONE = "download_folders_migrated"
     private const val KEY_EXTERNAL_MANAGER = "external_download_manager"
     private const val KEY_KEEP_SCREEN_ON = "keep_screen_on"
+    const val KEY_ALLOW_INVALID_SSL = "allow_invalid_ssl"
     private const val KEY_POSTER_SIZE = "poster_size_step"
     private const val KEY_SETUP_DONE = "setup_done"
     private const val KEY_APP_LANGUAGE = "app_language"
@@ -135,6 +136,13 @@ object AppPrefs {
 
     fun setKeepScreenOn(context: Context, value: Boolean) {
         prefs(context).edit { putBoolean(KEY_KEEP_SCREEN_ON, value) }
+    }
+
+    /** Allow the player to accept invalid SSL certificates. Off by default for security. */
+    fun allowInvalidSsl(context: Context): Boolean = prefs(context).getBoolean(KEY_ALLOW_INVALID_SSL, false)
+
+    fun setAllowInvalidSsl(context: Context, value: Boolean) {
+        prefs(context).edit { putBoolean(KEY_ALLOW_INVALID_SSL, value) }
     }
 
     /** The server name last picked in the download card, preselected next time. */

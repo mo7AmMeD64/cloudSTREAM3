@@ -247,6 +247,8 @@
     <string name="settings_playback">التشغيل</string>
     <string name="settings_keep_screen_on">إبقاء الشاشة قيد التشغيل</string>
     <string name="settings_keep_screen_on_summary">يمنع انطفاء الشاشة أثناء المشاهدة</string>
+    <string name="settings_allow_invalid_ssl">السماح بشهادات SSL غير الصالحة</string>
+    <string name="settings_allow_invalid_ssl_summary">السماح للمشغل بقبول شهادات SSL غير الصالحة. فعّل هذا الخيار فقط إذا فشل المصدر بسبب أخطاء SSL. يقلل مستوى الأمان.</string>
     <string name="settings_hold_speedup">اضغط مطولًا للسرعة</string>
     <string name="settings_hold_speedup_summary">اضغط مطولًا على الفيديو للتشغيل بسرعة 2x، واتركه للعودة.</string>
     <string name="downloads_episodes_count">%d حلقة</string>
