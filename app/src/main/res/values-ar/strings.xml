@@ -62,6 +62,8 @@
     <string name="season_n">الموسم %1$d</string>
     <string name="episode_n">الحلقة %1$d</string>
     <string name="episode_badge">ح%1$d</string>
+    <string name="season_episode_badge">م%1$d ح%2$d</string>
+    <string name="cd_season_episode">الموسم %1$d، الحلقة %2$d</string>
     <string name="latest">الأحدث</string>
     <string name="minutes_short">%1$d د</string>
     <string name="type_not_supported">هذا النوع من المحتوى (مثل التورنت) لا يمكن تشغيله في هذا الإصدار.</string>

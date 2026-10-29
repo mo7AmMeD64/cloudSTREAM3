@@ -65,6 +65,8 @@
     <string name="season_n">Season %1$d</string>
     <string name="episode_n">Episode %1$d</string>
     <string name="episode_badge">E%1$d</string>
+    <string name="season_episode_badge">S%1$d E%2$d</string>
+    <string name="cd_season_episode">Season %1$d, episode %2$d</string>
     <string name="latest">Latest</string>
     <string name="minutes_short">%1$d min</string>
     <string name="type_not_supported">This kind of content (for example torrents) cannot be played in this version.</string>

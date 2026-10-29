@@ -56,6 +56,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.unit.dp
 import com.kodastream.app.R
 import com.kodastream.app.data.AppPrefs
@@ -72,6 +74,9 @@ import com.kodastream.app.ui.components.PosterTitle
 import com.kodastream.app.ui.components.RemoteImage
 import com.kodastream.app.ui.components.SectionHeader
 import com.kodastream.app.ui.components.bouncySpring
+import com.kodastream.app.ui.components.episodeBadge
+import com.kodastream.app.ui.components.episodeBadgeDescription
+import com.kodastream.app.ui.components.episodeBadgeLabel
 import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.LocalDate
@@ -311,6 +316,7 @@ private fun HistoryCard(
         animationSpec = bouncySpring(),
         label = "historyPress",
     )
+    val badge = episodeBadge(entry.season, entry.episode)
 
     Surface(
         modifier = Modifier
@@ -342,9 +348,11 @@ private fun HistoryCard(
                 // The episode label sits on a photograph, so a scrim keeps it
                 // readable in every palette - the same reasoning as the score
                 // badge on posters.
-                if (entry.season != null || entry.episode != null) {
+                if (badge != null) {
+                    val badgeLabel = episodeBadgeLabel(badge)
+                    val badgeDescription = episodeBadgeDescription(badge)
                     Text(
-                        text = "S${entry.season ?: 1} E${entry.episode ?: 1}",
+                        text = badgeLabel,
                         style = MaterialTheme.typography.labelSmall,
                         color = Color.White,
                         modifier = Modifier
@@ -352,7 +360,8 @@ private fun HistoryCard(
                             .padding(6.dp)
                             .clip(RoundedCornerShape(4.dp))
                             .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.8f))
-                            .padding(horizontal = 6.dp, vertical = 2.dp),
+                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                            .clearAndSetSemantics { contentDescription = badgeDescription },
                     )
                 }
 

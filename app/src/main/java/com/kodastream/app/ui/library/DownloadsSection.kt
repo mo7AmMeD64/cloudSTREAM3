@@ -52,6 +52,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.kodastream.app.R
@@ -66,6 +68,9 @@ import com.kodastream.app.downloads.DownloadService
 import com.kodastream.app.ui.components.EmptyBox
 import com.kodastream.app.ui.components.RemoteImage
 import com.kodastream.app.ui.components.SectionHeader
+import com.kodastream.app.ui.components.episodeBadge
+import com.kodastream.app.ui.components.episodeBadgeDescription
+import com.kodastream.app.ui.components.episodeBadgeLabel
 
 /**
  * The Library's Downloads tab: every downloaded episode and movie, series
@@ -447,11 +452,7 @@ private fun DownloadRow(
     val active = download.state == DownloadStore.STATE_DOWNLOADING ||
         download.state == DownloadStore.STATE_QUEUED
 
-    val episodeLabel = if (download.season != null || download.episode != null) {
-        "S${download.season ?: 1} E${download.episode ?: 1}"
-    } else {
-        null
-    }
+    val badge = episodeBadge(download.season, download.episode)
 
     Surface(
         shape = MaterialTheme.shapes.medium,
@@ -476,11 +477,16 @@ private fun DownloadRow(
                         .clip(MaterialTheme.shapes.small),
                 )
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    if (episodeLabel != null) {
+                    if (badge != null) {
+                        val episodeLabel = episodeBadgeLabel(badge)
+                        val episodeDescription = episodeBadgeDescription(badge)
                         Text(
                             text = episodeLabel,
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.clearAndSetSemantics {
+                                contentDescription = episodeDescription
+                            },
                         )
                     }
                     Text(
