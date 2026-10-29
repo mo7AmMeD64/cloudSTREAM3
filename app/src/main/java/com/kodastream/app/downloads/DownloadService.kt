@@ -347,7 +347,7 @@ class DownloadService : Service() {
             // Enough room? When the size is unknown, demand a 100MB cushion.
             val free = DownloadLocations.freeBytes(this)
             val remaining = if (total > 0) total - startOffset else 100L * 1024 * 1024
-            if (free in 0 until remaining) throw NotEnoughSpaceException()
+            if (DownloadLocations.shouldBlockForSpace(free, remaining)) throw NotEnoughSpaceException()
 
             DownloadStore.update(this, id) { d ->
                 d.copy(fileUri = uri, receivedBytes = startOffset, totalBytes = total)
@@ -431,7 +431,8 @@ class DownloadService : Service() {
         }
         if (segments.isEmpty()) throw IOException("No segments in the playlist")
 
-        if (DownloadLocations.freeBytes(this) in 0 until 50L * 1024 * 1024) throw NotEnoughSpaceException()
+        val free = DownloadLocations.freeBytes(this)
+        if (DownloadLocations.shouldBlockForSpace(free, 50L * 1024 * 1024)) throw NotEnoughSpaceException()
 
         DownloadStore.update(this, id) { d -> d.copy(fileUri = uri, hlsTotal = segments.size) }
 

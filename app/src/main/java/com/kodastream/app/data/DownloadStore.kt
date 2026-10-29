@@ -3,7 +3,10 @@ package com.kodastream.app.data
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
 import android.os.Environment
+import android.os.StatFs
+import android.os.storage.StorageManager
 import android.provider.DocumentsContract
 import androidx.documentfile.provider.DocumentFile
 import com.kodastream.app.R
@@ -417,7 +420,95 @@ object DownloadLocations {
         }
     }
 
-    /** Best-effort free space at the download location. */
-    fun freeBytes(context: Context): Long =
-        validTree(context)?.let { defaultDir(context).usableSpace } ?: defaultDir(context).usableSpace
+    /** Best-effort free space at the download location. Returns -1L when unknown. */
+    fun freeBytes(context: Context): Long = try {
+        val treeUri = AppPrefs.downloadTreeUri(context)
+        if (treeUri == null) {
+            defaultDir(context).usableSpace
+        } else {
+            freeBytesForTree(context, treeUri)
+        }
+    } catch (_: Throwable) {
+        -1L
+    }
+
+    private fun freeBytesForTree(context: Context, treeUriString: String): Long = try {
+        val uri = Uri.parse(treeUriString)
+        val docId = try {
+            DocumentsContract.getTreeDocumentId(uri)
+        } catch (_: Throwable) {
+            null
+        }
+
+        val volumeId = docId?.substringBefore(':')
+
+        if (volumeId.equals("primary", ignoreCase = true)) {
+            try {
+                @Suppress("DEPRECATION")
+                val primaryDir = Environment.getExternalStorageDirectory()
+                StatFs(primaryDir.path).availableBytes
+            } catch (_: Throwable) {
+                queryStorageManager(context, volumeId)
+            }
+        } else {
+            queryStorageManager(context, volumeId)
+        }
+    } catch (_: Throwable) {
+        -1L
+    }
+
+    private fun queryStorageManager(context: Context, volumeId: String?): Long = try {
+        val sm = context.getSystemService(StorageManager::class.java)
+        if (sm == null) {
+            -1L
+        } else if (volumeId.equals("primary", ignoreCase = true)) {
+            sm.getAllocatableBytes(StorageManager.UUID_DEFAULT)
+        } else if (!volumeId.isNullOrBlank()) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                val volume = sm.storageVolumes.firstOrNull { it.uuid.equals(volumeId, ignoreCase = true) }
+                val dir = volume?.directory
+                if (dir != null) {
+                    try {
+                        val uuid = sm.getUuidForPath(dir)
+                        sm.getAllocatableBytes(uuid)
+                    } catch (_: Throwable) {
+                        StatFs(dir.path).availableBytes
+                    }
+                } else {
+                    fallbackVolumeBytes(context, sm, volumeId)
+                }
+            } else {
+                fallbackVolumeBytes(context, sm, volumeId)
+            }
+        } else {
+            -1L
+        }
+    } catch (_: Throwable) {
+        -1L
+    }
+
+    private fun fallbackVolumeBytes(context: Context, sm: StorageManager, volumeId: String): Long = try {
+        val targetFile = context.getExternalFilesDirs(null).firstOrNull { file ->
+            file != null && (
+                sm.getStorageVolume(file)?.uuid.equals(volumeId, ignoreCase = true) ||
+                file.absolutePath.contains(volumeId, ignoreCase = true)
+            )
+        }
+        if (targetFile != null) {
+            try {
+                val uuid = sm.getUuidForPath(targetFile)
+                sm.getAllocatableBytes(uuid)
+            } catch (_: Throwable) {
+                StatFs(targetFile.path).availableBytes
+            }
+        } else {
+            -1L
+        }
+    } catch (_: Throwable) {
+        -1L
+    }
+
+    /** Pure decision logic: returns true when free space is known and insufficient. */
+    fun shouldBlockForSpace(freeBytes: Long, remainingBytes: Long): Boolean =
+        freeBytes in 0 until remainingBytes
 }
