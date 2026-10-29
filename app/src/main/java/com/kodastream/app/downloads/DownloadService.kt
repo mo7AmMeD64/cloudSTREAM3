@@ -386,7 +386,7 @@ class DownloadService : Service() {
     /** An HLS stream: fetch the playlist, download every segment (AES-128 aware), append to one .ts file. */
     private fun downloadHls(id: String, job: Job?) {
         val record = DownloadStore.find(this, id) ?: return
-        val resume = record.hlsSegment > 0
+        val resume = record.hlsSegment > 0 || record.hlsInitWritten
         val uri = DownloadLocations.ensureTarget(this, record, fresh = !resume)
             ?: throw IOException("Cannot create the target file")
 
@@ -424,13 +424,26 @@ class DownloadService : Service() {
         }
         if (segments.isEmpty()) throw IOException("No segments in the playlist")
 
+        val mapUri = extractMapUri(text)
+        val initUrl = mapUri?.let { absolute(mediaPlaylistUrl, it) }
+
         val free = DownloadLocations.freeBytes(this)
         if (DownloadLocations.shouldBlockForSpace(free, 50L * 1024 * 1024)) throw NotEnoughSpaceException()
 
         DownloadStore.update(this, id) { d -> d.copy(fileUri = uri, hlsTotal = segments.size) }
 
-        var index = if (resume) record.hlsSegment else 0
+        var index = if (record.hlsSegment > 0) record.hlsSegment else 0
         DownloadLocations.openOutput(this, uri, append = resume).use { output ->
+            if (initUrl != null && !record.hlsInitWritten && record.hlsSegment == 0) {
+                checkAlive(job)
+                val initBytes = fetchBytes(initUrl, record)
+                output.write(initBytes)
+                output.flush()
+                DownloadStore.update(this, id) { d ->
+                    d.copy(hlsInitWritten = true, receivedBytes = d.receivedBytes + initBytes.size)
+                }
+            }
+
             while (index < segments.size) {
                 checkAlive(job)
                 val segment = segments[index]
@@ -620,6 +633,24 @@ class DownloadService : Service() {
             // POST_NOTIFICATIONS denied: the work continues, unseen.
         }
     }
+}
+
+/**
+ * Extracts the URI attribute from the first #EXT-X-MAP tag in the playlist.
+ * Used for fMP4 HLS streams that require an initialization segment before media segments.
+ * Returns null if no #EXT-X-MAP tag or valid URI attribute is found.
+ */
+internal fun extractMapUri(playlistText: String): String? {
+    for (line in playlistText.lineSequence()) {
+        val trimmed = line.trim()
+        if (trimmed.startsWith("#EXT-X-MAP")) {
+            val uri = Regex("""\bURI\s*=\s*"([^"]+)"""").find(trimmed)?.groupValues?.get(1)
+            if (!uri.isNullOrEmpty()) {
+                return uri
+            }
+        }
+    }
+    return null
 }
 
 /**

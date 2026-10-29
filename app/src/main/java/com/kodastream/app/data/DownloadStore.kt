@@ -73,6 +73,7 @@ object DownloadStore {
         /** Where an interrupted HLS download continues from. */
         val hlsSegment: Int = 0,
         val hlsTotal: Int = 0,
+        val hlsInitWritten: Boolean = false,
         val error: String? = null,
         val createdAt: Long = 0,
     ) {
