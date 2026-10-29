@@ -35,6 +35,7 @@ import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.Restore
 import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material.icons.rounded.Send
 import androidx.compose.material.icons.rounded.Speed
 import androidx.compose.material.icons.rounded.Translate
 import androidx.compose.material.icons.rounded.Tune
@@ -81,6 +82,7 @@ import com.kodastream.app.ui.theme.contrastInk
 
 private const val GITHUB_URL = "https://github.com/mo7AmMeD64/cloudSTREAM3"
 private const val DONATE_URL = "https://creators.sa/x3onq"
+private const val TELEGRAM_URL = "https://t.me/fullappk"
 
 @Composable
 fun SettingsScreen(
@@ -391,7 +393,7 @@ fun SettingsScreen(
 
             item(key = "about") {
                 SettingsGroup(stringResource(R.string.settings_about)) {
-                    val count = 4
+                    val count = 5
                     InfoRow(
                         index = 0,
                         count = count,
@@ -415,6 +417,14 @@ fun SettingsScreen(
                         title = stringResource(R.string.settings_donate_title),
                         supporting = stringResource(R.string.settings_donate_summary),
                         onClick = { uriHandler.openUri(DONATE_URL) },
+                    )
+                    NavigationRow(
+                        index = 4,
+                        count = count,
+                        icon = Icons.Rounded.Send,
+                        title = stringResource(R.string.settings_telegram_title),
+                        supporting = stringResource(R.string.settings_telegram_summary),
+                        onClick = { uriHandler.openUri(TELEGRAM_URL) },
                     )
                 }
             }

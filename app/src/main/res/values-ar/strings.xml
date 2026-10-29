@@ -139,6 +139,8 @@
     <string name="settings_github_summary">github.com/mo7AmMeD64/cloudSTREAM3</string>
     <string name="settings_donate_title">تبرع</string>
     <string name="settings_donate_summary">creators.sa/x3onq</string>
+    <string name="settings_telegram_title">انضم إلى قناتنا على تيليجرام</string>
+    <string name="settings_telegram_summary">t.me/fullappk</string>
     <string name="about_text">الشكل مأخوذ من واجهة كودا، ومحرك الإضافات مأخوذ من كلاودستريم وهو مرخّص بموجب GNU GPL v3، لذلك هذا التطبيق مفتوح المصدر بالترخيص نفسه.</string>
     <string name="about_disclaimer">لا يحتوي هذا التطبيق على أي محتوى ولا أي مزوّد. هو يحمّل فقط الإضافات التي تختار تثبيتها، وأنت المسؤول عمّا تشاهده.</string>
     <string name="about_nuvio">الواجهة السينمائية منقولة من Nuvio.</string>

@@ -142,6 +142,8 @@
     <string name="settings_github_summary">github.com/mo7AmMeD64/cloudSTREAM3</string>
     <string name="settings_donate_title">Donate</string>
     <string name="settings_donate_summary">creators.sa/x3onq</string>
+    <string name="settings_telegram_title">Join our Telegram Channel</string>
+    <string name="settings_telegram_summary">t.me/fullappk</string>
     <string name="about_text">The look comes from the Koda interface. The extension engine comes from CloudStream and is licensed under the GNU GPL v3, so this app is open source under the same license.</string>
     <string name="about_disclaimer">This app contains no content and no providers. It only loads extensions that you choose to install. You are responsible for what you watch.</string>
     <string name="about_nuvio">The cinematic hero is ported from Nuvio.</string>
