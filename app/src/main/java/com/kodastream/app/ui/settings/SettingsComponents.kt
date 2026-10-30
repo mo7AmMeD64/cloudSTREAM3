@@ -204,6 +204,7 @@ internal fun <T> ChoiceRow(
     selected: T,
     label: @Composable (T) -> String,
     onSelect: (T) -> Unit,
+    supporting: String? = null,
 ) {
     SegmentedListItem(
         shapes = ListItemDefaults.segmentedShapes(index = index, count = count),
@@ -211,13 +212,23 @@ internal fun <T> ChoiceRow(
         verticalAlignment = Alignment.Top,
         leadingContent = { RowIcon(icon) },
         supportingContent = {
-            ConnectedChoiceGroup(
-                options = options,
-                selected = selected,
-                label = label,
-                onSelect = onSelect,
-                modifier = Modifier.padding(top = 10.dp),
-            )
+            Column {
+                if (supporting != null) {
+                    Text(
+                        text = supporting,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 4.dp, bottom = 6.dp),
+                    )
+                }
+                ConnectedChoiceGroup(
+                    options = options,
+                    selected = selected,
+                    label = label,
+                    onSelect = onSelect,
+                    modifier = Modifier.padding(top = if (supporting != null) 0.dp else 10.dp),
+                )
+            }
         },
         modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),
     ) {

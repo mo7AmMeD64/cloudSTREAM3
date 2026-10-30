@@ -239,6 +239,7 @@
     <string name="download_wifi_only">التنزيل عبر الواي فاي فقط</string>
     <string name="download_wifi_summary">عند التشغيل، تنتظر التنزيلات اتصال الواي فاي.</string>
     <string name="download_max_concurrent">الحد الأقصى للتنزيلات المتزامنة</string>
+    <string name="download_max_concurrent_summary">قد تؤدي القيم الأعلى (مثل 3) إلى حظر عنوان IP من قِبل الخادم (HTTP 502) في بعض المزودات. يُفضل إبقاؤها على 2 للأمان.</string>
     <string name="cd_download">تنزيل</string>
     <string name="cd_download_pause">إيقاف التنزيل مؤقتًا</string>
     <string name="cd_download_resume">استئناف التنزيل</string>

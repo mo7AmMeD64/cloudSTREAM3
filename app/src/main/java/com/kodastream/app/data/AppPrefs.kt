@@ -135,10 +135,10 @@ object AppPrefs {
         prefs(context).edit { putBoolean(KEY_DL_WIFI, value) }
     }
 
-    fun downloadMaxConcurrent(context: Context): Int = prefs(context).getInt(KEY_DL_MAX, 3).coerceIn(1, 5)
+    fun downloadMaxConcurrent(context: Context): Int = prefs(context).getInt(KEY_DL_MAX, 2).coerceIn(1, 3)
 
     fun setDownloadMaxConcurrent(context: Context, value: Int) {
-        prefs(context).edit { putInt(KEY_DL_MAX, value.coerceIn(1, 5)) }
+        prefs(context).edit { putInt(KEY_DL_MAX, value.coerceIn(1, 3)) }
     }
 
     /** True once the one-time move into per-title folders has run. */

@@ -242,6 +242,7 @@
     <string name="download_wifi_only">Download over Wi-Fi only</string>
     <string name="download_wifi_summary">When on, downloads wait for Wi-Fi.</string>
     <string name="download_max_concurrent">Maximum simultaneous downloads</string>
+    <string name="download_max_concurrent_summary">Higher values (like 3) may trigger server IP bans (HTTP 502) on some providers. Keep at 2 for safety.</string>
     <string name="cd_download">Download</string>
     <string name="cd_download_pause">Pause download</string>
     <string name="cd_download_resume">Resume download</string>

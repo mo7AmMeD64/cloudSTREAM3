@@ -389,6 +389,10 @@ class DownloadService : Service() {
         // Transient failures retry quietly; the user only sees "failed" after
         // several attempts. State changes made meanwhile end the run.
         var attempt = 0
+        var overloadAttempt = 0
+        var lastReceivedBytes = record.receivedBytes
+        var lastHlsSegment = record.hlsSegment
+
         while (true) {
             try {
                 coroutineScope {
@@ -413,6 +417,38 @@ class DownloadService : Service() {
                 DownloadStore.updateState(this, id, DownloadStore.STATE_FAILED, getString(R.string.download_error_space))
                 updateNotification()
                 return
+            } catch (e: ServerOverloadException) {
+                val current = DownloadStore.find(this, id)
+                val currentBytes = current?.receivedBytes ?: 0L
+                val currentSegment = current?.hlsSegment ?: 0
+                if (currentBytes > lastReceivedBytes || currentSegment > lastHlsSegment) {
+                    overloadAttempt = 0
+                    lastReceivedBytes = currentBytes
+                    lastHlsSegment = currentSegment
+                }
+
+                if (overloadAttempt >= 3) {
+                    Log.e(TAG, "runDownload(): max overload retries reached for id=$id", e)
+                    DownloadStore.updateState(
+                        this,
+                        id,
+                        DownloadStore.STATE_FAILED,
+                        serverOverloadErrorMessage(e.code),
+                    )
+                    updateNotification()
+                    return
+                }
+
+                overloadAttempt++
+                val waitSec = serverOverloadBackoffDelaySeconds(overloadAttempt)
+                Log.w(TAG, "Server overloaded (HTTP ${e.code}), retrying in $waitSec seconds...")
+                delay(waitSec * 1_000L)
+
+                // Re-read: the user may have paused or cancelled meanwhile.
+                if (DownloadStore.find(this, id)?.state != DownloadStore.STATE_DOWNLOADING) {
+                    Log.d(TAG, "runDownload(): state changed while backing off for id=$id, aborting")
+                    return
+                }
             } catch (t: Throwable) {
                 Log.w(TAG, "runDownload(): attempt $attempt failed for id=$id: ${t.message}")
                 if (AppPrefs.downloadWifiOnly(this) && !isOnWifi()) {
@@ -440,6 +476,8 @@ class DownloadService : Service() {
 
     private class NotEnoughSpaceException : IOException("Not enough free space")
 
+    internal class ServerOverloadException(val code: Int) : IOException("Server overloaded (HTTP $code)")
+
     private fun checkAlive(job: Job?) {
         if (job != null && !job.isActive) throw CancellationException("download stopped")
     }
@@ -465,6 +503,7 @@ class DownloadService : Service() {
             .build()
 
         clientFor(record).newCall(request).execute().use { response ->
+            if (isServerOverload(response.code)) throw ServerOverloadException(response.code)
             val decision = resumeDecision(startOffset, response.code)
             if (decision == ResumeAction.ERROR) throw IOException("HTTP ${response.code}")
 
@@ -699,12 +738,14 @@ class DownloadService : Service() {
 
     private fun fetchText(url: String, record: DownloadStore.Download): String =
         clientFor(record).newCall(requestFor(url, clientFor(record), record.headers)).execute().use { response ->
+            if (isServerOverload(response.code)) throw ServerOverloadException(response.code)
             if (!response.isSuccessful) throw IOException("HTTP ${response.code}")
             response.body?.string() ?: throw IOException("Empty body")
         }
 
     private fun fetchBytes(url: String, record: DownloadStore.Download): ByteArray =
         clientFor(record).newCall(requestFor(url, clientFor(record), record.headers)).execute().use { response ->
+            if (isServerOverload(response.code)) throw ServerOverloadException(response.code)
             if (!response.isSuccessful) throw IOException("HTTP ${response.code}")
             response.body?.bytes() ?: throw IOException("Empty body")
         }
@@ -995,5 +1036,27 @@ internal fun selectQueuedCandidates(
         .filter { it.state == DownloadStore.STATE_QUEUED && it.id !in activeIds }
         .take(availableSlots)
 }
+
+/**
+ * Pure helper to determine if an HTTP status code indicates server overload / rate limiting.
+ */
+internal fun isServerOverload(code: Int): Boolean = code == 502 || code == 503 || code == 429
+
+/**
+ * Pure helper for exponential backoff delay (in seconds) based on overload retry attempt.
+ * Retry 1: 5s, Retry 2: 10s, Retry 3: 20s.
+ */
+internal fun serverOverloadBackoffDelaySeconds(attempt: Int): Int = when (attempt) {
+    1 -> 5
+    2 -> 10
+    3 -> 20
+    else -> 20
+}
+
+/**
+ * Pure helper for the error message shown when server overload retries are exhausted.
+ */
+internal fun serverOverloadErrorMessage(code: Int): String =
+    "Server busy (HTTP $code). Please lower 'Max concurrent downloads' in Settings."
 
 
