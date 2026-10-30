@@ -49,6 +49,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.OpenInNew
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.rounded.Bookmark
 import androidx.compose.material.icons.rounded.BookmarkBorder
@@ -270,12 +271,16 @@ fun DetailsScreen(
     }
 }
 
+internal fun canOpenInBrowser(url: String?): Boolean =
+    url != null && (url.startsWith("http://") || url.startsWith("https://"))
+
 @Composable
 private fun TopBar(
     title: String,
     collapsed: Boolean,
     onBack: () -> Unit,
     onShare: (() -> Unit)?,
+    onOpenWebsite: (() -> Unit)? = null,
 ) {
     val barAlpha by animateFloatAsState(if (collapsed) 1f else 0f, label = "topBarAlpha")
     Row(
@@ -300,11 +305,22 @@ private fun TopBar(
                 .padding(horizontal = 12.dp)
                 .graphicsLayer { alpha = barAlpha },
         )
+        if (onOpenWebsite != null) {
+            FilledTonalIconButton(onClick = onOpenWebsite) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Rounded.OpenInNew,
+                    contentDescription = stringResource(R.string.cd_open_website),
+                )
+            }
+        }
+        if (onOpenWebsite != null && onShare != null) {
+            Spacer(Modifier.width(8.dp))
+        }
         if (onShare != null) {
             FilledTonalIconButton(onClick = onShare) {
                 Icon(Icons.Rounded.Share, contentDescription = stringResource(R.string.cd_share))
             }
-        } else {
+        } else if (onOpenWebsite == null) {
             Spacer(Modifier.size(48.dp))
         }
     }
@@ -629,6 +645,14 @@ private fun DetailsContent(
         }
     }
 
+    val openWebsite: (() -> Unit)? = remember(response.url) {
+        if (canOpenInBrowser(response.url)) {
+            { runCatching { uriHandler.openUri(response.url) } }
+        } else {
+            null
+        }
+    }
+
     val primaryTrailerUrl = remember(response) {
         response.trailers.firstNotNullOfOrNull(::trailerUrl)
     }
@@ -946,6 +970,7 @@ private fun DetailsContent(
                             collapsed = false,
                             onBack = onBack,
                             onShare = share,
+                            onOpenWebsite = openWebsite,
                         )
                         ArtworkStatusBarIcons(overArtwork = startState.firstVisibleItemIndex == 0)
                     }
@@ -1031,6 +1056,7 @@ private fun DetailsContent(
                     collapsed = collapsed,
                     onBack = onBack,
                     onShare = share,
+                    onOpenWebsite = openWebsite,
                 )
                 ArtworkStatusBarIcons(overArtwork = !collapsed)
             }

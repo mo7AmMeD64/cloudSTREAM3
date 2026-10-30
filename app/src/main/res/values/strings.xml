@@ -468,6 +468,7 @@
     <string name="share">Share</string>
     <string name="share_text">%1$s — %2$s</string>
     <string name="cd_share">Share</string>
+    <string name="cd_open_website">Open in browser</string>
     <string name="cd_poster">Poster for %1$s</string>
     <string name="cd_trailer">Play trailer %1$d</string>
 

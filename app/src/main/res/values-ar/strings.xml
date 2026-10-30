@@ -340,6 +340,7 @@
     <string name="share">مشاركة</string>
     <string name="share_text">%1$s — %2$s</string>
     <string name="cd_share">مشاركة</string>
+    <string name="cd_open_website">فتح في المتصفح</string>
     <string name="cd_poster">ملصق %1$s</string>
     <string name="cd_trailer">تشغيل الإعلان %1$d</string>
 
