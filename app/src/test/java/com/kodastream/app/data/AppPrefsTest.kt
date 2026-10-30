@@ -15,6 +15,11 @@ class AppPrefsTest {
     }
 
     @Test
+    fun downloadMaxConcurrentKeyConstant() {
+        assertEquals("download_max_concurrent", AppPrefs.KEY_DL_MAX)
+    }
+
+    @Test
     fun uiStyleKeyAndValueConstants() {
         assertEquals("ui_style", AppPrefs.KEY_UI_STYLE)
         assertEquals("material", AppPrefs.UI_STYLE_MATERIAL)

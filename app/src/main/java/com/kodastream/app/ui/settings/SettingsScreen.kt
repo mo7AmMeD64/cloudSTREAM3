@@ -439,7 +439,7 @@ fun SettingsScreen(
                         count = count,
                         icon = Icons.Rounded.Download,
                         title = stringResource(R.string.download_max_concurrent),
-                        options = listOf(1, 2, 3),
+                        options = listOf(1, 2, 3, 4, 5),
                         selected = downloadConcurrent,
                         label = { it.toString() },
                         onSelect = { value ->

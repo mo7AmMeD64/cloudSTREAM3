@@ -507,7 +507,6 @@ private fun DetailsContent(
                 createdAt = System.currentTimeMillis(),
             ),
         )
-        if (queued) DownloadService.ensure(context)
     }
 
     /** "Download added" with a way to jump straight to the Downloads tab. */
@@ -548,7 +547,7 @@ private fun DetailsContent(
                     val links = java.util.Collections.synchronizedList(mutableListOf<ExtractorLink>())
                     val subs = java.util.Collections.synchronizedList(mutableListOf<SubtitleFile>())
                     try {
-                        Engine.guarded(api.loadLinksTimeoutMs ?: 120_000L) {
+                        Engine.guarded(30_000L) {
                             api.loadLinks(
                                 episode.data, false,
                                 { sub -> runCatching { subs.add(sub) } },
@@ -556,13 +555,17 @@ private fun DetailsContent(
                             )
                         }
                     } catch (t: Throwable) {
+                        fallbacks++
                         continue
                     }
                     val usable = synchronized(links) { links.toList() }
                         .filter { it.type == ExtractorLinkType.VIDEO || it.type == ExtractorLinkType.M3U8 }
                     val chosen = usable.firstOrNull { it.name.equals(preferredServer, ignoreCase = true) }
                         ?: usable.maxByOrNull { it.quality }
-                        ?: continue
+                    if (chosen == null) {
+                        fallbacks++
+                        continue
+                    }
                     if (!chosen.name.equals(preferredServer, ignoreCase = true)) fallbacks++
                     val sub = if (preferredSubLang == null) {
                         null
@@ -579,7 +582,10 @@ private fun DetailsContent(
                     )
                     queued++
                 }
-                if (queued > 0) announceDownload(queued, fallbacks)
+                if (queued > 0) {
+                    DownloadService.ensure(context)
+                    announceDownload(queued, fallbacks)
+                }
             } finally {
                 isDownloadingSeason = false
             }
@@ -1097,6 +1103,7 @@ private fun DetailsContent(
                         sheetTarget.data,
                         subtitle?.let { listOf(it) } ?: emptyList(),
                     )
+                    DownloadService.ensure(context)
                     announceDownload(1, 0)
                 }
                 downloadSheet = null

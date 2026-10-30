@@ -261,6 +261,7 @@
     <string name="downloads_empty_title">لا توجد تنزيلات بعد</string>
     <string name="downloads_empty_hint">نزّل الحلقات والأفلام لمشاهدتها دون اتصال.</string>
     <string name="downloads_delete_all">حذف كل التنزيلات</string>
+    <string name="downloads_resume_all">استئناف الكل</string>
     <string name="downloads_delete_confirm_title">حذف هذا الملف؟</string>
     <string name="downloads_delete_confirm_text">سيتم حذف الملفات من التخزين.</string>
     <string name="downloads_delete_file">حذف</string>

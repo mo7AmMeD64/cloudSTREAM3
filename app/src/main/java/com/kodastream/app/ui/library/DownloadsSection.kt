@@ -121,6 +121,17 @@ fun DownloadsSection(
                     color = MaterialTheme.colorScheme.onBackground,
                     modifier = Modifier.weight(1f),
                 )
+                val queuedDownloads = remember(downloads) { queuedDownloads(downloads) }
+                if (queuedDownloads.isNotEmpty()) {
+                    TextButton(
+                        onClick = {
+                            queuedDownloads.forEach { DownloadService.resume(context, it.id) }
+                            DownloadService.ensure(context)
+                        },
+                    ) {
+                        Text(stringResource(R.string.downloads_resume_all))
+                    }
+                }
                 if (downloads.isNotEmpty()) {
                     IconButton(onClick = { showClearAll = true }) {
                         Icon(
@@ -621,3 +632,7 @@ private fun stateLabel(download: Download): String = when (download.state) {
  */
 internal fun resolveDownloadErrorLabel(error: String?, fallback: String): String =
     error?.takeIf { it.isNotBlank() } ?: fallback
+
+/** Filters all downloads that are waiting in queued state. */
+internal fun queuedDownloads(downloads: List<Download>): List<Download> =
+    downloads.filter { it.state == DownloadStore.STATE_QUEUED }

@@ -264,6 +264,7 @@
     <string name="downloads_empty_title">No downloads yet</string>
     <string name="downloads_empty_hint">Download episodes and movies to watch them offline.</string>
     <string name="downloads_delete_all">Delete all downloads</string>
+    <string name="downloads_resume_all">Resume All</string>
     <string name="downloads_delete_confirm_title">Delete this file?</string>
     <string name="downloads_delete_confirm_text">The files will be removed from storage.</string>
     <string name="downloads_delete_file">Delete</string>

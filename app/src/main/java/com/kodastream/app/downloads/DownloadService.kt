@@ -148,8 +148,8 @@ class DownloadService : Service() {
         return app.baseClient.newBuilder()
             .apply {
                 api?.getVideoInterceptor(link)?.let { addInterceptor(it) }
-                connectTimeout(Duration.ofSeconds(30))
-                readTimeout(Duration.ofSeconds(60))
+                connectTimeout(Duration.ofSeconds(60))
+                readTimeout(Duration.ofSeconds(120))
             }
             .build()
     }
@@ -498,7 +498,7 @@ class DownloadService : Service() {
             var received = startOffset
             var lastPublish = 0L
             DownloadLocations.openOutput(this, uri, append = startOffset > 0).use { output ->
-                val buffer = ByteArray(64 * 1024)
+                val buffer = ByteArray(512 * 1024)
                 while (true) {
                     checkAlive(job)
                     val read = input.read(buffer)
