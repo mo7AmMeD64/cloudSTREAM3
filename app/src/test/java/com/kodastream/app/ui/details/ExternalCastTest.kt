@@ -70,11 +70,10 @@ class ExternalCastTest {
         val params = prepareWvcCastParams(link, title = "Episode 1: The Beginning")
 
         assertEquals("https://cdn.example.com/playlist.m3u8", params.url)
-        assertEquals("application/x-mpegURL", params.mimeType)
+        assertEquals("text/plain", params.mimeType)
         assertEquals("Episode 1: The Beginning", params.title)
         assertEquals("com.instantbits.cast.webvideo", params.packageName)
-        assertEquals("Mozilla/5.0", params.headers["User-Agent"])
-        assertEquals("https://cdn.example.com", params.headers["Referer"])
+        assertTrue(params.headers.isEmpty())
     }
 
     @Test
@@ -91,7 +90,8 @@ class ExternalCastTest {
         )
         val params = prepareWvcCastParams(link)
         assertEquals("Default Title", params.title)
-        assertEquals("video/*", params.mimeType)
+        assertEquals("text/plain", params.mimeType)
+        assertTrue(params.headers.isEmpty())
     }
 
     @Test

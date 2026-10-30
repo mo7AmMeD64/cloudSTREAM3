@@ -92,4 +92,20 @@ class DownloadWifiGatingTest {
         )
         assertEquals(DownloadNotificationState.IDLE, state)
     }
+
+    @Test
+    fun triggerPumpWhenWifiAvailableUnderWifiOnly() {
+        assertTrue(shouldTriggerPumpOnNetworkEvent(wifiOnly = true, hasWifi = true))
+    }
+
+    @Test
+    fun doNotTriggerPumpWhenCellularOnlyUnderWifiOnly() {
+        assertFalse(shouldTriggerPumpOnNetworkEvent(wifiOnly = true, hasWifi = false))
+    }
+
+    @Test
+    fun triggerPumpOnAnyNetworkWhenWifiOnlyDisabled() {
+        assertTrue(shouldTriggerPumpOnNetworkEvent(wifiOnly = false, hasWifi = false))
+        assertTrue(shouldTriggerPumpOnNetworkEvent(wifiOnly = false, hasWifi = true))
+    }
 }

@@ -4,7 +4,6 @@ import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
-import android.os.Bundle
 import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.cloudstream3.utils.ExtractorLinkType
 
@@ -49,9 +48,9 @@ data class WvcCastParams(
 /** Extracts and normalizes parameters from an [ExtractorLink] for testing and dispatch. */
 fun prepareWvcCastParams(link: ExtractorLink, title: String? = null): WvcCastParams = WvcCastParams(
     url = link.url,
-    mimeType = wvcMimeType(link.type),
+    mimeType = "text/plain",
     title = title ?: link.name,
-    headers = buildWvcHeadersMap(link.headers, link.referer),
+    headers = emptyMap(),
     packageName = WVC_PACKAGE_NAME,
 )
 
@@ -79,40 +78,24 @@ fun openWvcPlayStore(context: Context) {
 }
 
 /**
- * Constructs an ACTION_SEND intent targeting Web Video Caster with MIME type,
- * title, and header extras.
+ * Constructs a minimal ACTION_SEND intent targeting Web Video Caster with plain text MIME type,
+ * URL, and subject title for maximum compatibility across older versions.
  */
 fun buildWvcIntent(
     link: ExtractorLink,
     title: String? = null,
     context: Context? = null,
 ): Intent {
-    val mimeType = wvcMimeType(link.type)
     val castTitle = title ?: link.name
-    val intent = Intent(Intent.ACTION_SEND).apply {
+    return Intent(Intent.ACTION_SEND).apply {
         setPackage(WVC_PACKAGE_NAME)
-        type = mimeType
+        type = "text/plain"
         putExtra(Intent.EXTRA_TEXT, link.url)
-        putExtra("title", castTitle)
-        putExtra(Intent.EXTRA_TITLE, castTitle)
-        putExtra("secure_uri", true)
+        putExtra(Intent.EXTRA_SUBJECT, castTitle)
         if (context != null && context !is Activity) {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
     }
-
-    val headerMap = buildWvcHeadersMap(link.headers, link.referer)
-    if (headerMap.isNotEmpty()) {
-        val bundle = Bundle()
-        headerMap.forEach { (name, value) ->
-            bundle.putString(name, value)
-        }
-        intent.putExtra(Intent.EXTRA_STREAM, bundle)
-        intent.putExtra("android.media.intent.extra.HTTP_HEADERS", bundle)
-        intent.putExtra("headers", bundle)
-    }
-
-    return intent
 }
 
 /**

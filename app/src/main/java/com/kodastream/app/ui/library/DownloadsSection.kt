@@ -54,7 +54,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import com.kodastream.app.R
 import com.kodastream.app.data.AppPrefs
@@ -501,13 +504,34 @@ private fun DownloadRow(
                     } else {
                         Formatter.formatFileSize(context, download.receivedBytes)
                     }
-                    Text(
-                        text = size + "  •  " + stateLabel(download),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
+                    if (download.state == DownloadStore.STATE_FAILED) {
+                        val errorText = resolveDownloadErrorLabel(
+                            download.error,
+                            stringResource(R.string.download_failed),
+                        )
+                        Text(
+                            text = buildAnnotatedString {
+                                withStyle(SpanStyle(color = MaterialTheme.colorScheme.onSurfaceVariant)) {
+                                    append(size)
+                                    append("  •  ")
+                                }
+                                withStyle(SpanStyle(color = MaterialTheme.colorScheme.error)) {
+                                    append(errorText)
+                                }
+                            },
+                            style = MaterialTheme.typography.labelMedium,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    } else {
+                        Text(
+                            text = size + "  •  " + stateLabel(download),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
                 }
                 when (download.state) {
                     DownloadStore.STATE_DONE -> {
@@ -587,7 +611,13 @@ private fun stateLabel(download: Download): String = when (download.state) {
     }
     DownloadStore.STATE_PAUSED -> stringResource(R.string.download_paused)
     DownloadStore.STATE_QUEUED -> stringResource(R.string.download_queued)
-    DownloadStore.STATE_FAILED -> stringResource(R.string.download_failed) +
-        (download.error?.takeIf { it.isNotBlank() }?.let { ": $it" } ?: "")
+    DownloadStore.STATE_FAILED -> resolveDownloadErrorLabel(download.error, stringResource(R.string.download_failed))
     else -> stringResource(R.string.download_failed)
 }
+
+/**
+ * Pure helper resolving the error display string for a failed download.
+ * Returns the non-blank error string if present; otherwise returns fallback.
+ */
+internal fun resolveDownloadErrorLabel(error: String?, fallback: String): String =
+    error?.takeIf { it.isNotBlank() } ?: fallback

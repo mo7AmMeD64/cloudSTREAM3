@@ -96,15 +96,24 @@ class DownloadService : Service() {
     private val networkCallback = object : ConnectivityManager.NetworkCallback() {
         override fun onAvailable(network: Network) {
             Log.d(TAG, "networkCallback.onAvailable: network=$network")
-            pump()
+            val wifiOnly = AppPrefs.downloadWifiOnly(this@DownloadService)
+            val caps = connectivityManager?.getNetworkCapabilities(network)
+            val hasWifi = caps?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true
+            if (shouldTriggerPumpOnNetworkEvent(wifiOnly, hasWifi)) {
+                pump()
+            }
         }
 
         override fun onCapabilitiesChanged(network: Network, networkCapabilities: NetworkCapabilities) {
+            val hasWifi = networkCapabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)
             Log.d(
                 TAG,
-                "networkCallback.onCapabilitiesChanged: hasWifi=${networkCapabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)}",
+                "networkCallback.onCapabilitiesChanged: hasWifi=$hasWifi",
             )
-            pump()
+            val wifiOnly = AppPrefs.downloadWifiOnly(this@DownloadService)
+            if (shouldTriggerPumpOnNetworkEvent(wifiOnly, hasWifi)) {
+                pump()
+            }
         }
 
         override fun onLost(network: Network) {
@@ -168,13 +177,11 @@ class DownloadService : Service() {
         } catch (e: Exception) {
             logWarning(TAG, "Failed to register default network callback: ${e.message}")
             try {
-                val request = NetworkRequest.Builder()
-                    .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
-                    .build()
+                val request = NetworkRequest.Builder().build()
                 connectivityManager?.registerNetworkCallback(request, networkCallback)
                 networkCallbackRegistered = true
             } catch (e2: Exception) {
-                logWarning(TAG, "Failed to register Wi-Fi network callback: ${e2.message}")
+                logWarning(TAG, "Failed to register network callback: ${e2.message}")
             }
         }
 
@@ -957,6 +964,14 @@ internal fun resolveDownloadNotificationState(
  */
 internal fun shouldBlockForWifi(wifiOnly: Boolean, onWifi: Boolean): Boolean =
     wifiOnly && !onWifi
+
+/**
+ * Pure helper deciding if a network availability/capability change event should trigger pump().
+ * If wifiOnly is true, only networks with TRANSPORT_WIFI trigger pump().
+ * If wifiOnly is false, any active network event triggers pump().
+ */
+internal fun shouldTriggerPumpOnNetworkEvent(wifiOnly: Boolean, hasWifi: Boolean): Boolean =
+    !wifiOnly || hasWifi
 
 /**
  * Pure helper calculating how many downloads can be started given the concurrency limit
