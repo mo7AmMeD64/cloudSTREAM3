@@ -140,6 +140,11 @@ object HistoryStore {
         publish(context, emptyList())
     }
 
+    /** Replaces the full history list (data import). */
+    fun restore(context: Context, entries: List<HistoryEntry>) {
+        publish(context, entries)
+    }
+
     /** Flushes any pending debounced progress updates synchronously to disk if dirty. */
     fun flush(context: Context) {
         appContext = context.applicationContext

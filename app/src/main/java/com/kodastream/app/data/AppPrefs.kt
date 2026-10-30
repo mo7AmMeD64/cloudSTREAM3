@@ -194,6 +194,57 @@ object AppPrefs {
         prefs(context).edit { if (name == null) remove(KEY_PROVIDER) else putString(KEY_PROVIDER, name) }
     }
 
+    /** Keys that are safe to export/import (excludes provider selection and machine-specific download paths). */
+    fun isExportablePrefKey(key: String): Boolean {
+        if (key == KEY_PROVIDER) return false
+        if (key.startsWith("download_")) return false
+        return true
+    }
+
+    fun getExportablePrefs(context: Context): Map<String, Any?> =
+        prefs(context).all.filter { (key, _) -> isExportablePrefKey(key) }
+
+    fun restorePrefs(context: Context, newPrefs: Map<String, Any?>, replace: Boolean) {
+        val p = prefs(context)
+        p.edit {
+            if (replace) {
+                p.all.keys.filter { isExportablePrefKey(it) }.forEach { remove(it) }
+            }
+            newPrefs.filter { (k, _) -> isExportablePrefKey(k) }.forEach { (key, value) ->
+                when (value) {
+                    is Boolean -> putBoolean(key, value)
+                    is String -> putString(key, value)
+                    is Float -> putFloat(key, value)
+                    is Double -> {
+                        if (key == KEY_SPEED) putFloat(key, value.toFloat())
+                        else putLong(key, value.toLong())
+                    }
+                    is Int -> {
+                        if (key.startsWith(POSITION_PREFIX) || key.startsWith(DURATION_PREFIX) || key == KEY_UPDATE_CHECK) {
+                            putLong(key, value.toLong())
+                        } else {
+                            putInt(key, value)
+                        }
+                    }
+                    is Long -> putLong(key, value)
+                    is Number -> {
+                        if (key == KEY_SPEED) {
+                            putFloat(key, value.toFloat())
+                        } else if (key.startsWith(POSITION_PREFIX) || key.startsWith(DURATION_PREFIX) || key == KEY_UPDATE_CHECK) {
+                            putLong(key, value.toLong())
+                        } else if (key == KEY_POSTER_SIZE) {
+                            putInt(key, value.toInt())
+                        } else {
+                            putLong(key, value.toLong())
+                        }
+                    }
+                }
+            }
+        }
+        _navPosition.value = p.getString(KEY_NAV_POSITION, null)
+        _uiStyle.value = p.getString(KEY_UI_STYLE, null)
+    }
+
     fun autoUpdate(context: Context): Boolean = prefs(context).getBoolean(KEY_AUTO_UPDATE, true)
 
     fun setAutoUpdate(context: Context, value: Boolean) {

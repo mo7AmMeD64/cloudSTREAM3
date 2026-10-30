@@ -60,6 +60,11 @@ object SearchHistoryStore {
         publish(context, emptyList())
     }
 
+    /** Replaces the full search history (for data import). */
+    fun restore(context: Context, entries: List<String>) {
+        publish(context, entries)
+    }
+
     private fun publish(context: Context, entries: List<String>) {
         _entries.value = entries
         prefs(context).edit { putString(KEY, JSONArray(entries).toString()) }

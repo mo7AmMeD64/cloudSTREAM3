@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -40,20 +41,25 @@ import androidx.compose.material.icons.rounded.Security
 import androidx.compose.material.icons.rounded.Speed
 import androidx.compose.material.icons.rounded.Translate
 import androidx.compose.material.icons.rounded.Tune
+import androidx.compose.material.icons.rounded.Upload
 import androidx.compose.material.icons.rounded.ViewCarousel
 import androidx.compose.material.icons.rounded.ViewSidebar
 import androidx.compose.material.icons.rounded.VolunteerActivism
 import androidx.compose.material.icons.rounded.Wifi
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -70,7 +76,12 @@ import androidx.compose.ui.unit.dp
 import com.kodastream.app.BuildConfig
 import com.kodastream.app.R
 import com.kodastream.app.data.AppPrefs
+import com.kodastream.app.data.DataExport
+import com.kodastream.app.data.DataExportLogic
+import com.kodastream.app.data.DataExportManager
 import com.kodastream.app.data.DownloadLocations
+import com.kodastream.app.data.ImportMode
+import com.kodastream.app.data.ImportSummary
 import com.kodastream.app.data.SearchHistoryStore
 import com.kodastream.app.ui.home.hero.HeroStyle
 import com.kodastream.app.ui.theme.APP_PALETTES
@@ -78,6 +89,10 @@ import com.kodastream.app.ui.theme.DYNAMIC_PALETTE_ID
 import com.kodastream.app.ui.theme.PALETTE_CATEGORIES
 import com.kodastream.app.ui.theme.PaletteStyle
 import com.kodastream.app.ui.theme.ThemeMode
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.time.LocalDate
 import com.kodastream.app.ui.theme.ThemeViewModel
 import com.kodastream.app.ui.theme.contrastInk
 
@@ -116,6 +131,50 @@ fun SettingsScreen(
     }
     val dynamicAvailable = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
     val wallpaper = dynamicAvailable && themeViewModel.palette == DYNAMIC_PALETTE_ID
+
+    val scope = rememberCoroutineScope()
+    var pendingImport by remember { mutableStateOf<Pair<DataExport, ImportSummary>?>(null) }
+
+    val exportLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("application/json")
+    ) { uri ->
+        if (uri != null) {
+            scope.launch(Dispatchers.IO) {
+                val result = DataExportManager.exportToUri(context, uri)
+                withContext(Dispatchers.Main) {
+                    if (result.isSuccess) {
+                        Toast.makeText(context, R.string.data_export_success, Toast.LENGTH_SHORT).show()
+                    } else {
+                        Toast.makeText(context, R.string.data_export_failed, Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+        }
+    }
+
+    val importLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        if (uri != null) {
+            scope.launch(Dispatchers.IO) {
+                val result = DataExportManager.readFromUri(context, uri)
+                withContext(Dispatchers.Main) {
+                    result.onSuccess { imported ->
+                        val current = DataExportManager.createExport(context)
+                        val summary = DataExportLogic.computeSummary(current, imported)
+                        pendingImport = Pair(imported, summary)
+                    }.onFailure { e ->
+                        val msg = e.localizedMessage ?: e.javaClass.simpleName
+                        Toast.makeText(
+                            context,
+                            context.getString(R.string.data_import_failed, msg),
+                            Toast.LENGTH_LONG,
+                        ).show()
+                    }
+                }
+            }
+        }
+    }
 
     val pickFolder = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
         if (uri != null) {
@@ -423,6 +482,32 @@ fun SettingsScreen(
                 }
             }
 
+            item(key = "data") {
+                SettingsGroup(stringResource(R.string.settings_data)) {
+                    NavigationRow(
+                        index = 0,
+                        count = 2,
+                        icon = Icons.Rounded.Upload,
+                        title = stringResource(R.string.settings_export_data),
+                        supporting = stringResource(R.string.settings_export_data_summary),
+                        onClick = {
+                            val defaultName = "cloud3_backup_${LocalDate.now()}.json"
+                            exportLauncher.launch(defaultName)
+                        },
+                    )
+                    NavigationRow(
+                        index = 1,
+                        count = 2,
+                        icon = Icons.Rounded.Download,
+                        title = stringResource(R.string.settings_import_data),
+                        supporting = stringResource(R.string.settings_import_data_summary),
+                        onClick = {
+                            importLauncher.launch(arrayOf("application/json"))
+                        },
+                    )
+                }
+            }
+
             item(key = "extensions") {
                 SettingsGroup(stringResource(R.string.nav_extensions)) {
                     SwitchRow(
@@ -518,6 +603,63 @@ fun SettingsScreen(
                 heroDialog = false
             },
             onDismiss = { heroDialog = false },
+        )
+    }
+
+    pendingImport?.let { (importedData, summary) ->
+        AlertDialog(
+            onDismissRequest = { pendingImport = null },
+            title = { Text(stringResource(R.string.data_import_dialog_title)) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        text = stringResource(R.string.data_import_dialog_message),
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                    Text("• " + stringResource(R.string.data_import_section_favorites, summary.favorites.incomingCount, summary.favorites.overwriteCount))
+                    Text("• " + stringResource(R.string.data_import_section_watchlist, summary.watchlist.incomingCount, summary.watchlist.overwriteCount))
+                    Text("• " + stringResource(R.string.data_import_section_history, summary.history.incomingCount, summary.history.overwriteCount))
+                    Text("• " + stringResource(R.string.data_import_section_watched, summary.watched.incomingCount, summary.watched.overwriteCount))
+                    Text("• " + stringResource(R.string.data_import_section_search, summary.searchHistory.incomingCount))
+                    Text("• " + stringResource(R.string.data_import_section_prefs, summary.appPrefs.incomingCount))
+                }
+            },
+            confirmButton = {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    TextButton(onClick = {
+                        val toImport = importedData
+                        pendingImport = null
+                        scope.launch(Dispatchers.IO) {
+                            DataExportManager.applyImport(context, ImportMode.REPLACE, toImport)
+                            withContext(Dispatchers.Main) {
+                                Toast.makeText(context, R.string.data_import_success, Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    }) {
+                        Text(
+                            text = stringResource(R.string.data_import_dialog_replace),
+                            color = MaterialTheme.colorScheme.error,
+                        )
+                    }
+                    Button(onClick = {
+                        val toImport = importedData
+                        pendingImport = null
+                        scope.launch(Dispatchers.IO) {
+                            DataExportManager.applyImport(context, ImportMode.MERGE, toImport)
+                            withContext(Dispatchers.Main) {
+                                Toast.makeText(context, R.string.data_import_success, Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    }) {
+                        Text(stringResource(R.string.data_import_dialog_merge))
+                    }
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingImport = null }) {
+                    Text(stringResource(R.string.cancel))
+                }
+            },
         )
     }
 }

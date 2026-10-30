@@ -68,6 +68,19 @@ object LibraryStore {
     fun toggleWatchlist(context: Context, item: LibraryItem): Boolean =
         toggle(context, WATCHLIST, item)
 
+    /** Replaces all favorites and watchlist items (data import). */
+    fun restore(context: Context, favorites: List<LibraryItem>, watchlist: List<LibraryItem>) {
+        context.getKeys(FAVORITES).forEach { context.removeKey(it) }
+        context.getKeys(WATCHLIST).forEach { context.removeKey(it) }
+        favorites.forEach { item ->
+            context.setKey(FAVORITES, key(item.apiName, item.url), item)
+        }
+        watchlist.forEach { item ->
+            context.setKey(WATCHLIST, key(item.apiName, item.url), item)
+        }
+        _revision.value++
+    }
+
     /** Drops the entry from both lists, whatever it was in (library swipe-away). */
     fun remove(context: Context, item: LibraryItem) {
         val itemKey = key(item.apiName, item.url)
