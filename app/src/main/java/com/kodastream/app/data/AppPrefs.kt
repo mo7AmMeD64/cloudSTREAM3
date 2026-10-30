@@ -22,7 +22,7 @@ object AppPrefs {
     private const val KEY_PAUSE_HISTORY = "pause_history"
     private const val KEY_DL_TREE = "download_tree_uri"
     const val KEY_DL_WIFI = "download_wifi_only"
-    private const val KEY_DL_MAX = "download_max_concurrent"
+    const val KEY_DL_MAX = "download_max_concurrent"
     private const val KEY_DL_SERVER = "download_last_server"
     private const val KEY_DL_FOLDERS_DONE = "download_folders_migrated"
     private const val KEY_EXTERNAL_MANAGER = "external_download_manager"

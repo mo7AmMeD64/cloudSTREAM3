@@ -116,8 +116,12 @@ object DownloadStore {
     fun current(context: Context): List<Download> {
         appContext = context.applicationContext
         if (!loaded) {
-            loaded = true
-            _entries.value = context.getKey<List<Download>>(STORE_KEY).orEmpty()
+            synchronized(this) {
+                if (!loaded) {
+                    loaded = true
+                    _entries.value = context.getKey<List<Download>>(STORE_KEY).orEmpty()
+                }
+            }
         }
         return _entries.value.orEmpty()
     }
@@ -129,18 +133,22 @@ object DownloadStore {
 
     /** False when this id is already in the list; nothing is overwritten. */
     fun enqueue(context: Context, download: Download): Boolean {
-        if (current(context).any { it.id == download.id }) return false
-        publish(context, (listOf(download) + current(context)).take(MAX_ENTRIES))
-        return true
+        synchronized(this) {
+            if (current(context).any { it.id == download.id }) return false
+            publish(context, (listOf(download) + current(context)).take(MAX_ENTRIES))
+            return true
+        }
     }
 
     /** State transitions (QUEUED->DOWNLOADING, DOWNLOADING->PAUSED, etc.) persist synchronously without debounce. */
     fun updateState(context: Context, id: String, newState: String, error: String? = null) {
-        appContext = context.applicationContext
-        val next = current(context).map {
-            if (it.id == id) it.copy(state = newState, error = error) else it
+        synchronized(this) {
+            appContext = context.applicationContext
+            val next = current(context).map {
+                if (it.id == id) it.copy(state = newState, error = error) else it
+            }
+            publish(context, next)
         }
-        publish(context, next)
     }
 
     /** Progress ticks update memory immediately and schedule a debounced write to avoid disk thrash. */
@@ -152,39 +160,49 @@ object DownloadStore {
         hlsSegment: Int? = null,
         hlsInitWritten: Boolean? = null,
     ) {
-        appContext = context.applicationContext
-        val next = current(context).map { entry ->
-            if (entry.id == id) {
-                entry.copy(
-                    receivedBytes = bytes,
-                    totalBytes = if (total > 0L) total else entry.totalBytes,
-                    hlsSegment = hlsSegment ?: entry.hlsSegment,
-                    hlsInitWritten = hlsInitWritten ?: entry.hlsInitWritten,
-                )
-            } else {
-                entry
+        synchronized(this) {
+            appContext = context.applicationContext
+            val next = current(context).map { entry ->
+                if (entry.id == id) {
+                    entry.copy(
+                        receivedBytes = bytes,
+                        totalBytes = if (total > 0L) total else entry.totalBytes,
+                        hlsSegment = hlsSegment ?: entry.hlsSegment,
+                        hlsInitWritten = hlsInitWritten ?: entry.hlsInitWritten,
+                    )
+                } else {
+                    entry
+                }
             }
+            _entries.value = next
+            debouncer.schedule()
         }
-        _entries.value = next
-        debouncer.schedule()
     }
 
     fun update(context: Context, id: String, transform: (Download) -> Download) {
-        publish(context, current(context).map { if (it.id == id) transform(it) else it })
+        synchronized(this) {
+            publish(context, current(context).map { if (it.id == id) transform(it) else it })
+        }
     }
 
     fun remove(context: Context, id: String) {
-        publish(context, current(context).filter { it.id != id })
+        synchronized(this) {
+            publish(context, current(context).filter { it.id != id })
+        }
     }
 
     fun clear(context: Context) {
-        publish(context, emptyList())
+        synchronized(this) {
+            publish(context, emptyList())
+        }
     }
 
     /** Flushes any pending debounced progress updates synchronously to disk if dirty. */
     fun flush(context: Context) {
-        appContext = context.applicationContext
-        debouncer.flush()
+        synchronized(this) {
+            appContext = context.applicationContext
+            debouncer.flush()
+        }
     }
 
     private fun publish(context: Context, next: List<Download>) {
