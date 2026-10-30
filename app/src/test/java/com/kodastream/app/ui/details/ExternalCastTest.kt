@@ -13,8 +13,8 @@ class ExternalCastTest {
     @Test
     fun mimeTypeResolvesM3u8AndMp4Correctly() {
         assertEquals("application/x-mpegURL", wvcMimeType(ExtractorLinkType.M3U8))
-        assertEquals("video/mp4", wvcMimeType(ExtractorLinkType.VIDEO))
-        assertEquals("video/mp4", wvcMimeType(ExtractorLinkType.DASH))
+        assertEquals("video/*", wvcMimeType(ExtractorLinkType.VIDEO))
+        assertEquals("video/*", wvcMimeType(ExtractorLinkType.DASH))
     }
 
     @Test
@@ -75,6 +75,23 @@ class ExternalCastTest {
         assertEquals("com.instantbits.cast.webvideo", params.packageName)
         assertEquals("Mozilla/5.0", params.headers["User-Agent"])
         assertEquals("https://cdn.example.com", params.headers["Referer"])
+    }
+
+    @Test
+    fun prepareWvcCastParamsFallsBackToLinkNameWhenTitleMissing() {
+        @Suppress("DEPRECATION")
+        val link = ExtractorLink(
+            source = "SuperProvider",
+            name = "Default Title",
+            url = "https://cdn.example.com/video.mp4",
+            referer = "",
+            quality = Qualities.P1080.value,
+            type = ExtractorLinkType.VIDEO,
+            headers = emptyMap(),
+        )
+        val params = prepareWvcCastParams(link)
+        assertEquals("Default Title", params.title)
+        assertEquals("video/*", params.mimeType)
     }
 
     @Test

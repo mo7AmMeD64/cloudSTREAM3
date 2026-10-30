@@ -37,6 +37,8 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewModelScope
 import com.google.android.material.bottomsheet.BottomSheetDialog
+import com.google.android.material.button.MaterialButton
+import com.kodastream.app.ui.details.castToWebVideoCaster
 import com.kodastream.app.ui.player.OnlineSubtitle
 import com.kodastream.app.ui.player.OnlineSubtitlesHelper
 import com.lagradost.cloudstream3.CommonActivity
@@ -437,6 +439,7 @@ class GeneratorPlayer : FullScreenPlayer() {
         //  setEpisodes(viewModel.getAllMeta() ?: emptyList())
         setPlayerDimen(null)
         setTitle()
+        updateCastButtonVisibility()
         if (!sameEpisode)
             hasRequestedStamps = false
 
@@ -1380,12 +1383,20 @@ class GeneratorPlayer : FullScreenPlayer() {
         }
     }
 
-    private fun getHeaderName(): String? {
-        return when (val meta = currentMeta) {
-            is ResultEpisode -> meta.headerName
-            is ExtractorUri -> meta.headerName
+    private val Any?.headerName: String?
+        get() = when (this) {
+            is ResultEpisode -> this.headerName
+            is ExtractorUri -> this.headerName
             else -> null
         }
+
+    private fun getHeaderName(): String? = currentMeta?.headerName
+
+    private fun updateCastButtonVisibility() {
+        val isHttp = currentSelectedLink?.first?.url?.startsWith("http", ignoreCase = true) == true
+        val playerCastBtt = view?.findViewById<MaterialButton>(R.id.player_cast_btt)
+            ?: playerBinding?.root?.findViewById(R.id.player_cast_btt)
+        playerCastBtt?.isVisible = isHttp
     }
 
     private fun getPlayerVideoTitle(): String {
@@ -1739,6 +1750,7 @@ class GeneratorPlayer : FullScreenPlayer() {
         binding?.playerLoadingOverlay?.isVisible = true
         viewModel.modifyState { setError(emptyList()) }
         uiReset()
+        updateCastButtonVisibility()
     }
 
     fun exitPlayer() {
@@ -1827,6 +1839,12 @@ class GeneratorPlayer : FullScreenPlayer() {
                 it.isVisible = !it.isVisible
             }
         }
+
+        val playerCastBtt = binding.root.findViewById<MaterialButton?>(R.id.player_cast_btt)
+        playerCastBtt?.setOnClickListener {
+            castToWebVideoCaster(context, currentSelectedLink?.first, currentMeta?.headerName)
+        }
+        updateCastButtonVisibility()
 
         observe(viewModel.currentStamps) { (stamps, instance) ->
             if (instance != viewModel.state.instance) return@observe // Outdated observe

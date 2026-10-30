@@ -14,11 +14,11 @@ const val WVC_PLAY_STORE_URL = "https://play.google.com/store/apps/details?id=co
 
 /**
  * Pure helper to resolve the MIME type expected by Web Video Caster.
- * Uses "application/x-mpegURL" for M3U8 streams and "video/mp4" for direct videos.
+ * Uses "application/x-mpegURL" for M3U8 streams and "video/" wildcard for direct videos.
  */
 fun wvcMimeType(linkType: ExtractorLinkType): String = when (linkType) {
     ExtractorLinkType.M3U8 -> "application/x-mpegURL"
-    else -> "video/mp4"
+    else -> "video/*"
 }
 
 /**
@@ -47,10 +47,10 @@ data class WvcCastParams(
 )
 
 /** Extracts and normalizes parameters from an [ExtractorLink] for testing and dispatch. */
-fun prepareWvcCastParams(link: ExtractorLink, title: String): WvcCastParams = WvcCastParams(
+fun prepareWvcCastParams(link: ExtractorLink, title: String? = null): WvcCastParams = WvcCastParams(
     url = link.url,
     mimeType = wvcMimeType(link.type),
-    title = title,
+    title = title ?: link.name,
     headers = buildWvcHeadersMap(link.headers, link.referer),
     packageName = WVC_PACKAGE_NAME,
 )
@@ -79,20 +79,22 @@ fun openWvcPlayStore(context: Context) {
 }
 
 /**
- * Constructs an ACTION_VIEW intent targeting Web Video Caster with MIME type,
+ * Constructs an ACTION_SEND intent targeting Web Video Caster with MIME type,
  * title, and header extras.
  */
 fun buildWvcIntent(
     link: ExtractorLink,
-    title: String,
+    title: String? = null,
     context: Context? = null,
 ): Intent {
     val mimeType = wvcMimeType(link.type)
-    val intent = Intent(Intent.ACTION_VIEW).apply {
+    val castTitle = title ?: link.name
+    val intent = Intent(Intent.ACTION_SEND).apply {
         setPackage(WVC_PACKAGE_NAME)
-        setDataAndType(Uri.parse(link.url), mimeType)
-        putExtra("title", title)
-        putExtra(Intent.EXTRA_TITLE, title)
+        type = mimeType
+        putExtra(Intent.EXTRA_TEXT, link.url)
+        putExtra("title", castTitle)
+        putExtra(Intent.EXTRA_TITLE, castTitle)
         putExtra("secure_uri", true)
         if (context != null && context !is Activity) {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
@@ -105,6 +107,7 @@ fun buildWvcIntent(
         headerMap.forEach { (name, value) ->
             bundle.putString(name, value)
         }
+        intent.putExtra(Intent.EXTRA_STREAM, bundle)
         intent.putExtra("android.media.intent.extra.HTTP_HEADERS", bundle)
         intent.putExtra("headers", bundle)
     }
@@ -118,10 +121,12 @@ fun buildWvcIntent(
  * If installed, launches the app with the stream and returns true.
  */
 fun castToWebVideoCaster(
-    context: Context,
-    link: ExtractorLink,
-    title: String,
+    context: Context?,
+    link: ExtractorLink?,
+    title: String? = null,
 ): Boolean {
+    if (context == null || link == null) return false
+
     if (!isWvcInstalled(context)) {
         openWvcPlayStore(context)
         return false
