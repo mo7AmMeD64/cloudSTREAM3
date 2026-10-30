@@ -54,6 +54,7 @@
     <string name="search_history_cleared">تم مسح سجل البحث</string>
     <string name="cd_search_history_item">ابحث عن %1$s</string>
     <string name="cd_search_history_delete">إزالة من سجل البحث</string>
+    <string name="search_load_more">تحميل المزيد</string>
 
     <!-- التفاصيل -->
     <string name="episodes">الحلقات</string>

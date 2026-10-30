@@ -29,6 +29,9 @@ object Engine {
     /** One home page: its lists and whether the provider has another page. */
     data class MainPageResult(val lists: List<HomePageList>, val hasNext: Boolean)
 
+    /** One search page: its items and whether the provider has another page. */
+    data class SearchResult(val items: List<SearchResponse>, val hasNext: Boolean)
+
     /** Every provider that loaded successfully, in registration order. */
     fun providers(): List<MainAPI> =
         APIHolder.allProviders.withLock { APIHolder.allProviders.toList() }
@@ -59,9 +62,10 @@ object Engine {
             MainPageResult(response?.items.orEmpty(), response?.hasNext == true)
         }
 
-    suspend fun search(api: MainAPI, query: String): Result<List<SearchResponse>> =
+    suspend fun search(api: MainAPI, query: String, page: Int = 1): Result<SearchResult> =
         guarded(api.searchTimeoutMs) {
-            api.search(query, 1)?.items ?: emptyList()
+            val response = api.search(query, page)
+            SearchResult(response?.items.orEmpty(), response?.hasNext == true)
         }
 
     suspend fun load(api: MainAPI, url: String): Result<LoadResponse> =

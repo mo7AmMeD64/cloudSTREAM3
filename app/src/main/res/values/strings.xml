@@ -57,6 +57,7 @@
     <string name="search_history_cleared">Search history cleared</string>
     <string name="cd_search_history_item">Search for %1$s</string>
     <string name="cd_search_history_delete">Remove from search history</string>
+    <string name="search_load_more">Load more</string>
 
     <!-- Details -->
     <string name="episodes">Episodes</string>

@@ -40,6 +40,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
@@ -62,6 +63,7 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
@@ -82,6 +84,15 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
     /** Null until the stored list loads. */
     val history: StateFlow<List<String>?> = SearchHistoryStore.entries
 
+    private val _pages = MutableStateFlow<Map<String, Int>>(emptyMap())
+    val pages: StateFlow<Map<String, Int>> = _pages.asStateFlow()
+
+    private val _lastPages = MutableStateFlow<Map<String, Boolean>>(emptyMap())
+    val lastPages: StateFlow<Map<String, Boolean>> = _lastPages.asStateFlow()
+
+    private val _loadingProviders = MutableStateFlow<Set<String>>(emptySet())
+    val loadingProviders: StateFlow<Set<String>> = _loadingProviders.asStateFlow()
+
     private var job: Job? = null
 
     init {
@@ -89,40 +100,74 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     /** [scope] narrows the search to one provider by name; null searches every provider. */
-    fun submit(query: String, scope: String? = null) {
+    fun submit(query: String, scope: String? = null, reset: Boolean = true) {
         val text = query.trim()
         if (text.isEmpty()) return
-        // Search history is not watch history, but the same pause switch stops
-        // both from being recorded. Existing entries stay.
-        if (!AppPrefs.pauseHistory(getApplication())) {
-            SearchHistoryStore.add(getApplication(), text)
+
+        if (reset) {
+            // Search history is not watch history, but the same pause switch stops
+            // both from being recorded. Existing entries stay.
+            if (!AppPrefs.pauseHistory(getApplication())) {
+                SearchHistoryStore.add(getApplication(), text)
+            }
+            job?.cancel()
+            _groups.value = emptyList()
+            _lastPages.value = emptyMap()
+            _pages.value = emptyMap()
+        } else {
+            if (_searching.value) return
         }
-        job?.cancel()
+
+        val all = Engine.providers()
+        val inScope = if (scope == null) all else all.filter { it.name == scope }
+        val providers = if (reset) {
+            inScope
+        } else {
+            inScope.filter { api -> _lastPages.value[api.name] == true }
+        }
+        if (providers.isEmpty()) return
+
+        val nextPages = _pages.value.toMutableMap()
+        providers.forEach { api ->
+            nextPages[api.name] = if (reset) 1 else (nextPages[api.name] ?: 1) + 1
+        }
+        _pages.value = nextPages
+
+        val providerOrder = all.mapIndexed { index, api -> api.name to index }.toMap()
+
         job = viewModelScope.launch {
             _searching.value = true
             _searched.value = true
-            _groups.value = emptyList()
+            _loadingProviders.value = providers.map { it.name }.toSet()
 
-            val all = Engine.providers()
-            val providers = if (scope == null) all else all.filter { it.name == scope }
-            val results = arrayOfNulls<SearchGroup>(providers.size)
             val gate = Semaphore(4)
             coroutineScope {
-                providers.forEachIndexed { index, api ->
+                providers.forEach { api ->
                     launch {
                         gate.withPermit {
+                            val page = _pages.value[api.name] ?: 1
                             // A provider that fails or has no search is simply skipped.
-                            Engine.search(api, text).onSuccess { items ->
-                                if (items.isNotEmpty()) {
-                                    results[index] = SearchGroup(api.name, items)
-                                    _groups.value = results.filterNotNull()
+                            Engine.search(api, text, page)
+                                .onSuccess { result ->
+                                    val newItems = result.items
+                                    _lastPages.update { it + (api.name to (result.hasNext && newItems.isNotEmpty())) }
+                                    if (newItems.isNotEmpty()) {
+                                        _groups.update { current ->
+                                            mergeSearchGroup(current, api.name, newItems)
+                                                .sortedBy { providerOrder[it.apiName] ?: Int.MAX_VALUE }
+                                        }
+                                    }
                                 }
-                            }
+                                .onFailure {
+                                    _lastPages.update { it + (api.name to false) }
+                                }
+                            _loadingProviders.update { it - api.name }
                         }
                     }
                 }
             }
             _searching.value = false
+            _loadingProviders.value = emptySet()
         }
     }
 
@@ -139,6 +184,9 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
         _groups.value = emptyList()
         _searching.value = false
         _searched.value = false
+        _pages.value = emptyMap()
+        _lastPages.value = emptyMap()
+        _loadingProviders.value = emptySet()
     }
 }
 
@@ -153,6 +201,8 @@ fun SearchScreen(
     val searching by viewModel.searching.collectAsState()
     val searched by viewModel.searched.collectAsState()
     val history by viewModel.history.collectAsState()
+    val lastPages by viewModel.lastPages.collectAsState()
+    val loadingProviders by viewModel.loadingProviders.collectAsState()
     val scope by sourceViewModel.search.collectAsState()
     var query by rememberSaveable { mutableStateOf("") }
     // The scope lives in the shared holder so the source sheet can change it.
@@ -244,9 +294,13 @@ fun SearchScreen(
                     ),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    items(groups) { group ->
+                    items(groups, key = { it.apiName }) { group ->
+                        val isLoading = group.apiName in loadingProviders
                         Column {
-                            SectionHeader(group.apiName)
+                            SectionHeader(
+                                title = if (isLoading) "${group.apiName} ..." else group.apiName,
+                                modifier = if (isLoading) Modifier.alpha(0.5f) else Modifier,
+                            )
                             LazyRow(
                                 contentPadding = PaddingValues(horizontal = 16.dp),
                                 horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -265,6 +319,14 @@ fun SearchScreen(
                         item(key = "searching") {
                             Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
                                 LoadingIndicator(Modifier.size(32.dp))
+                            }
+                        }
+                    } else if (shouldShowLoadMore(lastPages)) {
+                        item(key = "load_more") {
+                            Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
+                                TextButton(onClick = { viewModel.submit(query, scope, reset = false) }) {
+                                    Text(stringResource(R.string.search_load_more))
+                                }
                             }
                         }
                     }
