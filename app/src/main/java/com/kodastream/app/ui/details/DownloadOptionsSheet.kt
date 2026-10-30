@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Cast
 import androidx.compose.material.icons.rounded.ContentCopy
 import androidx.compose.material.icons.automirrored.rounded.OpenInNew
 import androidx.compose.material3.Button
@@ -410,6 +411,22 @@ fun DownloadOptionsSheet(
                                             onClick = { launchExternal(null) },
                                         )
                                     }
+                                }
+                                FilledTonalButton(
+                                    onClick = {
+                                        if (castToWebVideoCaster(context, link, title)) {
+                                            onDismiss()
+                                        }
+                                    },
+                                    enabled = canUseLink,
+                                ) {
+                                    Icon(
+                                        Icons.Rounded.Cast,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(18.dp),
+                                    )
+                                    Spacer(Modifier.width(6.dp))
+                                    Text(stringResource(R.string.cast_to_wvc))
                                 }
                             }
                             if (link.type == ExtractorLinkType.M3U8) {
