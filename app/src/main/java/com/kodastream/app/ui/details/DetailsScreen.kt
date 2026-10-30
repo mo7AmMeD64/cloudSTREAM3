@@ -5,6 +5,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.text.format.DateFormat
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
@@ -74,8 +75,10 @@ import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material.icons.rounded.Theaters
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
@@ -443,6 +446,7 @@ private fun DetailsContent(
     val snackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     var downloadSheet by remember { mutableStateOf<DownloadTarget?>(null) }
+    var isDownloadingSeason by remember { mutableStateOf(false) }
     val notifPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
 
     fun ensureNotifPermission() {
@@ -527,52 +531,58 @@ private fun DetailsContent(
 
     /** Season mode: apply the preferred server and language to every episode. */
     fun downloadSeason(episodes: List<Episode>, preferredServer: String, preferredSubLang: String?) {
+        isDownloadingSeason = true
+        Toast.makeText(context, R.string.fetching_season_links, Toast.LENGTH_SHORT).show()
         scope.launch {
-            val api = Engine.provider(response.apiName) ?: return@launch
-            var queued = 0
-            var fallbacks = 0
-            for ((index, episode) in episodes.withIndex()) {
-                val season = episode.season ?: selectedSeason
-                val number = episode.episode ?: index + 1
-                val id = DownloadStore.idOf(response.apiName, response.url, season, number)
-                if (DownloadStore.current(context).any { it.id == id && it.state == DownloadStore.STATE_DONE }) continue
-                // Thread-safe for the same reason as the download card:
-                // providers fire these callbacks from parallel extractors.
-                val links = java.util.Collections.synchronizedList(mutableListOf<ExtractorLink>())
-                val subs = java.util.Collections.synchronizedList(mutableListOf<SubtitleFile>())
-                try {
-                    Engine.guarded(api.loadLinksTimeoutMs ?: 120_000L) {
-                        api.loadLinks(
-                            episode.data, false,
-                            { sub -> runCatching { subs.add(sub) } },
-                            { link -> runCatching { links.add(link) } },
-                        )
+            try {
+                val api = Engine.provider(response.apiName) ?: return@launch
+                var queued = 0
+                var fallbacks = 0
+                for ((index, episode) in episodes.withIndex()) {
+                    val season = episode.season ?: selectedSeason
+                    val number = episode.episode ?: index + 1
+                    val id = DownloadStore.idOf(response.apiName, response.url, season, number)
+                    if (DownloadStore.current(context).any { it.id == id && it.state == DownloadStore.STATE_DONE }) continue
+                    // Thread-safe for the same reason as the download card:
+                    // providers fire these callbacks from parallel extractors.
+                    val links = java.util.Collections.synchronizedList(mutableListOf<ExtractorLink>())
+                    val subs = java.util.Collections.synchronizedList(mutableListOf<SubtitleFile>())
+                    try {
+                        Engine.guarded(api.loadLinksTimeoutMs ?: 120_000L) {
+                            api.loadLinks(
+                                episode.data, false,
+                                { sub -> runCatching { subs.add(sub) } },
+                                { link -> runCatching { links.add(link) } },
+                            )
+                        }
+                    } catch (t: Throwable) {
+                        continue
                     }
-                } catch (t: Throwable) {
-                    continue
-                }
-                val usable = synchronized(links) { links.toList() }
-                    .filter { it.type == ExtractorLinkType.VIDEO || it.type == ExtractorLinkType.M3U8 }
-                val chosen = usable.firstOrNull { it.name.equals(preferredServer, ignoreCase = true) }
-                    ?: usable.maxByOrNull { it.quality }
-                    ?: continue
-                if (!chosen.name.equals(preferredServer, ignoreCase = true)) fallbacks++
-                val sub = if (preferredSubLang == null) {
-                    null
-                } else {
-                    synchronized(subs) { subs.toList() }.firstOrNull { candidate ->
-                        candidate.lang.equals(preferredSubLang, ignoreCase = true) ||
-                            candidate.langTag?.startsWith(preferredSubLang, ignoreCase = true) == true
+                    val usable = synchronized(links) { links.toList() }
+                        .filter { it.type == ExtractorLinkType.VIDEO || it.type == ExtractorLinkType.M3U8 }
+                    val chosen = usable.firstOrNull { it.name.equals(preferredServer, ignoreCase = true) }
+                        ?: usable.maxByOrNull { it.quality }
+                        ?: continue
+                    if (!chosen.name.equals(preferredServer, ignoreCase = true)) fallbacks++
+                    val sub = if (preferredSubLang == null) {
+                        null
+                    } else {
+                        synchronized(subs) { subs.toList() }.firstOrNull { candidate ->
+                            candidate.lang.equals(preferredSubLang, ignoreCase = true) ||
+                                candidate.langTag?.startsWith(preferredSubLang, ignoreCase = true) == true
+                        }
                     }
+                    if (preferredSubLang != null && sub == null) fallbacks++
+                    startDownload(
+                        chosen, season, number, episode.name, episode.data,
+                        sub?.let { listOf(it) } ?: emptyList(),
+                    )
+                    queued++
                 }
-                if (preferredSubLang != null && sub == null) fallbacks++
-                startDownload(
-                    chosen, season, number, episode.name, episode.data,
-                    sub?.let { listOf(it) } ?: emptyList(),
-                )
-                queued++
+                if (queued > 0) announceDownload(queued, fallbacks)
+            } finally {
+                isDownloadingSeason = false
             }
-            if (queued > 0) announceDownload(queued, fallbacks)
         }
     }
 
@@ -786,6 +796,7 @@ private fun DetailsContent(
                     )
                 }
             },
+            isDownloadingSeason = isDownloadingSeason,
             onDownloadSeason = {
                 downloadSheet = DownloadTarget.Season(visibleEpisodes.toList())
             },
@@ -1984,6 +1995,7 @@ private fun EpisodeHeader(
     onLatest: () -> Unit,
     hideWatched: Boolean,
     onMarkPreviousWatched: () -> Unit,
+    isDownloadingSeason: Boolean = false,
     onDownloadSeason: () -> Unit,
     onToggleHideWatched: () -> Unit,
     seasonAction: (@Composable () -> Unit)? = null,
@@ -2012,6 +2024,7 @@ private fun EpisodeHeader(
                     )
                     DropdownMenuItem(
                         text = { Text(stringResource(R.string.download_season)) },
+                        enabled = !isDownloadingSeason,
                         onClick = {
                             onDownloadSeason()
                             menuOpen = false
@@ -2063,6 +2076,31 @@ private fun EpisodeHeader(
                         label = { Text(dubLabel(dub)) },
                     )
                 }
+            }
+        }
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 6.dp),
+        ) {
+            FilledTonalButton(
+                onClick = onDownloadSeason,
+                enabled = !isDownloadingSeason,
+            ) {
+                if (isDownloadingSeason) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(18.dp),
+                        strokeWidth = 2.dp,
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Rounded.Download,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp),
+                    )
+                }
+                Spacer(Modifier.width(8.dp))
+                Text(stringResource(R.string.download_season))
             }
         }
         seasonAction?.invoke()

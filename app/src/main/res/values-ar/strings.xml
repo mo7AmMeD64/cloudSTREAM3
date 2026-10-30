@@ -246,6 +246,7 @@
     <string name="cd_download_retry">إعادة محاولة التنزيل</string>
     <string name="download">تنزيل</string>
     <string name="download_season">تنزيل الموسم</string>
+    <string name="fetching_season_links">جارٍ جلب الروابط، يرجى الانتظار…</string>
     <string name="download_pick_quality">اختر مصدرًا</string>
     <string name="download_queued_episodes">تمت إضافة %d حلقة إلى التنزيلات</string>
     <string name="download_no_sources">لم يتم العثور على مصادر قابلة للتنزيل</string>

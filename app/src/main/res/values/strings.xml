@@ -249,6 +249,7 @@
     <string name="cd_download_retry">Retry download</string>
     <string name="download">Download</string>
     <string name="download_season">Download season</string>
+    <string name="fetching_season_links">Fetching links, please wait…</string>
     <string name="download_pick_quality">Pick a source</string>
     <string name="download_queued_episodes">Queued %d episodes</string>
     <string name="download_no_sources">No downloadable sources found</string>
