@@ -389,6 +389,8 @@ private fun AppNavGraph(
                 HomeScreen(
                     contentPadding = contentPadding,
                     onOpenItem = navController::openDetails,
+                    onOpenDetails = navController::openDetails,
+                    onResume = { playerArgs -> openPlayer(playerArgs) },
                     onOpenExtensions = { navController.navigateTopLevel(Routes.EXTENSIONS) },
                     onOpenSources = onOpenSources,
                     sourceViewModel = sources,

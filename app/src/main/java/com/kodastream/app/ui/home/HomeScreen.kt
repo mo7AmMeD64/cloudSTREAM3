@@ -34,7 +34,9 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -52,6 +54,10 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.kodastream.app.R
 import com.kodastream.app.data.AppPrefs
+import com.kodastream.app.data.DetailsArgs
+import com.kodastream.app.data.HistoryStore
+import com.kodastream.app.data.HistoryStore.HistoryEntry
+import com.kodastream.app.data.PlayerArgs
 import com.kodastream.app.engine.Engine
 import com.kodastream.app.engine.readableMessage
 import com.kodastream.app.ui.components.EmptyBox
@@ -219,6 +225,8 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
 fun HomeScreen(
     contentPadding: PaddingValues,
     onOpenItem: (SearchResponse) -> Unit,
+    onOpenDetails: (DetailsArgs) -> Unit = {},
+    onResume: (PlayerArgs) -> Unit = {},
     onOpenExtensions: () -> Unit,
     onOpenSources: () -> Unit,
     sourceViewModel: SourceViewModel,
@@ -226,6 +234,15 @@ fun HomeScreen(
     onOpenSection: () -> Unit,
     viewModel: HomeViewModel = viewModel(),
 ) {
+    val context = LocalContext.current
+    var history by remember { mutableStateOf(HistoryStore.current(context)) }
+    LaunchedEffect(Unit) {
+        HistoryStore.entries.collect { updated ->
+            if (updated != null) history = updated
+        }
+    }
+    val continueWatchingItems = remember(history) { continueWatching(history) }
+
     val providers by viewModel.providers.collectAsState()
     val selected by viewModel.selected.collectAsState()
     val rows by viewModel.rows.collectAsState()
@@ -269,12 +286,15 @@ fun HomeScreen(
                     selectedSource = selected,
                     rows = rows,
                     hero = hero,
+                    continueWatchingItems = continueWatchingItems,
                     loading = loading,
                     error = error,
                     sections = sections,
                     contentPadding = contentPadding,
                     onOpenSources = onOpenSources,
                     onOpenItem = onOpenItem,
+                    onOpenDetails = onOpenDetails,
+                    onResume = onResume,
                     onRetry = viewModel::retry,
                     onViewMore = { row ->
                         val provider = selected
@@ -298,12 +318,15 @@ private fun HomeShelves(
     selectedSource: String?,
     rows: List<HomeRow>,
     hero: List<SearchResponse>,
+    continueWatchingItems: List<HistoryEntry>,
     loading: Boolean,
     error: String?,
     sections: Map<String, ExpandedSection>,
     contentPadding: PaddingValues,
     onOpenSources: () -> Unit,
     onOpenItem: (SearchResponse) -> Unit,
+    onOpenDetails: (DetailsArgs) -> Unit,
+    onResume: (PlayerArgs) -> Unit,
     onRetry: () -> Unit,
     onViewMore: (HomeRow) -> Unit,
 ) {
@@ -403,6 +426,16 @@ private fun HomeShelves(
                             )
                         }
                     }
+                }
+            }
+
+            if (continueWatchingItems.isNotEmpty()) {
+                item(key = "continue_watching") {
+                    ContinueWatchingShelf(
+                        items = continueWatchingItems,
+                        onOpenItem = onOpenDetails,
+                        onResume = onResume,
+                    )
                 }
             }
 

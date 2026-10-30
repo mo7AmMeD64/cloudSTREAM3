@@ -296,6 +296,7 @@
     <string name="update_link_failed">تعذّر فتح الرابط</string>
     <!-- تصميم الرئيسية والتفاصيل -->
     <string name="home_title">KodaStream</string>
+    <string name="home_continue_watching">متابعة المشاهدة</string>
     <string name="type_movie">فيلم</string>
     <string name="type_series">مسلسل</string>
     <string name="type_anime">أنمي</string>

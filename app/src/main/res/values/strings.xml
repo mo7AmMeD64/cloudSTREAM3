@@ -424,6 +424,7 @@
     <string name="update_link_failed">Could not open the link</string>
     <!-- Home and details redesign -->
     <string name="home_title">KodaStream</string>
+    <string name="home_continue_watching">Continue Watching</string>
     <string name="type_movie">Movie</string>
     <string name="type_series">Series</string>
     <string name="type_anime">Anime</string>
