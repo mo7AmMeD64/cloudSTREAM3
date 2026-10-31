@@ -20,7 +20,11 @@ object LibraryStore {
     private const val FAVORITES = "favorites"
     private const val WATCHLIST = "watchlist"
 
-    private fun key(apiName: String, url: String) = "$apiName|$url"
+    private fun key(apiName: String, url: String) = storageKey(apiName, url)
+
+    internal fun storageKey(apiName: String, url: String) = "$apiName|$url"
+
+    fun keyOf(item: LibraryItem) = key(item.apiName, item.url)
 
     /**
      * What a shelf card needs, copied out of a [SearchResponse] at the moment
@@ -43,6 +47,10 @@ object LibraryStore {
 
     /** Bumped on every change; screens collect it and reload, like PluginManager.revision. */
     val revision: StateFlow<Long> = _revision.asStateFlow()
+
+    internal fun notifyChanged() {
+        _revision.value++
+    }
 
     fun favorites(context: Context): List<LibraryItem> = read(context, FAVORITES)
 
@@ -69,11 +77,22 @@ object LibraryStore {
         toggle(context, WATCHLIST, item)
 
     /** Drops the entry from both lists, whatever it was in (library swipe-away). */
-    fun remove(context: Context, item: LibraryItem) {
-        val itemKey = key(item.apiName, item.url)
-        context.removeKey(FAVORITES, itemKey)
-        context.removeKey(WATCHLIST, itemKey)
-        _revision.value++
+    fun remove(context: Context, item: LibraryItem) = remove(context, listOf(item))
+
+    fun remove(context: Context, items: Collection<LibraryItem>) {
+        items.forEach { item ->
+            val itemKey = keyOf(item)
+            context.removeKey(FAVORITES, itemKey)
+            context.removeKey(WATCHLIST, itemKey)
+            FavoriteCategoryStore.forget(context, itemKey)
+        }
+        if (items.isNotEmpty()) notifyChanged()
+    }
+
+    /** Undo support: put favorites back with their original addedAt. */
+    fun restore(context: Context, items: Collection<LibraryItem>) {
+        items.forEach { context.setKey(FAVORITES, keyOf(it), it) }
+        if (items.isNotEmpty()) notifyChanged()
     }
 
     private fun toLibraryItem(source: SearchResponse) = LibraryItem(
@@ -87,9 +106,10 @@ object LibraryStore {
     )
 
     private fun toggle(context: Context, folder: String, item: LibraryItem): Boolean {
-        val itemKey = key(item.apiName, item.url)
+        val itemKey = keyOf(item)
         return if (context.containsKey(folder, itemKey)) {
             context.removeKey(folder, itemKey)
+            if (folder == FAVORITES) FavoriteCategoryStore.forget(context, itemKey)
             _revision.value++
             false
         } else {

@@ -152,6 +152,58 @@
     <string name="library_empty_hint_favorites">اضغط على القلب في صفحة أي عنوان ليبقى هنا.</string>
     <string name="library_empty_hint_watchlist">اضغط على العلامة في صفحة أي عنوان لتخطط لمشاهدته.</string>
     <string name="library_filter_hint">تصفية مكتبتك</string>
+
+    <!-- Favorites categories -->
+    <string name="favorites_category_all">الكل</string>
+    <string name="favorites_category_uncategorized">بدون فئة</string>
+    <string name="favorites_category_new">فئة جديدة</string>
+    <string name="favorites_category_name">اسم الفئة</string>
+    <string name="favorites_category_create">إنشاء</string>
+    <string name="favorites_category_rename">إعادة تسمية</string>
+    <string name="favorites_category_rename_title">إعادة تسمية الفئة</string>
+    <string name="favorites_category_delete">حذف</string>
+    <string name="favorites_category_delete_title">حذف الفئة «%1$s»؟</string>
+    <string name="favorites_category_delete_text">ستبقى عناوينها (%1$d) في المفضلة.</string>
+    <string name="favorites_category_deleted">تم حذف الفئة</string>
+    <string name="favorites_category_name_blank">أدخل اسمًا</string>
+    <string name="favorites_category_name_long">استخدم 40 حرفًا أو أقل</string>
+    <string name="favorites_category_name_exists">هذا الاسم مستخدم بالفعل</string>
+    <string name="favorites_category_limit">يمكنك إنشاء 30 فئة كحد أقصى</string>
+    <string name="favorites_move_to">نقل إلى</string>
+    <string name="favorites_added">أُضيف إلى المفضلة</string>
+    <string name="favorites_choose_category">اختر فئة</string>
+    <string name="favorites_selection_move">نقل</string>
+    <string name="favorites_selection_remove">إزالة</string>
+    <string name="favorites_selection_close">إغلاق</string>
+    <string name="favorites_empty_title">لا يوجد شيء هنا بعد</string>
+    <string name="favorites_empty_hint">اضغط مطولًا على عنوان في «الكل» لنقله إلى هنا.</string>
+    <string name="cd_category_options">خيارات الفئة</string>
+    <string name="cd_category_current">الفئة الحالية</string>
+
+    <plurals name="favorites_selected">
+        <item quantity="zero">لم يتم تحديد أي عنوان</item>
+        <item quantity="one">تم تحديد عنوان واحد</item>
+        <item quantity="two">تم تحديد عنوانين</item>
+        <item quantity="few">تم تحديد %1$d عناوين</item>
+        <item quantity="many">تم تحديد %1$d عنوانًا</item>
+        <item quantity="other">تم تحديد %1$d عنوان</item>
+    </plurals>
+    <plurals name="favorites_moved">
+        <item quantity="zero">لم يتم نقل أي عنوان إلى %2$s</item>
+        <item quantity="one">تم نقل عنوان واحد إلى %2$s</item>
+        <item quantity="two">تم نقل عنوانين إلى %2$s</item>
+        <item quantity="few">تم نقل %1$d عناوين إلى %2$s</item>
+        <item quantity="many">تم نقل %1$d عنوانًا إلى %2$s</item>
+        <item quantity="other">تم نقل %1$d عنوان إلى %2$s</item>
+    </plurals>
+    <plurals name="favorites_removed">
+        <item quantity="zero">لم تُزل أي عناوين من المفضلة</item>
+        <item quantity="one">أُزيل عنوان واحد من المفضلة</item>
+        <item quantity="two">أُزيل عنوانان من المفضلة</item>
+        <item quantity="few">أُزيلت %1$d عناوين من المفضلة</item>
+        <item quantity="many">أُزيل %1$d عنوانًا من المفضلة</item>
+        <item quantity="other">أُزيل %1$d عنوان من المفضلة</item>
+    </plurals>
     <string name="cd_add_favorites">حفظ في المفضلة</string>
     <string name="cd_add_watchlist">حفظ في قائمة المشاهدة</string>
     <string name="settings_navigation">موضع شريط التنقل</string>

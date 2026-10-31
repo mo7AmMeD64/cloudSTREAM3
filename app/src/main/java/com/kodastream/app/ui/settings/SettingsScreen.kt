@@ -22,6 +22,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.Send
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Code
 import androidx.compose.material.icons.rounded.Contrast
@@ -35,7 +36,6 @@ import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.Restore
 import androidx.compose.material.icons.rounded.Search
-import androidx.compose.material.icons.rounded.Send
 import androidx.compose.material.icons.rounded.Speed
 import androidx.compose.material.icons.rounded.Translate
 import androidx.compose.material.icons.rounded.Tune
@@ -91,6 +91,15 @@ fun SettingsScreen(
 ) {
     val context = LocalContext.current
     val uriHandler = LocalUriHandler.current
+
+    fun openLink(url: String) {
+        try {
+            uriHandler.openUri(url)
+        } catch (_: Exception) {
+            Toast.makeText(context, R.string.update_link_failed, Toast.LENGTH_SHORT).show()
+        }
+    }
+
     var autoUpdate by remember { mutableStateOf(AppPrefs.autoUpdate(context)) }
     var navPosition by remember { mutableStateOf(AppPrefs.navPosition(context)) }
     var pauseHistory by remember { mutableStateOf(AppPrefs.pauseHistory(context)) }
@@ -408,7 +417,7 @@ fun SettingsScreen(
                         icon = Icons.Rounded.Code,
                         title = stringResource(R.string.settings_github_title),
                         supporting = stringResource(R.string.settings_github_summary),
-                        onClick = { uriHandler.openUri(GITHUB_URL) },
+                        onClick = { openLink(GITHUB_URL) },
                     )
                     NavigationRow(
                         index = 3,
@@ -416,15 +425,15 @@ fun SettingsScreen(
                         icon = Icons.Rounded.VolunteerActivism,
                         title = stringResource(R.string.settings_donate_title),
                         supporting = stringResource(R.string.settings_donate_summary),
-                        onClick = { uriHandler.openUri(DONATE_URL) },
+                        onClick = { openLink(DONATE_URL) },
                     )
                     NavigationRow(
                         index = 4,
                         count = count,
-                        icon = Icons.Rounded.Send,
+                        icon = Icons.AutoMirrored.Rounded.Send,
                         title = stringResource(R.string.settings_telegram_title),
                         supporting = stringResource(R.string.settings_telegram_summary),
-                        onClick = { uriHandler.openUri(TELEGRAM_URL) },
+                        onClick = { openLink(TELEGRAM_URL) },
                     )
                 }
             }

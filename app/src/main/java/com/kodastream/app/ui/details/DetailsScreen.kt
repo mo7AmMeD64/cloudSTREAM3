@@ -134,9 +134,11 @@ import androidx.lifecycle.viewModelScope
 import com.kodastream.app.R
 import com.kodastream.app.data.AppEvents
 import com.kodastream.app.data.AppPrefs
+import com.kodastream.app.data.CategoryResult
 import com.kodastream.app.data.DetailsArgs
 import com.kodastream.app.data.DownloadStore
 import com.kodastream.app.data.EpisodeQueues
+import com.kodastream.app.data.FavoriteCategoryStore
 import com.kodastream.app.data.HistoryStore
 import com.kodastream.app.data.HistoryStore.HistoryEntry
 import com.kodastream.app.data.LibraryStore
@@ -152,6 +154,7 @@ import com.kodastream.app.ui.components.RemoteImage
 import com.kodastream.app.ui.components.SkeletonBox
 import com.kodastream.app.ui.components.SkeletonPulseProvider
 import com.kodastream.app.ui.components.bouncySpring
+import com.kodastream.app.ui.library.MoveToSheet
 import com.kodastream.app.ui.theme.ArtworkStatusBarIcons
 import com.lagradost.cloudstream3.ActorData
 import com.lagradost.cloudstream3.AnimeLoadResponse
@@ -374,6 +377,11 @@ private fun DetailsContent(
     val isWatchlisted = remember(revision, libraryItem) {
         LibraryStore.isWatchlisted(context, libraryItem.apiName, libraryItem.url)
     }
+    val favoriteCategories = remember(revision) { FavoriteCategoryStore.categories(context) }
+    val favoriteCategoryId = remember(revision, libraryItem) {
+        FavoriteCategoryStore.categoryOf(context, libraryItem.apiName, libraryItem.url)
+    }
+    var moveFavoriteSheet by remember { mutableStateOf(false) }
 
     // Only lifecycle changes reach the screen; byte progress is never read, so
     // a progress tick cannot invalidate the whole page.
@@ -488,6 +496,39 @@ private fun DetailsContent(
             ),
         )
         if (queued) DownloadService.ensure(context)
+    }
+
+    /** Moves the title and offers Undo for the previous category. */
+    fun moveFavoriteTo(categoryId: String?, knownName: String? = null) {
+        moveFavoriteSheet = false
+        val key = LibraryStore.keyOf(libraryItem)
+        val before = FavoriteCategoryStore.categoryOf(context, libraryItem.apiName, libraryItem.url)
+        val name = knownName ?: favoriteCategories.firstOrNull { it.id == categoryId }?.name
+            ?: context.getString(R.string.favorites_category_uncategorized)
+        FavoriteCategoryStore.move(context, listOf(key), categoryId)
+        scope.launch {
+            val message = context.resources.getQuantityString(R.plurals.favorites_moved, 1, 1, name)
+            val result = snackbar.showSnackbar(
+                message = message,
+                actionLabel = context.getString(R.string.history_undo),
+                withDismissAction = true,
+                duration = SnackbarDuration.Long,
+            )
+            if (result == SnackbarResult.ActionPerformed) {
+                FavoriteCategoryStore.move(context, listOf(key), before)
+            }
+        }
+    }
+
+    fun createCategoryAndMove(rawName: String) {
+        moveFavoriteSheet = false
+        when (val result = FavoriteCategoryStore.create(context, rawName)) {
+            is CategoryResult.Created -> moveFavoriteTo(result.category.id, result.category.name)
+            CategoryResult.LimitReached -> scope.launch {
+                snackbar.showSnackbar(context.getString(R.string.favorites_category_limit))
+            }
+            else -> Unit
+        }
     }
 
     /** "Download added" with a way to jump straight to the Downloads tab. */
@@ -673,7 +714,27 @@ private fun DetailsContent(
                 playEnabled = playEnabled,
                 onPlay = playPrimary,
                 favorite = isFavorite,
-                onFavorite = { LibraryStore.toggleFavorite(context, libraryItem) },
+                onFavorite = {
+                    val nowFavorite = LibraryStore.toggleFavorite(context, libraryItem)
+                    if (nowFavorite && favoriteCategories.isNotEmpty()) {
+                        scope.launch {
+                            val result = snackbar.showSnackbar(
+                                message = context.getString(R.string.favorites_added),
+                                actionLabel = context.getString(R.string.favorites_choose_category),
+                                duration = SnackbarDuration.Short,
+                            )
+                            if (result == SnackbarResult.ActionPerformed) {
+                                moveFavoriteSheet = true
+                            }
+                        }
+                    }
+                },
+                onFavoriteLongClick = {
+                    if (!LibraryStore.isFavorite(context, response.apiName, response.url)) {
+                        LibraryStore.toggleFavorite(context, libraryItem)
+                    }
+                    moveFavoriteSheet = true
+                },
                 watchlisted = isWatchlisted,
                 onWatchlist = { LibraryStore.toggleWatchlist(context, libraryItem) },
                 showDownload = isMovie && directData != null,
@@ -1073,6 +1134,16 @@ private fun DetailsContent(
             onDismiss = { downloadSheet = null },
         )
     }
+
+    if (moveFavoriteSheet) {
+        MoveToSheet(
+            categories = favoriteCategories,
+            selectedCategoryIds = setOf(favoriteCategoryId),
+            onDismiss = { moveFavoriteSheet = false },
+            onMove = { categoryId -> moveFavoriteTo(categoryId) },
+            onCreateAndMove = { name -> createCategoryAndMove(name) },
+        )
+    }
 }
 
 @Composable
@@ -1232,6 +1303,7 @@ private data class ActionTileSpec(
     val active: Boolean = false,
     val busy: Boolean = false,
     val onClick: () -> Unit,
+    val onLongClick: (() -> Unit)? = null,
 )
 
 @Composable
@@ -1243,6 +1315,7 @@ private fun PrimaryActions(
     onPlay: () -> Unit,
     favorite: Boolean,
     onFavorite: () -> Unit,
+    onFavoriteLongClick: () -> Unit,
     watchlisted: Boolean,
     onWatchlist: () -> Unit,
     showDownload: Boolean,
@@ -1274,6 +1347,7 @@ private fun PrimaryActions(
                 label = favoriteLabel,
                 active = favorite,
                 onClick = onFavorite,
+                onLongClick = onFavoriteLongClick,
             )
         )
         add(
@@ -1400,7 +1474,7 @@ private fun ActionTile(
         modifier = modifier
             .heightIn(min = 72.dp)
             .clip(MaterialTheme.shapes.medium)
-            .clickable(onClick = tile.onClick),
+            .combinedClickable(onClick = tile.onClick, onLongClick = tile.onLongClick),
     ) {
         Column(
             modifier = Modifier.padding(vertical = 12.dp, horizontal = 8.dp),

@@ -155,6 +155,46 @@
     <string name="library_empty_hint_favorites">Tap the heart on a title page to keep it here.</string>
     <string name="library_empty_hint_watchlist">Tap the bookmark on a title page to plan watching it.</string>
     <string name="library_filter_hint">Filter your library</string>
+
+    <!-- Favorites categories -->
+    <string name="favorites_category_all">All</string>
+    <string name="favorites_category_uncategorized">Uncategorized</string>
+    <string name="favorites_category_new">New category</string>
+    <string name="favorites_category_name">Category name</string>
+    <string name="favorites_category_create">Create</string>
+    <string name="favorites_category_rename">Rename</string>
+    <string name="favorites_category_rename_title">Rename category</string>
+    <string name="favorites_category_delete">Delete</string>
+    <string name="favorites_category_delete_title">Delete category “%1$s”?</string>
+    <string name="favorites_category_delete_text">Its %1$d titles stay in Favorites.</string>
+    <string name="favorites_category_deleted">Category deleted</string>
+    <string name="favorites_category_name_blank">Enter a name</string>
+    <string name="favorites_category_name_long">Use 40 characters or fewer</string>
+    <string name="favorites_category_name_exists">That name is already used</string>
+    <string name="favorites_category_limit">You can create up to 30 categories</string>
+    <string name="favorites_move_to">Move to</string>
+    <string name="favorites_added">Added to favorites</string>
+    <string name="favorites_choose_category">Choose category</string>
+    <string name="favorites_selection_move">Move</string>
+    <string name="favorites_selection_remove">Remove</string>
+    <string name="favorites_selection_close">Close</string>
+    <string name="favorites_empty_title">Nothing here yet</string>
+    <string name="favorites_empty_hint">Long-press a title in All to move it here.</string>
+    <string name="cd_category_options">Category options</string>
+    <string name="cd_category_current">Current category</string>
+
+    <plurals name="favorites_selected">
+        <item quantity="one">%1$d selected</item>
+        <item quantity="other">%1$d selected</item>
+    </plurals>
+    <plurals name="favorites_moved">
+        <item quantity="one">Moved %1$d title to %2$s</item>
+        <item quantity="other">Moved %1$d titles to %2$s</item>
+    </plurals>
+    <plurals name="favorites_removed">
+        <item quantity="one">Removed %1$d title from favorites</item>
+        <item quantity="other">Removed %1$d titles from favorites</item>
+    </plurals>
     <string name="cd_add_favorites">Save to favorites</string>
     <string name="cd_add_watchlist">Save to watchlist</string>
     <string name="settings_navigation">Navigation bar position</string>

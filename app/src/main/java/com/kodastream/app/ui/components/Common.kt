@@ -19,8 +19,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.material.icons.automirrored.rounded.ArrowForward
+import androidx.compose.material.icons.rounded.Check
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.ColorPainter
 import androidx.compose.material.icons.Icons
@@ -55,6 +57,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -134,6 +137,9 @@ fun PosterCard(
     modifier: Modifier = Modifier,
     horizontal: Boolean = false,
     cardWidth: Dp? = null,
+    onLongClick: (() -> Unit)? = null,
+    selected: Boolean = false,
+    selectionMode: Boolean = false,
 ) {
     PosterCard(
         name = item.name,
@@ -144,6 +150,9 @@ fun PosterCard(
         modifier = modifier,
         horizontal = horizontal,
         cardWidth = cardWidth,
+        onLongClick = onLongClick,
+        selected = selected,
+        selectionMode = selectionMode,
     )
 }
 
@@ -161,6 +170,9 @@ fun PosterCard(
     modifier: Modifier = Modifier,
     horizontal: Boolean = false,
     cardWidth: Dp? = null,
+    onLongClick: (() -> Unit)? = null,
+    selected: Boolean = false,
+    selectionMode: Boolean = false,
 ) {
     val ratio = if (horizontal) 16f / 9f else 2f / 3f
     val interactionSource = remember { MutableInteractionSource() }
@@ -180,11 +192,18 @@ fun PosterCard(
                 scaleX = scale
                 scaleY = scale
             }
+            .then(
+                if (selectionMode) {
+                    Modifier.semantics { this.selected = selected }
+                } else {
+                    Modifier
+                }
+            )
             .combinedClickable(
                 interactionSource = interactionSource,
                 indication = null,
                 onClick = onClick,
-                onLongClick = if (truncated) {
+                onLongClick = onLongClick ?: if (truncated) {
                     { scope.launch { tooltipState.show() } }
                 } else {
                     null
@@ -213,6 +232,36 @@ fun PosterCard(
                             .fillMaxWidth()
                             .aspectRatio(ratio),
                     )
+                    if (selectionMode) {
+                        Box(
+                            modifier = Modifier
+                                .matchParentSize()
+                                .background(
+                                    if (selected) {
+                                        MaterialTheme.colorScheme.primary.copy(alpha = 0.35f)
+                                    } else {
+                                        Color.Transparent
+                                    }
+                                )
+                        )
+                        if (selected) {
+                            Box(
+                                modifier = Modifier
+                                    .align(Alignment.TopEnd)
+                                    .padding(6.dp)
+                                    .size(28.dp)
+                                    .background(MaterialTheme.colorScheme.primary, CircleShape),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Rounded.Check,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onPrimary,
+                                    modifier = Modifier.size(18.dp),
+                                )
+                            }
+                        }
+                    }
                     // The badge sits on a photograph, so it takes its contrast
                     // from a scrim, never from the theme: a thumbnail is the same
                     // image in every palette and a theme-derived container is
