@@ -350,6 +350,8 @@
     <string name="download_with">التنزيل بواسطة…</string>
     <string name="download_with_other">تطبيقات أخرى…</string>
     <string name="cast_to_wvc">Web Video Caster</string>
+    <string name="open_in_external_player">مشغل خارجي</string>
+    <string name="open_with">فتح بواسطة…</string>
     <string name="download_no_app">لا يوجد تطبيق يمكنه تنزيل هذا الرابط</string>
     <string name="download_hls_hint">بعض مديري التنزيل لا يستطيعون حفظ بث HLS.</string>
     <string name="added_to_downloads">تمت الإضافة إلى التنزيلات</string>

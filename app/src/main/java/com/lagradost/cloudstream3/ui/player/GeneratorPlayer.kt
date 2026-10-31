@@ -39,6 +39,7 @@ import androidx.lifecycle.viewModelScope
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.button.MaterialButton
 import com.kodastream.app.ui.details.castToWebVideoCaster
+import com.kodastream.app.ui.player.openInExternalPlayer
 import com.kodastream.app.ui.player.OnlineSubtitle
 import com.kodastream.app.ui.player.OnlineSubtitlesHelper
 import com.lagradost.cloudstream3.CommonActivity
@@ -1405,6 +1406,10 @@ class GeneratorPlayer : FullScreenPlayer() {
         val playerCastBtt = view?.findViewById<MaterialButton>(R.id.player_cast_btt)
             ?: playerBinding?.root?.findViewById(R.id.player_cast_btt)
         playerCastBtt?.isVisible = isHttp
+
+        val playerExternalBtt = view?.findViewById<MaterialButton>(R.id.player_external_btt)
+            ?: playerBinding?.root?.findViewById(R.id.player_external_btt)
+        playerExternalBtt?.isVisible = isHttp
     }
 
     private fun getPlayerVideoTitle(): String {
@@ -1788,6 +1793,15 @@ class GeneratorPlayer : FullScreenPlayer() {
         val playerCastBtt = binding.root.findViewById<MaterialButton?>(R.id.player_cast_btt)
         playerCastBtt?.setOnClickListener {
             castToWebVideoCaster(context, currentSelectedLink?.first, currentMeta?.headerName)
+        }
+
+        val playerExternalBtt = binding.root.findViewById<MaterialButton?>(R.id.player_external_btt)
+        playerExternalBtt?.setOnClickListener {
+            val ctx = context ?: return@setOnClickListener
+            val link = currentSelectedLink?.first ?: return@setOnClickListener
+            val title = getPlayerVideoTitle().ifBlank { link.name }
+            val position = player.getPosition() ?: 0L
+            openInExternalPlayer(ctx, link, title, position)
         }
         updateCastButtonVisibility()
 
