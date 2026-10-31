@@ -2,6 +2,7 @@ package com.kodastream.app.ui.player
 
 import android.net.Uri
 import com.kodastream.app.engine.Engine
+import com.lagradost.cloudstream3.LoadResponse
 import com.lagradost.cloudstream3.ui.player.ExtractorUri
 import com.lagradost.cloudstream3.ui.player.PlayerSubtitleHelper
 import com.lagradost.cloudstream3.ui.player.SubtitleData
@@ -14,6 +15,7 @@ import com.lagradost.cloudstream3.utils.ExtractorLinkType
 class KodaPlayerGenerator(
     episodes: List<ResultEpisode>,
     private val offlineSubtitles: List<SubtitleData> = emptyList(),
+    override val response: LoadResponse? = null,
 ) : VideoGenerator<ResultEpisode>(episodes) {
     override val hasCache = false
     override val canSkipLoading = true

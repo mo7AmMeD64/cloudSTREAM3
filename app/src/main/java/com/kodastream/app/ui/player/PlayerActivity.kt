@@ -93,7 +93,7 @@ class PlayerActivity : AppCompatActivity() {
                     android.R.id.content,
                     GeneratorPlayer().apply {
                         arguments = GeneratorPlayer.newInstance(
-                            KodaPlayerGenerator(episodes, offlineSubs),
+                            KodaPlayerGenerator(episodes, offlineSubs, response = args.loadResponse),
                             index,
                         )
                     },

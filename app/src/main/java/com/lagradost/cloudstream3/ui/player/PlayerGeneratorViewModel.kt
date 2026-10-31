@@ -343,6 +343,7 @@ class PlayerGeneratorViewModel : ViewModel() {
             val page = genState.response
             val id = genState.id
             if (page == null || meta !is ResultEpisode) {
+                Log.d("SkipIntro", "No skip data available for this content (page=${page != null}, meta=${meta is ResultEpisode})")
                 return@ioSafe
             }
             val stamps = SkipAPI.videoStamps(
@@ -351,6 +352,12 @@ class PlayerGeneratorViewModel : ViewModel() {
                 duration,
                 hasNextEpisode() ?: false
             )
+
+            if (stamps.isEmpty()) {
+                Log.d("SkipIntro", "No skip data available for this content")
+            } else {
+                Log.d("SkipIntro", "SkipAPI returned ${stamps.size} stamps")
+            }
 
             /** Avoid adding stamps to the wrong video */
             modifyState {
@@ -395,7 +402,7 @@ class PlayerGeneratorViewModel : ViewModel() {
                         meta = gen.videos.getOrNull(index),
                         nextMeta = gen.videos.getOrNull(index + 1),
                         id = gen.getId(index),
-                        response = null,
+                        response = gen.response,
                         index = index,
                         allMeta = gen.videos
                     )

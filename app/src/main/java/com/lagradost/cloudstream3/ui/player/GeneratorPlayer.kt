@@ -1265,8 +1265,12 @@ class GeneratorPlayer : FullScreenPlayer() {
                     true
                 )
             } ?: true
-            if (fetchStamps)
+            if (fetchStamps) {
+                Log.d("SkipIntro", "Fetching stamps for duration: $duration")
                 viewModel.loadStamps(duration)
+            } else {
+                Log.d("SkipIntro", "Skip intro disabled in settings")
+            }
         }
 
         val percentage = position * 100L / duration
@@ -1807,6 +1811,10 @@ class GeneratorPlayer : FullScreenPlayer() {
 
         observe(viewModel.currentStamps) { (stamps, instance) ->
             if (instance != viewModel.state.instance) return@observe // Outdated observe
+            Log.d("SkipIntro", "Stamps returned: ${stamps.size}")
+            if (stamps.isEmpty()) {
+                Log.d("SkipIntro", "No skip data available for this content")
+            }
             player.addTimeStamps(stamps)
         }
 

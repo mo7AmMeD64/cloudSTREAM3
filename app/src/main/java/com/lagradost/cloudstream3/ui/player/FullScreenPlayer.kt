@@ -239,19 +239,16 @@ open class FullScreenPlayer : AbstractPlayerFragment<FragmentPlayerBinding>(
 
     open fun displayTimeStamp(show: Boolean) {
         val button = playerBinding?.skipChapterButton ?: return
-        button.removeCallbacks(hideSkipTimestampRunnable)
         if (timestampShowState == show && button.isVisible == show) return
+        button.removeCallbacks(hideSkipTimestampRunnable)
         timestampShowState = show
         skipIndex++
 
         if (show) {
             button.animate().cancel()
-            button.alpha = 0f
+            button.translationY = 0f
+            button.alpha = 1f
             button.isVisible = true
-            button.animate()
-                .alpha(1f)
-                .setDuration(250)
-                .start()
 
             // Auto-hide after 10 seconds if user doesn't interact
             button.postDelayed(hideSkipTimestampRunnable, 10_000L)

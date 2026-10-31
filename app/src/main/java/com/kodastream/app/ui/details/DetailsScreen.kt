@@ -662,6 +662,7 @@ private fun DetailsContent(
                 subtitle = subtitle,
                 resumeKey = resumeKey,
                 queue = queue,
+                loadResponse = response,
                 history = HistoryEntry(
                     key = historyKey,
                     apiName = response.apiName,

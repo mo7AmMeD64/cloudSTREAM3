@@ -1,5 +1,6 @@
 package com.lagradost.cloudstream3.ui.player
 
+import com.lagradost.cloudstream3.LoadResponse
 import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.cloudstream3.utils.ExtractorLinkType
 
@@ -32,6 +33,7 @@ abstract class NoVideoGenerator(val id : Int?) : VideoGenerator<Nothing>(emptyLi
 }
 
 abstract class VideoGenerator<T : Any>(val videos: List<T>) {
+    open val response: LoadResponse? = null
     abstract val hasCache: Boolean
     abstract val canSkipLoading: Boolean
     abstract fun getId(index : Int) : Int?
