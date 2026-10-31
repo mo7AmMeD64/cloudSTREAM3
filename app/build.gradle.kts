@@ -119,6 +119,11 @@ dependencies {
     // ---- The CloudStream engine (MainAPI, extractors, networking) ----
     implementation(project(":library"))
 
+    // Mihon-compatible manga extension runtime (source-api + network, private copy).
+    implementation(project(":mihon-compat"))
+    // Parsing the Mihon extension store index (protobuf).
+    implementation(libs.kotlinx.serialization.protobuf)
+
     // The engine declares these as `implementation`, so they are on the runtime
     // classpath but NOT visible at compile time. This module (and the extensions
     // it loads) needs them, so they are repeated here, same as CloudStream's app.
