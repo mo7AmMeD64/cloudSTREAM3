@@ -466,6 +466,8 @@ class GeneratorPlayer : FullScreenPlayer() {
 
         if (!sameEpisode) {
             player.addTimeStamps(emptyList()) // clear stamps
+            currentTimestamp = null
+            displayTimeStamp(false)
             // Resets subtitle delay, as we watch some other content
             player.setSubtitleOffset(0)
         }
@@ -1247,6 +1249,12 @@ class GeneratorPlayer : FullScreenPlayer() {
         if ((currentMeta as? ResultEpisode)?.tvType == TvType.NSFW) return
 
         if (duration <= 0L) return // idk how you achieved this, but div by zero crash
+        currentTimestamp?.let { stamp ->
+            if (position < stamp.timestamp.startMs || position >= stamp.timestamp.endMs) {
+                currentTimestamp = null
+                displayTimeStamp(false)
+            }
+        }
         if (!hasRequestedStamps) {
             hasRequestedStamps = true
             val fetchStamps = context?.let { ctx ->
@@ -1606,75 +1614,12 @@ class GeneratorPlayer : FullScreenPlayer() {
     override fun pickLayout(): Int =
         if (isLayout(TV or EMULATOR)) R.layout.fragment_player_tv else R.layout.fragment_player
 
-    var skipAnimator: ValueAnimator? = null
-    var skipIndex = 0
-
-    private fun displayTimeStamp(show: Boolean) {
-        if (timestampShowState == show) return
-        skipIndex++
-        timestampShowState = show
-        playerBinding?.skipChapterButton?.apply {
-            val showWidth = 170.toPx
-            val noShowWidth = 10.toPx
-            //if((show && width == showWidth) || (!show && width == noShowWidth)) {
-            //    return
-            //}
-            val to = if (show) showWidth else noShowWidth
-            val from = if (!show) showWidth else noShowWidth
-
-            skipAnimator?.cancel()
-            isVisible = true
-
-            /** Focus instantly to make the focus color appear instantly */
-            if (show && !isShowing) {
-                // Automatically request focus if the menu is not opened
-                playerBinding?.skipChapterButton?.requestFocus()
-            }
-
-            // just in case
-            val lay = layoutParams
-            lay.width = from
-            layoutParams = lay
-            skipAnimator = ValueAnimator.ofInt(
-                from, to
-            ).apply {
-                addListener(onEnd = {
-                    if (!show) {
-                        playerBinding?.skipChapterButton?.isVisible = false
-                        if (!isShowing) {
-                            // Automatically return focus to play pause
-                            playerBinding?.playerPausePlay?.requestFocus()
-                        }
-                    }
-                })
-                addUpdateListener { valueAnimator ->
-                    val value = valueAnimator.animatedValue as Int
-                    val layoutParams: ViewGroup.LayoutParams = layoutParams
-                    layoutParams.width = value
-                    setLayoutParams(layoutParams)
-                }
-                duration = 500
-                start()
-            }
-        }
-    }
-
     override fun onTimestampSkipped(timestamp: VideoSkipStamp) {
-        displayTimeStamp(false)
+        super.onTimestampSkipped(timestamp)
     }
 
     override fun onTimestamp(timestamp: VideoSkipStamp?) {
-        if (timestamp != null) {
-            playerBinding?.skipChapterButton?.setText(timestamp.uiText)
-            displayTimeStamp(true)
-            val currentIndex = skipIndex
-            playerBinding?.skipChapterButton?.handler?.postDelayed({
-                if (skipIndex == currentIndex)
-                    displayTimeStamp(false)
-            }, 6000)
-        } else {
-            displayTimeStamp(false)
-        }
+        super.onTimestamp(timestamp)
     }
 
     override fun isThereEpisodes(): Boolean =

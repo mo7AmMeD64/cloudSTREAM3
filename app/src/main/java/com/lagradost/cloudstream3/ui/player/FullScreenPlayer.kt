@@ -66,6 +66,7 @@ import com.lagradost.cloudstream3.utils.UIHelper.popCurrentPage
 import com.lagradost.cloudstream3.utils.UIHelper.toPx
 import com.lagradost.cloudstream3.utils.setText
 import com.lagradost.cloudstream3.utils.txt
+import com.lagradost.cloudstream3.utils.videoskip.VideoSkipStamp
 import kotlin.math.roundToInt
 
 private const val SUBTITLE_DELAY_BUNDLE_KEY = "subtitle_delay"
@@ -83,6 +84,11 @@ open class FullScreenPlayer : AbstractPlayerFragment<FragmentPlayerBinding>(
     protected var isShowing = false
     protected var isLocked = false
     protected var timestampShowState = false
+    protected var currentTimestamp: VideoSkipStamp? = null
+    protected var skipIndex = 0
+    private val hideSkipTimestampRunnable = Runnable {
+        displayTimeStamp(false)
+    }
     private var metadataVisibilityToken = 0
     protected var hasEpisodes = false
         private set
@@ -231,7 +237,61 @@ open class FullScreenPlayer : AbstractPlayerFragment<FragmentPlayerBinding>(
         }
     }
 
+    open fun displayTimeStamp(show: Boolean) {
+        val button = playerBinding?.skipChapterButton ?: return
+        button.removeCallbacks(hideSkipTimestampRunnable)
+        if (timestampShowState == show && button.isVisible == show) return
+        timestampShowState = show
+        skipIndex++
+
+        if (show) {
+            button.animate().cancel()
+            button.alpha = 0f
+            button.isVisible = true
+            button.animate()
+                .alpha(1f)
+                .setDuration(250)
+                .start()
+
+            // Auto-hide after 10 seconds if user doesn't interact
+            button.postDelayed(hideSkipTimestampRunnable, 10_000L)
+
+            if (!isShowing) {
+                button.requestFocus()
+            }
+        } else {
+            button.animate().cancel()
+            button.animate()
+                .alpha(0f)
+                .setDuration(250)
+                .withEndAction {
+                    button.isVisible = false
+                    if (!isShowing) {
+                        playerBinding?.playerPausePlay?.requestFocus()
+                    }
+                }
+                .start()
+        }
+    }
+
+    override fun onTimestamp(timestamp: VideoSkipStamp?) {
+        if (timestamp != null) {
+            currentTimestamp = timestamp
+            playerBinding?.skipChapterButton?.setText(timestamp.uiText)
+            displayTimeStamp(true)
+        } else {
+            currentTimestamp = null
+            displayTimeStamp(false)
+        }
+    }
+
+    override fun onTimestampSkipped(timestamp: VideoSkipStamp) {
+        currentTimestamp = null
+        displayTimeStamp(false)
+    }
+
     override fun onDestroyView() {
+        playerBinding?.skipChapterButton?.removeCallbacks(hideSkipTimestampRunnable)
         playerHostView?.releaseOverlayLayoutListener()
         playerBinding = null
         super.onDestroyView()
@@ -1237,7 +1297,17 @@ open class FullScreenPlayer : AbstractPlayerFragment<FragmentPlayerBinding>(
                 }
                 // If UI is not shown make click instantly skip to next chapter even if locked
                 if (timestampShowState) {
-                    player.handleEvent(CSPlayerEvent.SkipCurrentChapter)
+                    val stamp = currentTimestamp
+                    if (stamp != null) {
+                        if (stamp.skipToNextEpisode) {
+                            player.handleEvent(CSPlayerEvent.NextEpisode)
+                        } else {
+                            player.seekTo(stamp.timestamp.endMs)
+                        }
+                    } else {
+                        player.handleEvent(CSPlayerEvent.SkipCurrentChapter)
+                    }
+                    displayTimeStamp(false)
                 } else if (!isLocked) {
                     player.handleEvent(CSPlayerEvent.PlayPauseToggle)
                 }
@@ -1487,10 +1557,20 @@ open class FullScreenPlayer : AbstractPlayerFragment<FragmentPlayerBinding>(
 
             skipChapterButton.setOnClickListener {
                 // Switch focus for a better UX, as otherwise it is reset to a random button like "back button"
-                if(skipChapterButton.hasFocus()) {
+                if (skipChapterButton.hasFocus()) {
                     playerPausePlay.requestFocus()
                 }
-                player.handleEvent(CSPlayerEvent.SkipCurrentChapter)
+                val stamp = currentTimestamp
+                if (stamp != null) {
+                    if (stamp.skipToNextEpisode) {
+                        player.handleEvent(CSPlayerEvent.NextEpisode)
+                    } else {
+                        player.seekTo(stamp.timestamp.endMs)
+                    }
+                } else {
+                    player.handleEvent(CSPlayerEvent.SkipCurrentChapter)
+                }
+                displayTimeStamp(false)
             }
 
             playerRotateBtt.setOnClickListener {

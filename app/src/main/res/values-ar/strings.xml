@@ -461,4 +461,15 @@
     <string name="player_preferred_audio_lang_summary">المسار الصوتي الافتراضي عند توفر عدة لغات</string>
     <string name="player_subtitles_style">مظهر الترجمة</string>
     <string name="player_subtitles_style_summary">تخصيص خط ولون وحجم وخلفية الترجمة</string>
+
+    <!-- تخطي المقدمة والفصول -->
+    <string name="skip_type_op">البداية</string>
+    <string name="skip_type_ed">النهاية</string>
+    <string name="skip_type_recap">ملخص ما سبق</string>
+    <string name="skip_type_mixed_op">بداية مدمجة</string>
+    <string name="skip_type_mixed_ed">نهاية مدمجة</string>
+    <string name="skip_type_credits">شارة النهاية</string>
+    <string name="skip_type_intro">المقدمة</string>
+    <string name="skip_type_preview">المعاينة</string>
+    <string name="skip_type_format" formatted="true">تخطي %s</string>
 </resources>
