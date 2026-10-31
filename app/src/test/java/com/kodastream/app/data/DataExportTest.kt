@@ -358,4 +358,27 @@ class DataExportTest {
         assertEquals(9, summary.totalIncoming)
         assertEquals(5, summary.totalOverwritten)
     }
+
+    @Test
+    fun mergeFavoriteCategories() {
+        val cat1 = FavoriteCategory(id = "c1", name = "Anime", order = 0, createdAt = 100L)
+        val cat2 = FavoriteCategory(id = "c2", name = "Movies", order = 1, createdAt = 200L)
+        val cat3 = FavoriteCategory(id = "c3", name = "Series", order = 2, createdAt = 300L)
+
+        val target = LibraryExport(
+            favoriteCategories = listOf(cat1, cat2),
+            favoriteCategoryMappings = mapOf("api|show1" to "c1", "api|show2" to "c2"),
+        )
+        val source = LibraryExport(
+            favoriteCategories = listOf(cat2.copy(name = "Films"), cat3),
+            favoriteCategoryMappings = mapOf("api|show2" to "c2", "api|show3" to "c3"),
+        )
+
+        val merged = DataExportLogic.mergeLibrary(target, source)
+        assertEquals(3, merged.favoriteCategories.size)
+        assertEquals(3, merged.favoriteCategoryMappings.size)
+        assertEquals("c1", merged.favoriteCategoryMappings["api|show1"])
+        assertEquals("c2", merged.favoriteCategoryMappings["api|show2"])
+        assertEquals("c3", merged.favoriteCategoryMappings["api|show3"])
+    }
 }

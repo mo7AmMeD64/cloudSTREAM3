@@ -25,6 +25,8 @@ data class DataExport(
 data class LibraryExport(
     @JsonProperty("favorites") val favorites: List<LibraryStore.LibraryItem> = emptyList(),
     @JsonProperty("watchlist") val watchlist: List<LibraryStore.LibraryItem> = emptyList(),
+    @JsonProperty("favorite_categories") val favoriteCategories: List<FavoriteCategory> = emptyList(),
+    @JsonProperty("favorite_category_mappings") val favoriteCategoryMappings: Map<String, String> = emptyMap(),
 )
 
 @JsonIgnoreProperties(ignoreUnknown = true)
@@ -101,9 +103,15 @@ object DataExportLogic {
             return map.values.sortedByDescending { it.addedAt }
         }
 
+        val mergedCategories = (target.favoriteCategories.associateBy { it.id } + source.favoriteCategories.associateBy { it.id })
+            .values.toList()
+        val mergedMappings = target.favoriteCategoryMappings + source.favoriteCategoryMappings
+
         return LibraryExport(
             favorites = mergeItems(target.favorites, source.favorites),
             watchlist = mergeItems(target.watchlist, source.watchlist),
+            favoriteCategories = mergedCategories,
+            favoriteCategoryMappings = mergedMappings,
         )
     }
 
@@ -236,6 +244,8 @@ object DataExportManager {
             library = LibraryExport(
                 favorites = LibraryStore.favorites(context),
                 watchlist = LibraryStore.watchlist(context),
+                favoriteCategories = FavoriteCategoryStore.categories(context),
+                favoriteCategoryMappings = FavoriteCategoryStore.mappings(context),
             ),
             history = HistoryExport(
                 entries = HistoryStore.current(context),
@@ -276,6 +286,12 @@ object DataExportManager {
             context = context,
             favorites = dataToApply.library.favorites,
             watchlist = dataToApply.library.watchlist,
+        )
+        FavoriteCategoryStore.restoreAll(
+            context = context,
+            categories = dataToApply.library.favoriteCategories,
+            mappings = dataToApply.library.favoriteCategoryMappings,
+            replace = (mode == ImportMode.REPLACE),
         )
         HistoryStore.restore(context, dataToApply.history.entries)
         WatchedStore.restore(context, dataToApply.watched.entries)

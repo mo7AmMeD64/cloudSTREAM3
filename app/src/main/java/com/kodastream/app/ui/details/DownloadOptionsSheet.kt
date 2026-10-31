@@ -268,7 +268,7 @@ fun DownloadOptionsSheet(
                             .heightIn(max = 420.dp),
                         contentPadding = PaddingValues(bottom = 8.dp),
                     ) {
-                        itemsIndexed(current.links, key = { _, link -> link.url }) { _, link ->
+                        itemsIndexed(current.links, key = { index, link -> "${link.url}:$index" }) { _, link ->
                             val quality = Qualities.getStringByInt(link.quality)
                             val type = if (link.type == ExtractorLinkType.M3U8) {
                                 stringResource(R.string.dl_file_hls)
@@ -314,7 +314,7 @@ fun DownloadOptionsSheet(
                                         onClick = { selectedSub = null },
                                     )
                                 }
-                                itemsIndexed(current.subtitles, key = { _, sub -> sub.url }) { _, sub ->
+                                itemsIndexed(current.subtitles, key = { index, sub -> "${sub.url}:$index" }) { _, sub ->
                                     RadioRow(
                                         selected = selectedSub?.url == sub.url,
                                         title = sub.lang,

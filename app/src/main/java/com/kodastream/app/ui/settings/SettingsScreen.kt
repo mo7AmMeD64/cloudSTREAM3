@@ -23,6 +23,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.Send
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Code
 import androidx.compose.material.icons.rounded.Contrast
@@ -98,6 +99,7 @@ import com.kodastream.app.ui.theme.contrastInk
 
 private const val GITHUB_URL = "https://github.com/mo7AmMeD64/cloudSTREAM3"
 private const val DONATE_URL = "https://creators.sa/x3onq"
+private const val TELEGRAM_URL = "https://t.me/fullappk"
 
 @Composable
 fun SettingsScreen(
@@ -107,6 +109,14 @@ fun SettingsScreen(
 ) {
     val context = LocalContext.current
     val uriHandler = LocalUriHandler.current
+
+    fun openLink(url: String) {
+        try {
+            uriHandler.openUri(url)
+        } catch (_: Exception) {
+            Toast.makeText(context, R.string.update_link_failed, Toast.LENGTH_SHORT).show()
+        }
+    }
     var autoUpdate by remember { mutableStateOf(AppPrefs.autoUpdate(context)) }
     var navPosition by remember { mutableStateOf(AppPrefs.navPosition(context)) }
     var uiStyle by remember { mutableStateOf(AppPrefs.uiStyle(context)) }
@@ -528,7 +538,7 @@ fun SettingsScreen(
 
             item(key = "about") {
                 SettingsGroup(stringResource(R.string.settings_about)) {
-                    val count = 4
+                    val count = 5
                     InfoRow(
                         index = 0,
                         count = count,
@@ -543,7 +553,7 @@ fun SettingsScreen(
                         icon = Icons.Rounded.Code,
                         title = stringResource(R.string.settings_github_title),
                         supporting = stringResource(R.string.settings_github_summary),
-                        onClick = { uriHandler.openUri(GITHUB_URL) },
+                        onClick = { openLink(GITHUB_URL) },
                     )
                     NavigationRow(
                         index = 3,
@@ -551,7 +561,15 @@ fun SettingsScreen(
                         icon = Icons.Rounded.VolunteerActivism,
                         title = stringResource(R.string.settings_donate_title),
                         supporting = stringResource(R.string.settings_donate_summary),
-                        onClick = { uriHandler.openUri(DONATE_URL) },
+                        onClick = { openLink(DONATE_URL) },
+                    )
+                    NavigationRow(
+                        index = 4,
+                        count = count,
+                        icon = Icons.AutoMirrored.Rounded.Send,
+                        title = stringResource(R.string.settings_telegram_title),
+                        supporting = stringResource(R.string.settings_telegram_summary),
+                        onClick = { openLink(TELEGRAM_URL) },
                     )
                 }
             }
