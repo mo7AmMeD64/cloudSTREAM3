@@ -229,13 +229,16 @@ def _ns_of(class_name: str) -> str:
     return "other"
 
 
-def collect_app_symbols(apk: Path) -> tuple[set[str], dict[str, set[tuple[str, str]]], dict[str, str]]:
+def collect_app_symbols(
+    apk: Path,
+) -> tuple[set[str], dict[str, set[tuple[str, str]]], dict[str, str], dict[str, list[str]]]:
     from androguard.misc import AnalyzeAPK
 
     _, dexes, _ = AnalyzeAPK(str(apk))
     classes: set[str] = set()
     methods: dict[str, set[tuple[str, str]]] = defaultdict(set)
     superclass: dict[str, str] = {}
+    interfaces: dict[str, list[str]] = {}
     for dex in dexes:
         for cls in dex.get_classes():
             name = cls.get_name()
@@ -243,9 +246,12 @@ def collect_app_symbols(apk: Path) -> tuple[set[str], dict[str, set[tuple[str, s
             sup = cls.get_superclassname()
             if sup:
                 superclass[name] = sup
+            iface = [i for i in cls.get_interfaces() if i]
+            if iface:
+                interfaces[name] = iface
             for method in cls.get_methods():
                 methods[name].add((method.get_name(), method.get_descriptor()))
-    return classes, methods, superclass
+    return classes, methods, superclass, interfaces
 
 
 def _own_classes(dex) -> set[str]:
@@ -294,14 +300,22 @@ def method_exists(
     classes: set[str],
     methods: dict[str, set[tuple[str, str]]],
     superclass: dict[str, str],
+    interfaces: dict[str, list[str]],
 ) -> bool:
+    """Search the owner, its superclasses and their interfaces (default methods)."""
     seen = set()
-    current = owner
-    while current and current not in seen:
+    pending = [owner]
+    while pending:
+        current = pending.pop()
+        if not current or current in seen:
+            continue
         seen.add(current)
         if current in classes and (name, descriptor or "") in methods.get(current, set()):
             return True
-        current = superclass.get(current, "")
+        sup = superclass.get(current)
+        if sup:
+            pending.append(sup)
+        pending.extend(interfaces.get(current, []))
     return False
 
 
@@ -332,7 +346,7 @@ def main() -> int:
     sample = choose_sample(extensions, args.samples)
     print(f"Sample: {len(sample)} extensions")
 
-    app_classes, app_methods, app_superclass = collect_app_symbols(args.apk)
+    app_classes, app_methods, app_superclass, app_interfaces = collect_app_symbols(args.apk)
     print(f"App defines {len(app_classes)} classes")
 
     report: dict = {
@@ -381,7 +395,10 @@ def main() -> int:
         for owner, name, descriptor in sorted(ref_methods):
             if owner in own or not _tracked(owner):
                 continue
-            if not method_exists(owner, name, descriptor, app_classes, app_methods, app_superclass):
+            if not method_exists(
+                owner, name, descriptor,
+                app_classes, app_methods, app_superclass, app_interfaces,
+            ):
                 missing.append({"kind": "method", "owner": owner, "name": name, "descriptor": descriptor})
         for owner, name, _ in sorted(ref_fields):
             if owner in own or not _tracked(owner):

@@ -37,6 +37,10 @@ abstract class HttpSource : CatalogueSource {
      */
     abstract val baseUrl: String
 
+    // Extensions compiled against the source API expect these getters on HttpSource itself.
+    override val name: String get() = ""
+    override val lang: String get() = ""
+
     /**
      * Returns the base (home) URL of the website as a string.
      *

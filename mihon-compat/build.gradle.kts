@@ -46,6 +46,7 @@ dependencies {
     api(libs.ax.okhttp)
     api(libs.jsoup)
     api(libs.kotlinx.serialization.json)
+    api(libs.kotlinx.serialization.json.okio)
     api(libs.kotlinx.serialization.protobuf)
     api(libs.rxjava)
     api(libs.injekt)

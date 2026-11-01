@@ -2,6 +2,8 @@ package eu.kanade.tachiyomi.compat
 
 import android.app.Application
 import android.content.Context
+import androidx.core.content.pm.PackageInfoCompat
+import eu.kanade.tachiyomi.AppInfo
 import eu.kanade.tachiyomi.network.JavaScriptEngine
 import eu.kanade.tachiyomi.network.NetworkHelper
 import eu.kanade.tachiyomi.network.NetworkPreferences
@@ -40,6 +42,9 @@ object MangaEngine {
     private fun create(context: Context): State {
         val json = Json { ignoreUnknownKeys = true }
         val protoBuf = ProtoBuf
+        val packageInfo = context.packageManager.getPackageInfo(context.packageName, 0)
+        AppInfo.versionCode = PackageInfoCompat.getLongVersionCode(packageInfo).toInt()
+        AppInfo.versionName = packageInfo.versionName ?: ""
         lateinit var network: NetworkHelper
         lateinit var javaScriptEngine: JavaScriptEngine
         network = NetworkHelper(context, NetworkPreferences(context))
