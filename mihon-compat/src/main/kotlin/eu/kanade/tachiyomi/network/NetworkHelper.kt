@@ -24,27 +24,15 @@ class NetworkHelper(
 
     val cookieJar = AndroidCookieJar()
 
-    private fun clientBuilder(): OkHttpClient.Builder = run {
-        val builder = OkHttpClient.Builder()
-            .cookieJar(cookieJar)
-            .connectTimeout(30, TimeUnit.SECONDS)
-            .readTimeout(30, TimeUnit.SECONDS)
-            .callTimeout(2, TimeUnit.MINUTES)
-            .cache(
-                Cache(
-                    directory = File(appContext.cacheDir, "network_cache"),
-                    maxSize = 5L * 1024 * 1024,
-                ),
-            )
-            .addInterceptor(UncaughtExceptionInterceptor())
-            .addInterceptor(UserAgentInterceptor(::defaultUserAgentProvider))
-
+    private fun clientBuilder(): OkHttpClient.Builder = mihonClientBuilder(
+        cacheDirectory = File(appContext.cacheDir, "network_cache"),
+        cookieJar = cookieJar,
+        userAgent = ::defaultUserAgentProvider,
+    ).apply {
         if (preferences.verboseLogging) {
             // Logging is intentionally not wired to okhttp-logging: it is not a
             // dependency of the app and extensions don't use it.
         }
-
-        builder
     }
 
     val client: OkHttpClient by lazy {
@@ -61,3 +49,23 @@ class NetworkHelper(
 
     fun defaultUserAgentProvider() = preferences.defaultUserAgent.trim()
 }
+
+/** The base chain, without the Android Cloudflare interceptor, so unit tests can build it. */
+internal fun mihonClientBuilder(
+    cacheDirectory: File,
+    cookieJar: okhttp3.CookieJar,
+    userAgent: () -> String,
+): OkHttpClient.Builder = OkHttpClient.Builder()
+    .cookieJar(cookieJar)
+    .connectTimeout(30, TimeUnit.SECONDS)
+    .readTimeout(30, TimeUnit.SECONDS)
+    .callTimeout(2, TimeUnit.MINUTES)
+    .cache(
+        Cache(
+            directory = cacheDirectory,
+            maxSize = 5L * 1024 * 1024,
+        ),
+    )
+    .addInterceptor(UncaughtExceptionInterceptor())
+    .addInterceptor(UserAgentInterceptor(userAgent))
+
