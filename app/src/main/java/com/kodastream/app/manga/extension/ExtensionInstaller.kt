@@ -1,11 +1,11 @@
 package com.kodastream.app.manga.extension
 
 import android.content.Context
-import androidx.core.content.pm.PackageInfoCompat
 import com.kodastream.app.manga.store.AvailableExtension
 import eu.kanade.tachiyomi.compat.MangaEngine
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import okhttp3.Request
@@ -21,19 +21,57 @@ sealed interface InstallStep {
     data class Error(val message: String) : InstallStep
 }
 
+/** The two IO halves of an install, so the step machine can run against a fake downloader. */
+internal interface ExtensionInstallBackend {
+    fun download(extension: AvailableExtension, target: File): Flow<Int>
+    fun install(extension: AvailableExtension, target: File)
+}
+
+/** Pending -> download percentages -> Installing -> Installed, or Error; the temp file always goes. */
+internal fun installExtensionFlow(
+    extension: AvailableExtension,
+    target: File,
+    backend: ExtensionInstallBackend,
+): Flow<InstallStep> = flow {
+    emit(InstallStep.Pending)
+    target.delete()
+    try {
+        var lastPercent = -1
+        backend.download(extension, target).collect { value ->
+            val percent = value.coerceIn(0, 100)
+            if (percent != lastPercent) {
+                lastPercent = percent
+                emit(InstallStep.Downloading(percent))
+            }
+        }
+        emit(InstallStep.Installing)
+        backend.install(extension, target)
+        emit(InstallStep.Installed)
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        emit(InstallStep.Error(e.message ?: "Install failed"))
+    } finally {
+        target.delete()
+    }
+}.flowOn(Dispatchers.IO)
+
 /** Downloads, validates and installs one extension as a private `.ext` file. */
 class ExtensionInstaller(private val context: Context) {
     private val appContext = context.applicationContext
     private val trustStore = MangaTrustStore(appContext)
 
-    fun install(extension: AvailableExtension): Flow<InstallStep> = flow {
-        emit(InstallStep.Pending)
+    fun install(extension: AvailableExtension): Flow<InstallStep> {
         val temp = File(appContext.cacheDir, "manga_install").apply { mkdirs() }
             .let { File(it, "${extension.pkgName}.apk.part") }
-        temp.delete()
-        try {
+        return installExtensionFlow(extension, temp, Backend())
+    }
+
+    private inner class Backend : ExtensionInstallBackend {
+        override fun download(extension: AvailableExtension, target: File): Flow<Int> = flow {
             val engine = MangaEngine.get(appContext)
-            val network = engine.network ?: throw IOException(engine.error ?: "The manga engine is not available")
+            val network = engine.network
+                ?: throw IOException(engine.error ?: "The manga engine is not available")
             val request = Request.Builder()
                 .url(extension.apkUrl)
                 .header("User-Agent", network.defaultUserAgentProvider())
@@ -45,7 +83,7 @@ class ExtensionInstaller(private val context: Context) {
                 var read = 0L
                 var lastPercent = -1
                 body.byteStream().use { input ->
-                    temp.outputStream().use { output ->
+                    target.outputStream().use { output ->
                         val buffer = ByteArray(64 * 1024)
                         while (true) {
                             val count = input.read(buffer)
@@ -56,16 +94,17 @@ class ExtensionInstaller(private val context: Context) {
                                 val percent = (read * 100 / total).toInt().coerceIn(0, 100)
                                 if (percent != lastPercent) {
                                     lastPercent = percent
-                                    emit(InstallStep.Downloading(percent))
+                                    emit(percent)
                                 }
                             }
                         }
                     }
                 }
             }
+        }
 
-            emit(InstallStep.Installing)
-            val packageInfo = MangaPackageUtils.archivePackageInfo(appContext, temp)
+        override fun install(extension: AvailableExtension, target: File) {
+            val packageInfo = MangaPackageUtils.archivePackageInfo(appContext, target)
                 ?: throw IOException("The downloaded file is not a valid APK")
             if (packageInfo.packageName != extension.pkgName) {
                 throw IOException("The APK package does not match the store listing")
@@ -82,8 +121,13 @@ class ExtensionInstaller(private val context: Context) {
             if (classNames.isNullOrBlank()) throw IOException("The APK has no source class")
             val signatures = MangaPackageUtils.signatureSha256(packageInfo)
             if (signatures.isEmpty()) throw IOException("The APK is not signed")
-            val trusted = signatures.any { it == extension.storeSigningKey } ||
-                trustStore.isTrusted(packageInfo, signatures, emptyList())
+            val trusted = isExtensionTrusted(
+                pkgName = packageInfo.packageName,
+                versionCode = MangaPackageUtils.versionCode(packageInfo),
+                signatures = signatures,
+                storeSigningKeys = listOf(extension.storeSigningKey),
+                manualTrustKeys = trustStore.trustedKeys(),
+            )
             if (!trusted) {
                 throw IOException("The APK is not signed with the store's signing key")
             }
@@ -91,18 +135,9 @@ class ExtensionInstaller(private val context: Context) {
                 throw IOException("The downloaded version does not match the store listing")
             }
 
-            installPrivate(packageInfo, temp)
-            emit(InstallStep.Installed)
-        } catch (e: CancellationException) {
-            temp.delete()
-            throw e
-        } catch (e: Exception) {
-            temp.delete()
-            emit(InstallStep.Error(e.message ?: "Install failed"))
-        } finally {
-            temp.delete()
+            installPrivate(packageInfo, target)
         }
-    }.flowOn(Dispatchers.IO)
+    }
 
     private fun installPrivate(packageInfo: android.content.pm.PackageInfo, source: File) {
         val target = File(

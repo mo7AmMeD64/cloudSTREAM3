@@ -46,11 +46,21 @@ class MangaStoreParsingTest {
             bytesField(8, source),
             bytesField(8, sourceAr),
         )
+        val secondExtension = concat(
+            stringField(1, "Tachiyomi: Lezhin"),
+            stringField(2, "eu.kanade.tachiyomi.extension.en.lezhin"),
+            bytesField(3, stringField(1, "https://example.test/lezhin.apk")),
+            stringField(4, "1.4"),
+            longField(5, 7),
+            stringField(6, "1.4.0"),
+            intField(7, 1),
+            bytesField(8, stringField(3, "en")),
+        )
         val storeBytes = concat(
             stringField(1, "Keiyoushi"),
             stringField(2, "Keiyoushi"),
             stringField(3, "0123456789abcdef"),
-            bytesField(101, bytesField(1, extension)),
+            bytesField(101, concat(bytesField(1, extension), bytesField(1, secondExtension))),
         )
 
         val parsed = protoBuf.decodeFromByteArray(ProtoStore.serializer(), storeBytes)
@@ -60,7 +70,8 @@ class MangaStoreParsingTest {
             badgeLabel = parsed.badgeLabel,
             signingKey = parsed.signingKey,
         )
-        val available = parsed.extensionList!!.extensions.single().toAvailable(store)
+        val available = parsed.extensionList!!.extensions[0].toAvailable(store)
+        val second = parsed.extensionList!!.extensions[1].toAvailable(store)
 
         assertEquals("Keiyoushi", store.name)
         assertEquals("0123456789abcdef", store.signingKey)
@@ -75,6 +86,14 @@ class MangaStoreParsingTest {
         assertEquals("https://mirror.example", available.sources[0].mirrorUrls.single())
         assertEquals("Maintenance tonight", available.sources[0].message)
         assertEquals(43L, available.sources[1].id)
+        assertEquals("Lezhin", second.name)
+        assertEquals("eu.kanade.tachiyomi.extension.en.lezhin", second.pkgName)
+        assertEquals("https://example.test/lezhin.apk", second.apkUrl)
+        assertEquals(7L, second.versionCode)
+        assertEquals("1.4.0", second.versionName)
+        assertEquals("en", second.lang)
+        assertEquals(ContentWarning.SAFE, second.contentWarning)
+        assertEquals("en", second.sources.single().language)
     }
 
     @Test
