@@ -113,8 +113,8 @@ class ExtensionStoreService(
     }
 
     private fun parseStore(bytes: ByteArray, url: String): ParsedStore {
-        return when (sniff(bytes)) {
-            Format.JSON -> {
+        return when (sniffStoreFormat(bytes)) {
+            StoreFormat.JSON -> {
                 val source = json.decodeFromString<JsonStore>(bytes.decodeToString())
                 ParsedStore(
                     store = ExtensionStore(
@@ -129,7 +129,7 @@ class ExtensionStoreService(
                     extensionListUrl = source.extensionListUrl,
                 )
             }
-            Format.PROTOBUF -> {
+            StoreFormat.PROTOBUF -> {
                 val source = protoBuf.decodeFromByteArray(ProtoStore.serializer(), bytes)
                 ParsedStore(
                     store = ExtensionStore(
@@ -144,13 +144,13 @@ class ExtensionStoreService(
                     extensionListUrl = source.extensionListUrl,
                 )
             }
-            Format.UNKNOWN -> throw IllegalArgumentException("Unsupported store format at $url")
+            StoreFormat.UNKNOWN -> throw IllegalArgumentException("Unsupported store format at $url")
         }
     }
 
     private fun parseExtensionList(bytes: ByteArray): List<ProtoExtension> {
-        return when (sniff(bytes)) {
-            Format.JSON -> json.decodeFromString<JsonExtensionList>(bytes.decodeToString())
+        return when (sniffStoreFormat(bytes)) {
+            StoreFormat.JSON -> json.decodeFromString<JsonExtensionList>(bytes.decodeToString())
                 .extensions
                 .map { it.toProto() }
             else -> protoBuf.decodeFromByteArray(ProtoExtensionList.serializer(), bytes).extensions
@@ -216,26 +216,10 @@ class ExtensionStoreService(
                 throw IOException("HTTP ${response.code} for $url")
             }
             val body = response.body ?: throw IOException("Empty response for $url")
-            val raw = body.bytes()
-            val bytes = if (raw.size >= 2 && raw[0] == 0x1f.toByte() && raw[1] == 0x8b.toByte()) {
-                GZIPInputStream(raw.inputStream()).use { it.readBytes() }
-            } else {
-                raw
-            }
+            val bytes = gunzipIfNeeded(body.bytes())
             Fetched(bytes, false, response.header("ETag"), response.header("Last-Modified"))
         }
     }
-
-    private fun sniff(bytes: ByteArray): Format {
-        val first = bytes.firstOrNull { it != 0x20.toByte() && it != 0x09.toByte() && it != 0x0A.toByte() && it != 0x0D.toByte() }
-            ?: return Format.UNKNOWN
-        return when (first) {
-            '['.code.toByte(), '{'.code.toByte() -> Format.JSON
-            else -> Format.PROTOBUF
-        }
-    }
-
-    private enum class Format { JSON, PROTOBUF, UNKNOWN }
 
     private data class Fetched(
         val bytes: ByteArray,
@@ -244,3 +228,25 @@ class ExtensionStoreService(
         val lastModified: String?,
     )
 }
+
+internal enum class StoreFormat { JSON, PROTOBUF, UNKNOWN }
+
+/** The index is JSON when its first meaningful byte is a brace; everything else is protobuf. */
+internal fun sniffStoreFormat(bytes: ByteArray): StoreFormat {
+    val first = bytes.firstOrNull {
+        it != 0x20.toByte() && it != 0x09.toByte() &&
+            it != 0x0A.toByte() && it != 0x0D.toByte()
+    } ?: return StoreFormat.UNKNOWN
+    return when (first) {
+        '['.code.toByte(), '{'.code.toByte() -> StoreFormat.JSON
+        else -> StoreFormat.PROTOBUF
+    }
+}
+
+/** Store indexes are often served gzipped without Content-Encoding. */
+internal fun gunzipIfNeeded(bytes: ByteArray): ByteArray =
+    if (bytes.size >= 2 && bytes[0] == 0x1f.toByte() && bytes[1] == 0x8b.toByte()) {
+        GZIPInputStream(bytes.inputStream()).use { it.readBytes() }
+    } else {
+        bytes
+    }
