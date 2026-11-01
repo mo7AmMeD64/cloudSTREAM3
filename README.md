@@ -59,7 +59,9 @@ What this means:
   the original developer are welcome.
 
 This app contains no content and no providers. It only loads extensions that
-the user chooses to install. Users are responsible for what they watch.
+the user chooses to install. Users are responsible for what they watch. Manga
+extensions come from third-party extension repositories and are not part of
+this project.
 
 
 ## الترخيص وشروط الاستخدام
