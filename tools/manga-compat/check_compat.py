@@ -185,7 +185,10 @@ def choose_sample(extensions: list[dict], count: int) -> list[dict]:
     for pkg in REQUIRED_PACKAGES:
         add(pkg)
 
-    arabic = sorted(e for e in extensions if ".extension.ar." in e["package"])
+    arabic = sorted(
+        (e for e in extensions if ".extension.ar." in e["package"]),
+        key=lambda e: e["package"],
+    )
     preferred = [p for p in ARABIC_HINTS if p in by_pkg]
     for pkg in preferred:
         add(pkg)
@@ -323,7 +326,7 @@ def main() -> int:
     args.cache_dir.mkdir(parents=True, exist_ok=True)
 
     print(f"Reading store {args.store_url}")
-    extensions = parse_store_index(fetch(args.store_url))
+    extensions, _ = parse_store_index(fetch(args.store_url))
     print(f"Store has {len(extensions)} extensions")
 
     sample = choose_sample(extensions, args.samples)
