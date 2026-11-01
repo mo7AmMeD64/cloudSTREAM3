@@ -294,6 +294,10 @@ def collect_refs(apk: Path) -> tuple[set[str], set[tuple[str, str, str | None]],
                 scan(method.get_descriptor())
                 for ins in method.get_instructions():
                     try:
+                        # Kotlin property signatures survive R8 renames as const-string
+                        # literals, so they are metadata rather than real references.
+                        if ins.get_name().startswith("const-string"):
+                            continue
                         scan(ins.get_output())
                     except Exception:
                         continue
