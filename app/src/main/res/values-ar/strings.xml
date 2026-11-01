@@ -388,4 +388,8 @@
     <string name="movie_status_rumored">إشاعة</string>
     <string name="movie_status_in_production">قيد الانتاج</string>
     <string name="movie_status_post_production">مابعد الانتاج</string>
+
+    <!-- امتدادات المانجا -->
+    <string name="manga_source_settings">إعدادات المصدر</string>
+    <string name="manga_no_source_settings">لا توجد إعدادات لهذا المصدر.</string>
 </resources>

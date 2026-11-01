@@ -504,4 +504,8 @@
     <string name="movie_status_rumored">Rumored</string>
     <string name="movie_status_in_production">In Production</string>
     <string name="movie_status_post_production">Post Production</string>
+
+    <!-- Manga extensions -->
+    <string name="manga_source_settings">Source settings</string>
+    <string name="manga_no_source_settings">This source has no settings.</string>
 </resources>
