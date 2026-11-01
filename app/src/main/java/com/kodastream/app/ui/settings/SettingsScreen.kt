@@ -23,10 +23,12 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.Send
+import androidx.compose.material.icons.rounded.AutoStories
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Code
 import androidx.compose.material.icons.rounded.Contrast
 import androidx.compose.material.icons.rounded.DarkMode
+import androidx.compose.material.icons.rounded.Dns
 import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.Extension
 import androidx.compose.material.icons.rounded.FastForward
@@ -41,6 +43,7 @@ import androidx.compose.material.icons.rounded.Translate
 import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material.icons.rounded.ViewCarousel
 import androidx.compose.material.icons.rounded.ViewSidebar
+import androidx.compose.material.icons.rounded.Visibility
 import androidx.compose.material.icons.rounded.VolunteerActivism
 import androidx.compose.material.icons.rounded.Wifi
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -50,6 +53,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -60,6 +64,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
@@ -71,7 +76,12 @@ import com.kodastream.app.R
 import com.kodastream.app.data.AppPrefs
 import com.kodastream.app.data.DownloadLocations
 import com.kodastream.app.data.SearchHistoryStore
+import com.kodastream.app.manga.MangaPrefs
+import com.kodastream.app.manga.store.MangaStoreRepository
 import com.kodastream.app.ui.home.hero.HeroStyle
+import com.kodastream.app.ui.manga.MangaLanguageDialog
+import com.kodastream.app.ui.manga.mangaLanguageSortKey
+import com.kodastream.app.ui.manga.mangaSourceLanguages
 import com.kodastream.app.ui.theme.APP_PALETTES
 import com.kodastream.app.ui.theme.DYNAMIC_PALETTE_ID
 import com.kodastream.app.ui.theme.PALETTE_CATEGORIES
@@ -79,6 +89,8 @@ import com.kodastream.app.ui.theme.PaletteStyle
 import com.kodastream.app.ui.theme.ThemeMode
 import com.kodastream.app.ui.theme.ThemeViewModel
 import com.kodastream.app.ui.theme.contrastInk
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 private const val GITHUB_URL = "https://github.com/mo7AmMeD64/cloudSTREAM3"
 private const val DONATE_URL = "https://creators.sa/x3onq"
@@ -88,6 +100,8 @@ private const val TELEGRAM_URL = "https://t.me/fullappk"
 fun SettingsScreen(
     contentPadding: PaddingValues,
     themeViewModel: ThemeViewModel,
+    onOpenMangaExtensions: () -> Unit = {},
+    onOpenMangaStores: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val uriHandler = LocalUriHandler.current
@@ -114,6 +128,26 @@ fun SettingsScreen(
     var styleDialog by remember { mutableStateOf(false) }
     var heroStyle by remember { mutableStateOf(HeroStyle.parse(AppPrefs.homeHeroStyle(context))) }
     var heroDialog by remember { mutableStateOf(false) }
+    var showNsfwExtensions by remember { mutableStateOf(MangaPrefs.showNsfw(context)) }
+    var mangaAllLanguages by remember { mutableStateOf(MangaPrefs.allLanguages(context)) }
+    var mangaLanguages by remember { mutableStateOf(MangaPrefs.languages(context)) }
+    var mangaLanguageDialog by remember { mutableStateOf(false) }
+    var mangaSection by remember { mutableStateOf(MangaPrefs.mangaSectionEnabled(context)) }
+    var cachedMangaLanguages by remember { mutableStateOf<List<String>>(emptyList()) }
+    val appLocale = LocalConfiguration.current.locales[0]
+
+    LaunchedEffect(Unit) {
+        val cached = withContext(Dispatchers.IO) {
+            MangaStoreRepository.cachedExtensions(context).map { it.lang }
+        }
+        cachedMangaLanguages = mangaSourceLanguages(cached)
+            .sortedBy { mangaLanguageSortKey(it, appLocale) }
+    }
+    val mangaLanguageOptions = remember(cachedMangaLanguages, mangaLanguages, appLocale) {
+        (cachedMangaLanguages + mangaLanguages)
+            .distinct()
+            .sortedBy { mangaLanguageSortKey(it, appLocale) }
+    }
 
     val resolvedDark = when (themeViewModel.mode) {
         ThemeMode.SYSTEM -> isSystemInDarkTheme()
@@ -400,6 +434,64 @@ fun SettingsScreen(
                 }
             }
 
+            item(key = "manga") {
+                val count = 5
+                SettingsGroup(stringResource(R.string.settings_manga)) {
+                    NavigationRow(
+                        index = 0,
+                        count = count,
+                        icon = Icons.Rounded.Extension,
+                        title = stringResource(R.string.manga_extensions_title),
+                        supporting = stringResource(R.string.settings_manga_extensions_summary),
+                        onClick = onOpenMangaExtensions,
+                    )
+                    NavigationRow(
+                        index = 1,
+                        count = count,
+                        icon = Icons.Rounded.Dns,
+                        title = stringResource(R.string.manga_stores_title),
+                        supporting = stringResource(R.string.settings_manga_stores_summary),
+                        onClick = onOpenMangaStores,
+                    )
+                    SwitchRow(
+                        index = 2,
+                        count = count,
+                        icon = Icons.Rounded.Visibility,
+                        title = stringResource(R.string.manga_show_nsfw),
+                        supporting = stringResource(R.string.manga_show_nsfw_hint),
+                        checked = showNsfwExtensions,
+                        onCheckedChange = { value ->
+                            MangaPrefs.setShowNsfw(context, value)
+                            showNsfwExtensions = value
+                        },
+                    )
+                    NavigationRow(
+                        index = 3,
+                        count = count,
+                        icon = Icons.Rounded.Translate,
+                        title = stringResource(R.string.manga_extension_languages),
+                        supporting = if (mangaAllLanguages) {
+                            stringResource(R.string.manga_language_all)
+                        } else {
+                            stringResource(R.string.manga_language_selected_n, mangaLanguages.size)
+                        },
+                        onClick = { mangaLanguageDialog = true },
+                    )
+                    SwitchRow(
+                        index = 4,
+                        count = count,
+                        icon = Icons.Rounded.AutoStories,
+                        title = stringResource(R.string.settings_manga_section),
+                        supporting = stringResource(R.string.settings_manga_section_summary),
+                        checked = mangaSection,
+                        onCheckedChange = { value ->
+                            MangaPrefs.setMangaSectionEnabled(context, value)
+                            mangaSection = value
+                        },
+                    )
+                }
+            }
+
             item(key = "about") {
                 SettingsGroup(stringResource(R.string.settings_about)) {
                     val count = 5
@@ -469,6 +561,21 @@ fun SettingsScreen(
                 styleDialog = false
             },
             onDismiss = { styleDialog = false },
+        )
+    }
+
+    if (mangaLanguageDialog) {
+        MangaLanguageDialog(
+            languages = mangaLanguageOptions,
+            selected = mangaLanguages,
+            allLanguages = mangaAllLanguages,
+            onDismiss = { mangaLanguageDialog = false },
+            onSave = { selected, all ->
+                mangaAllLanguages = all
+                mangaLanguages = selected
+                MangaPrefs.setAllLanguages(context, all)
+                MangaPrefs.setLanguages(context, selected)
+            },
         )
     }
 

@@ -485,4 +485,11 @@
     <string name="manga_store_empty_title">لا توجد متاجر</string>
     <string name="manga_store_empty_hint">أضف متجرًا لتصفح إضافات المانجا وتثبيتها.</string>
     <string name="manga_store_refresh">تحديث المتاجر</string>
+
+    <!-- إعدادات المانجا -->
+    <string name="settings_manga">المانجا</string>
+    <string name="settings_manga_extensions_summary">ثبّت مصادر المانجا وحدّثها وأزلها</string>
+    <string name="settings_manga_stores_summary">أضف المتاجر التي تأتي منها الإضافات أو أزلها</string>
+    <string name="settings_manga_section">قسم المانجا</string>
+    <string name="settings_manga_section_summary">إظهار مفتاح التبديل بين المشاهدة والمانجا في شريط التنقل</string>
 </resources>

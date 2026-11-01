@@ -600,4 +600,11 @@
     <string name="manga_store_empty_title">No stores</string>
     <string name="manga_store_empty_hint">Add a store to browse and install manga extensions.</string>
     <string name="manga_store_refresh">Refresh stores</string>
+
+    <!-- Manga settings -->
+    <string name="settings_manga">Manga</string>
+    <string name="settings_manga_extensions_summary">Install, update and remove manga sources</string>
+    <string name="settings_manga_stores_summary">Add or remove the stores extensions come from</string>
+    <string name="settings_manga_section">Manga section</string>
+    <string name="settings_manga_section_summary">Show the Watch/Manga switch in the navigation bar</string>
 </resources>

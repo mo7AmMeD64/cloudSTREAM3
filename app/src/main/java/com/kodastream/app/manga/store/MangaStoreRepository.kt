@@ -167,12 +167,8 @@ class MangaStoreRepository private constructor(context: Context) {
         ).apply()
     }
 
-    private fun loadCache(): List<StoreCacheEntry> {
-        if (!cacheFile.isFile) return emptyList()
-        return runCatching {
-            json.decodeFromString(ListSerializer(StoreCacheEntry.serializer()), cacheFile.readText())
-        }.getOrDefault(emptyList())
-    }
+    private fun loadCache(): List<StoreCacheEntry> =
+        if (cacheFile.isFile) readStoreCache(cacheFile, json) else emptyList()
 
     private suspend fun saveCache(entries: List<StoreCacheEntry>) = withContext(Dispatchers.IO) {
         cacheFile.parentFile?.mkdirs()
@@ -194,6 +190,17 @@ class MangaStoreRepository private constructor(context: Context) {
                 instance ?: MangaStoreRepository(context).also { instance = it }
             }
 
+        /** Reads the cached index without building the manga engine (Settings shows the languages). */
+        suspend fun cachedExtensions(context: Context): List<AvailableExtension> =
+            withContext(Dispatchers.IO) {
+                val file = File(context.filesDir, "manga/available.json")
+                if (file.isFile) {
+                    readStoreCache(file, Json { ignoreUnknownKeys = true }).flatMap { it.extensions }
+                } else {
+                    emptyList()
+                }
+            }
+
         fun normalizeStoreUrl(url: String): String {
             val trimmed = url.trim()
             return when {
@@ -203,3 +210,7 @@ class MangaStoreRepository private constructor(context: Context) {
         }
     }
 }
+
+private fun readStoreCache(file: File, json: Json): List<StoreCacheEntry> = runCatching {
+    json.decodeFromString(ListSerializer(StoreCacheEntry.serializer()), file.readText())
+}.getOrDefault(emptyList())
