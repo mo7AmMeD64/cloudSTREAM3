@@ -87,6 +87,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.kodastream.app.R
 import com.kodastream.app.manga.MangaPrefs
+import com.kodastream.app.manga.extension.InstallFailureStep
 import com.kodastream.app.manga.extension.InstallStep
 import com.kodastream.app.manga.extension.MangaExtension
 import com.kodastream.app.manga.extension.MangaSourceTestState
@@ -103,6 +104,11 @@ import com.kodastream.app.ui.components.SkeletonPulseProvider
 import com.kodastream.app.ui.components.SkeletonTextLine
 import eu.kanade.tachiyomi.source.ConfigurableSource
 import eu.kanade.tachiyomi.source.online.HttpSource
+
+private data class InstallFailureTarget(
+    val error: InstallStep.Error,
+    val retry: () -> Unit,
+)
 
 /**
  * The manga extension manager: installed and available extensions, filters, the
@@ -139,6 +145,7 @@ fun MangaExtensionsScreen(
     var detailsTarget by remember { mutableStateOf<MangaExtension.Installed?>(null) }
     var uninstallTarget by remember { mutableStateOf<MangaExtension.Installed?>(null) }
     var trustTarget by remember { mutableStateOf<MangaExtension.NotLoaded?>(null) }
+    var installFailure by remember { mutableStateOf<InstallFailureTarget?>(null) }
     var testState by remember { mutableStateOf<MangaSourceTestState?>(null) }
     var testSourceName by remember { mutableStateOf("") }
 
@@ -342,6 +349,10 @@ fun MangaExtensionsScreen(
                     onDetails = { detailsTarget = it },
                     onTrust = { trustTarget = it },
                     onUninstall = { uninstallTarget = it },
+                    onRetryLoad = viewModel::reloadExtensions,
+                    onShowInstallError = { error, retry ->
+                        installFailure = InstallFailureTarget(error, retry)
+                    },
                 )
 
                 else -> AvailableTab(
@@ -358,6 +369,9 @@ fun MangaExtensionsScreen(
                     onOpenStores = onOpenStores,
                     onOpenFilters = { showFilters = true },
                     onInstall = viewModel::install,
+                    onShowInstallError = { error, retry ->
+                        installFailure = InstallFailureTarget(error, retry)
+                    },
                 )
             }
         }
@@ -426,6 +440,13 @@ fun MangaExtensionsScreen(
         )
     }
 
+    installFailure?.let { failure ->
+        InstallErrorDialog(
+            failure = failure,
+            onDismiss = { installFailure = null },
+        )
+    }
+
     if (testingSourceId != null) {
         MangaSourceTestDialog(
             sourceName = testSourceName,
@@ -457,6 +478,8 @@ private fun InstalledTab(
     onDetails: (MangaExtension.Installed) -> Unit,
     onTrust: (MangaExtension.NotLoaded) -> Unit,
     onUninstall: (MangaExtension.Installed) -> Unit,
+    onRetryLoad: () -> Unit,
+    onShowInstallError: (InstallStep.Error, () -> Unit) -> Unit,
 ) {
     when {
         loading && allInstalled.isEmpty() -> ExtensionSkeletonList(bottomPadding)
@@ -523,6 +546,8 @@ private fun InstalledTab(
                             ?.takeIf { it.reason is MangaExtension.NotLoaded.Reason.Untrusted }
                             ?.let { { onTrust(it) } },
                         onUninstall = { onUninstall(extension) },
+                        onRetryLoad = onRetryLoad,
+                        onShowInstallError = onShowInstallError,
                     )
                 }
             }
@@ -545,6 +570,7 @@ private fun AvailableTab(
     onOpenStores: () -> Unit,
     onOpenFilters: () -> Unit,
     onInstall: (AvailableExtension) -> Unit,
+    onShowInstallError: (InstallStep.Error, () -> Unit) -> Unit,
 ) {
     when {
         refreshing && !hasAvailable -> ExtensionSkeletonList(bottomPadding)
@@ -602,6 +628,7 @@ private fun AvailableTab(
                         update = update,
                         step = installing[extension.pkgName],
                         onInstall = { onInstall(update ?: extension) },
+                        onShowInstallError = onShowInstallError,
                     )
                 }
             }
@@ -621,7 +648,12 @@ private fun InstalledExtensionCard(
     onDetails: () -> Unit,
     onTrust: (() -> Unit)?,
     onUninstall: () -> Unit,
+    onRetryLoad: () -> Unit,
+    onShowInstallError: (InstallStep.Error, () -> Unit) -> Unit,
 ) {
+    val retry = {
+        if (step is InstallStep.Error && step.step == InstallFailureStep.Load) onRetryLoad() else onInstall()
+    }
     val sourceCount = (extension as? MangaExtension.Loaded)?.sources?.size
         ?: listing?.sources?.size
         ?: 0
@@ -663,9 +695,16 @@ private fun InstalledExtensionCard(
                     )
                     ExtensionStateChip(extension = extension, hasUpdate = update != null)
                 }
-                if (step != null) {
+                if (step != null && step !is InstallStep.Error) {
                     InstallProgress(step)
                 }
+            }
+            if (step is InstallStep.Error) {
+                InstallErrorSummary(
+                    error = step,
+                    onRetry = retry,
+                    onDetails = { onShowInstallError(step, retry) },
+                )
             }
             if (step == null || step is InstallStep.Error) {
                 ExtensionActionRow(
@@ -731,77 +770,87 @@ private fun AvailableExtensionCard(
     update: AvailableExtension?,
     step: InstallStep?,
     onInstall: () -> Unit,
+    onShowInstallError: (InstallStep.Error, () -> Unit) -> Unit,
 ) {
     Card(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
         modifier = Modifier.fillMaxWidth(),
     ) {
-        Row(
-            modifier = Modifier.padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            ExtensionIcon(iconUrl = extension.iconUrl, contentDescription = extension.name)
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.padding(12.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                ExtensionIcon(iconUrl = extension.iconUrl, contentDescription = extension.name)
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = extension.name,
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f),
+                        )
+                        when (extension.contentWarning) {
+                            ContentWarning.NSFW -> WarningBadge(stringResource(R.string.manga_badge_nsfw))
+                            ContentWarning.MIXED -> WarningBadge(stringResource(R.string.manga_badge_mixed))
+                            ContentWarning.SAFE -> Unit
+                        }
+                    }
                     Text(
-                        text = extension.name,
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurface,
+                        text = "v${extension.versionName}  •  ${mangaLanguageName(extension.lang)}",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f),
-                    )
-                    when (extension.contentWarning) {
-                        ContentWarning.NSFW -> WarningBadge(stringResource(R.string.manga_badge_nsfw))
-                        ContentWarning.MIXED -> WarningBadge(stringResource(R.string.manga_badge_mixed))
-                        ContentWarning.SAFE -> Unit
-                    }
-                }
-                Text(
-                    text = "v${extension.versionName}  •  ${mangaLanguageName(extension.lang)}",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Text(
-                    text = extension.storeName,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-            when {
-                step != null -> InstallProgress(step)
-                update != null -> Button(
-                    onClick = onInstall,
-                    modifier = Modifier.heightIn(min = 48.dp),
-                ) {
-                    Text(stringResource(R.string.update))
-                }
-                installed -> Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    Icon(
-                        Icons.Rounded.Check,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
                     )
                     Text(
-                        text = stringResource(R.string.installed),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.primary,
+                        text = extension.storeName,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                     )
                 }
-                else -> FilledTonalButton(
-                    onClick = onInstall,
-                    modifier = Modifier.heightIn(min = 48.dp),
-                ) {
-                    Text(stringResource(R.string.install))
+                when {
+                    step is InstallStep.Error -> Unit
+                    step != null -> InstallProgress(step)
+                    update != null -> Button(
+                        onClick = onInstall,
+                        modifier = Modifier.heightIn(min = 48.dp),
+                    ) {
+                        Text(stringResource(R.string.update))
+                    }
+                    installed -> Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
+                        Icon(
+                            Icons.Rounded.Check,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                        )
+                        Text(
+                            text = stringResource(R.string.installed),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                    }
+                    else -> FilledTonalButton(
+                        onClick = onInstall,
+                        modifier = Modifier.heightIn(min = 48.dp),
+                    ) {
+                        Text(stringResource(R.string.install))
+                    }
                 }
+            }
+            if (step is InstallStep.Error) {
+                InstallErrorSummary(
+                    error = step,
+                    onRetry = onInstall,
+                    onDetails = { onShowInstallError(step, onInstall) },
+                )
             }
         }
     }
@@ -927,6 +976,133 @@ private fun InstallProgress(step: InstallStep, modifier: Modifier = Modifier) {
             },
         )
     }
+}
+
+@Composable
+private fun InstallErrorSummary(
+    error: InstallStep.Error,
+    onRetry: () -> Unit,
+    onDetails: () -> Unit,
+) {
+    val detailsLabel = stringResource(R.string.manga_details)
+    Surface(
+        color = MaterialTheme.colorScheme.errorContainer,
+        contentColor = MaterialTheme.colorScheme.onErrorContainer,
+        shape = MaterialTheme.shapes.medium,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClickLabel = detailsLabel, onClick = onDetails),
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
+            Text(
+                text = error.message,
+                style = MaterialTheme.typography.bodySmall,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
+            ) {
+                TextButton(onClick = onDetails, modifier = Modifier.heightIn(min = 48.dp)) {
+                    Text(stringResource(R.string.manga_details))
+                }
+                TextButton(onClick = onRetry, modifier = Modifier.heightIn(min = 48.dp)) {
+                    Text(stringResource(R.string.retry))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun InstallErrorDialog(
+    failure: InstallFailureTarget,
+    onDismiss: () -> Unit,
+) {
+    val error = failure.error
+    val context = LocalContext.current
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.manga_install_error_title, error.name)) },
+        text = {
+            Column(
+                modifier = Modifier
+                    .heightIn(max = 400.dp)
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Text(
+                    text = error.message,
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                DetailLine(
+                    label = stringResource(R.string.manga_details_package),
+                    value = error.pkgName,
+                )
+                DetailLine(
+                    label = stringResource(R.string.manga_details_version),
+                    value = error.versionName.ifBlank { "?" },
+                )
+                DetailLine(
+                    label = stringResource(R.string.manga_install_error_step),
+                    value = installStepLabel(error.step),
+                )
+                TextButton(
+                    onClick = {
+                        copyToClipboard(context, installErrorDetails(error))
+                        Toast.makeText(
+                            context,
+                            context.getString(R.string.manga_details_copied),
+                            Toast.LENGTH_SHORT,
+                        ).show()
+                    },
+                    modifier = Modifier.heightIn(min = 48.dp),
+                ) {
+                    Text(stringResource(R.string.manga_details_copy))
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    onDismiss()
+                    failure.retry()
+                },
+                modifier = Modifier.heightIn(min = 48.dp),
+            ) {
+                Text(stringResource(R.string.retry))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss, modifier = Modifier.heightIn(min = 48.dp)) {
+                Text(stringResource(R.string.manga_test_close))
+            }
+        },
+    )
+}
+
+@Composable
+private fun installStepLabel(step: InstallFailureStep): String = stringResource(
+    when (step) {
+        InstallFailureStep.Download -> R.string.manga_install_step_download
+        InstallFailureStep.Validate -> R.string.manga_install_step_validate
+        InstallFailureStep.Trust -> R.string.manga_install_step_trust
+        InstallFailureStep.Install -> R.string.manga_install_step_install
+        InstallFailureStep.Load -> R.string.manga_install_step_load
+    },
+)
+
+private fun installErrorDetails(error: InstallStep.Error): String = buildString {
+    appendLine("Package: ${error.pkgName}")
+    appendLine("Version: ${error.versionName}")
+    appendLine("Step: ${error.step.name}")
+    appendLine()
+    append(error.message)
+    if (error.stackTrace.isNotBlank()) appendLine().append(error.stackTrace)
 }
 
 @Composable
@@ -1128,6 +1304,10 @@ private fun MangaExtensionDetailsSheet(
                     value = hasFailed.message.ifBlank {
                         stringResource(R.string.manga_state_failed)
                     },
+                )
+                DetailLine(
+                    label = stringResource(R.string.manga_install_error_step),
+                    value = installStepLabel(InstallFailureStep.Load),
                 )
                 Text(
                     text = hasFailed.stackTrace,

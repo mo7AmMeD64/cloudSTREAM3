@@ -579,7 +579,13 @@
     <string name="manga_test_copy">Copy details</string>
     <string name="manga_test_no_source">This extension has no loaded sources.</string>
     <string name="manga_installed_ok">%1$s installed</string>
-    <string name="manga_install_failed">Install failed: %1$s</string>
+    <string name="manga_install_error_title">Extension failed: %1$s</string>
+    <string name="manga_install_error_step">Failed step</string>
+    <string name="manga_install_step_download">Download</string>
+    <string name="manga_install_step_validate">Validate</string>
+    <string name="manga_install_step_trust">Trust</string>
+    <string name="manga_install_step_install">Install</string>
+    <string name="manga_install_step_load">Load</string>
     <string name="manga_install_pending">Preparing…</string>
     <string name="manga_installing">Installing…</string>
     <string name="manga_install_percent">%1$d%%</string>

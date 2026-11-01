@@ -464,7 +464,13 @@
     <string name="manga_test_copy">نسخ التفاصيل</string>
     <string name="manga_test_no_source">لا توجد مصادر محمّلة لهذه الإضافة.</string>
     <string name="manga_installed_ok">تم تثبيت %1$s</string>
-    <string name="manga_install_failed">فشل التثبيت: %1$s</string>
+    <string name="manga_install_error_title">فشل الامتداد: %1$s</string>
+    <string name="manga_install_error_step">الخطوة الفاشلة</string>
+    <string name="manga_install_step_download">التنزيل</string>
+    <string name="manga_install_step_validate">التحقق</string>
+    <string name="manga_install_step_trust">الثقة</string>
+    <string name="manga_install_step_install">التثبيت</string>
+    <string name="manga_install_step_load">التحميل</string>
     <string name="manga_install_pending">جارٍ التحضير…</string>
     <string name="manga_installing">جارٍ التثبيت…</string>
     <string name="manga_install_percent">%1$d%%</string>

@@ -6,6 +6,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.kodastream.app.R
 import com.kodastream.app.manga.extension.ExtensionInstaller
+import com.kodastream.app.manga.extension.InstallFailureStep
 import com.kodastream.app.manga.extension.InstallStep
 import com.kodastream.app.manga.extension.MangaExtension
 import com.kodastream.app.manga.extension.MangaSourceManager
@@ -61,27 +62,34 @@ class MangaExtensionsViewModel(application: Application) : AndroidViewModel(appl
         viewModelScope.launch {
             storeRepository.refreshAll(force = true)
             manager.reload(storeRepository.stores.value)
+            clearResolvedLoadErrors()
         }
     }
 
     fun reloadExtensions() {
-        viewModelScope.launch { manager.reload(storeRepository.stores.value) }
+        viewModelScope.launch {
+            manager.reload(storeRepository.stores.value)
+            clearResolvedLoadErrors()
+        }
     }
 
     fun install(extension: AvailableExtension) {
-        if (_installing.value.containsKey(extension.pkgName)) return
+        val current = _installing.value[extension.pkgName]
+        if (current != null && current !is InstallStep.Error) return
         viewModelScope.launch {
             installer.install(extension).collect { step ->
                 _installing.update { it + (extension.pkgName to step) }
                 when (step) {
                     is InstallStep.Installed -> {
-                        _installing.update { it - extension.pkgName }
-                        toast(R.string.manga_installed_ok, extension.name)
-                        manager.reload(storeRepository.stores.value)
-                    }
-                    is InstallStep.Error -> {
-                        _installing.update { it - extension.pkgName }
-                        toast(R.string.manga_install_failed, step.message)
+                        manager.reloadPackage(extension.pkgName, storeRepository.stores.value)
+                        val loaded = manager.extensions.value
+                            .firstOrNull { it.pkgName == extension.pkgName }
+                        if (loaded is MangaExtension.NotLoaded) {
+                            _installing.update { it + (extension.pkgName to loadError(loaded)) }
+                        } else {
+                            _installing.update { it - extension.pkgName }
+                            toast(R.string.manga_installed_ok, extension.name)
+                        }
                     }
                     else -> Unit
                 }
@@ -103,13 +111,19 @@ class MangaExtensionsViewModel(application: Application) : AndroidViewModel(appl
             updates.forEach { extension ->
                 installer.install(extension).collect { step ->
                     _installing.update { it + (extension.pkgName to step) }
-                    if (step is InstallStep.Error) {
-                        _installing.update { it - extension.pkgName }
+                    if (step is InstallStep.Installed) {
+                        manager.reloadPackage(extension.pkgName, storeRepository.stores.value)
+                        val loaded = manager.extensions.value
+                            .firstOrNull { it.pkgName == extension.pkgName }
+                        if (loaded is MangaExtension.NotLoaded) {
+                            _installing.update { it + (extension.pkgName to loadError(loaded)) }
+                        } else {
+                            _installing.update { it - extension.pkgName }
+                        }
                     }
                 }
             }
-            _installing.value = emptyMap()
-            manager.reload(storeRepository.stores.value)
+            clearResolvedLoadErrors()
         }
     }
 
@@ -119,6 +133,7 @@ class MangaExtensionsViewModel(application: Application) : AndroidViewModel(appl
                 .filter { it.extension.pkgName == extension.pkgName }
                 .map { it.source.id }
             manager.uninstall(extension.pkgName, storeRepository.stores.value)
+            _installing.update { it - extension.pkgName }
             if (clearData) sourceIds.forEach { clearMangaSourcePreferences(context, it) }
             if (clearData) toast(R.string.manga_extension_data_cleared)
         }
@@ -164,6 +179,33 @@ class MangaExtensionsViewModel(application: Application) : AndroidViewModel(appl
 
     fun refreshStores() {
         viewModelScope.launch { storeRepository.refreshAll(force = true) }
+    }
+
+    private fun loadError(extension: MangaExtension.NotLoaded): InstallStep.Error {
+        val failed = extension.reason as? MangaExtension.NotLoaded.Reason.Failed
+        return InstallStep.Error(
+            message = failed?.message ?: extension.reason.toString(),
+            step = InstallFailureStep.Load,
+            name = extension.name,
+            pkgName = extension.pkgName,
+            versionName = extension.versionName,
+            stackTrace = failed?.stackTrace.orEmpty(),
+        )
+    }
+
+    /** A successful reload clears an old load error without touching install errors. */
+    private fun clearResolvedLoadErrors() {
+        val loaded = manager.extensions.value
+            .filterIsInstance<MangaExtension.Loaded>()
+            .map { it.pkgName }
+            .toSet()
+        _installing.update { steps ->
+            steps.filterNot { (pkgName, step) ->
+                step is InstallStep.Error &&
+                    step.step == InstallFailureStep.Load &&
+                    pkgName in loaded
+            }
+        }
     }
 
     private fun toast(resId: Int, vararg args: Any) {
