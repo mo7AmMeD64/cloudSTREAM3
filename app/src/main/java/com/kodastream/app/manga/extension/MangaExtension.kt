@@ -33,7 +33,13 @@ sealed interface MangaExtension {
         override val signatures: List<String>,
         val sources: List<Source>,
         val factoryClassName: String?,
+        val linkFailure: LinkFailure? = null,
     ) : Installed {
+
+        data class LinkFailure(
+            val message: String,
+            val stackTrace: String,
+        )
 
         val isConfigurable: Boolean
             get() = sources.any { it is eu.kanade.tachiyomi.source.ConfigurableSource }

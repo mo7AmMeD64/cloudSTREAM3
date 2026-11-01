@@ -540,6 +540,8 @@
     <string name="manga_state_unsigned">Unsigned</string>
     <string name="manga_state_filtered">Filtered</string>
     <string name="manga_state_failed">Failed to load</string>
+    <string name="manga_state_incompatible">Not compatible with this build</string>
+    <string name="manga_state_incompatible_reason">Not compatible with this build — %1$s</string>
     <string name="manga_details">Details</string>
     <string name="manga_settings">Settings</string>
     <string name="manga_trust">Trust</string>

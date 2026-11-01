@@ -3,6 +3,7 @@ package com.kodastream.app.manga.extension
 import android.content.Context
 import com.kodastream.app.manga.rootMessage
 import com.kodastream.app.manga.store.ExtensionStore
+import eu.kanade.tachiyomi.compat.MangaEngine
 import eu.kanade.tachiyomi.source.CatalogueSource
 import eu.kanade.tachiyomi.source.Source
 import eu.kanade.tachiyomi.source.model.FilterList
@@ -47,6 +48,8 @@ class MangaSourceManager private constructor(context: Context) {
         _loading.value = true
         _error.value = null
         try {
+            // Injekt must exist before the loader touches an HttpSource.client.
+            MangaEngine.get(appContext)
             val loaded = loader.loadAll(stores)
             publish(loaded)
             started.set(true)
@@ -68,6 +71,8 @@ class MangaSourceManager private constructor(context: Context) {
                 reload(stores)
                 return@withContext
             }
+            // Injekt must exist before the loader touches an HttpSource.client.
+            MangaEngine.get(appContext)
             val installed = loader.loadOne(file, stores)
             publish(_extensions.value.filterNot { it.pkgName == pkgName } + installed)
             started.set(true)

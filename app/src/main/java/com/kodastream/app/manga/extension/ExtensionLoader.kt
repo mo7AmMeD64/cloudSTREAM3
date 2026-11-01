@@ -15,6 +15,7 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import mihon.data.dalvik.DelegateLastClassLoaderCompat
 import java.io.File
 import java.util.concurrent.ConcurrentHashMap
@@ -29,6 +30,10 @@ class ExtensionLoader(private val context: Context) {
     private val cache = ConcurrentHashMap<String, MangaExtension.Loaded>()
     private val semaphore = Semaphore(4)
     private val trustStore = MangaTrustStore(appContext)
+
+    private companion object {
+        const val LINK_PROBE_TIMEOUT_MS = 3_000L
+    }
 
     suspend fun loadAll(
         stores: List<ExtensionStore>,
@@ -54,14 +59,14 @@ class ExtensionLoader(private val context: Context) {
     fun cached(): Map<String, MangaExtension.Loaded> = cache.toMap()
 
     /** Loads one file, used right after install so the row appears without a full reload. */
-    fun loadOne(file: File, stores: List<ExtensionStore>): MangaExtension.Installed =
+    suspend fun loadOne(file: File, stores: List<ExtensionStore>): MangaExtension.Installed =
         loadFile(file, stores, cache)
 
     fun clearCache() {
         cache.clear()
     }
 
-    private fun loadFile(
+    private suspend fun loadFile(
         file: File,
         stores: List<ExtensionStore>,
         alreadyLoaded: Map<String, MangaExtension.Loaded>,
@@ -166,6 +171,11 @@ class ExtensionLoader(private val context: Context) {
             else -> "all"
         }
 
+        // Cheap proof that the extension's bridge can build its HTTP client in this build.
+        val linkFailure = withTimeoutOrNull(LINK_PROBE_TIMEOUT_MS) {
+            sources.firstNotNullOfOrNull { MangaLinkProbe.probe(it) }
+        }
+
         val loaded = MangaExtension.Loaded(
             name = name,
             pkgName = pkgName,
@@ -178,6 +188,7 @@ class ExtensionLoader(private val context: Context) {
             signatures = signatures,
             sources = sources,
             factoryClassName = metadata.getString(MangaPackageUtils.METADATA_SOURCE_FACTORY),
+            linkFailure = linkFailure,
         )
         cache[pkgName] = loaded
         return loaded

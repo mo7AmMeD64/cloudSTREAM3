@@ -425,6 +425,8 @@
     <string name="manga_state_unsigned">غير موقّعة</string>
     <string name="manga_state_filtered">مصفّاة</string>
     <string name="manga_state_failed">تعذّر التحميل</string>
+    <string name="manga_state_incompatible">غير متوافق مع هذا الإصدار</string>
+    <string name="manga_state_incompatible_reason">غير متوافق مع هذا الإصدار — %1$s</string>
     <string name="manga_details">التفاصيل</string>
     <string name="manga_settings">الإعدادات</string>
     <string name="manga_trust">الثقة</string>
