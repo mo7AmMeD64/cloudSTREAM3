@@ -10,7 +10,7 @@ on:
       sample_count:
         description: "How many extensions to sample"
         required: true
-        default: "40"
+        default: "60"
 
 permissions:
   contents: read
@@ -76,8 +76,8 @@ jobs:
             compat-report.json
           if-no-files-found: ignore
 
-      - name: Fail on Mihon core gaps
+      - name: Fail on missing classes
         if: steps.check.outcome == 'failure'
         run: |
-          echo "The sample references members in eu.kanade.tachiyomi. or uy.kohesive.injekt. that this build does not define."
+          echo "The sample references classes in a tracked namespace that this build does not define."
           exit 1
