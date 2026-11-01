@@ -41,9 +41,11 @@ tasks.withType<KotlinJvmCompile> {
 
 dependencies {
     testImplementation(libs.junit)
+    testImplementation(libs.ax.okhttp.mockwebserver)
 
     // Kept public: the app and the extensions link against these types.
     api(libs.ax.okhttp)
+    api(libs.ax.okhttp.brotli)
     api(libs.jsoup)
     api(libs.kotlinx.serialization.json)
     api(libs.kotlinx.serialization.json.okio)
