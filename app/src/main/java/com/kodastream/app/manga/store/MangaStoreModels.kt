@@ -2,6 +2,7 @@
 
 package com.kodastream.app.manga.store
 
+import com.kodastream.app.manga.parseLibVersion
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.protobuf.ProtoNumber
@@ -194,7 +195,7 @@ internal fun ProtoExtension.toAvailable(
         iconUrl = resources.iconUrl,
         versionCode = versionCode,
         versionName = versionName,
-        libVersion = extensionLib.toDoubleOrNull(),
+        libVersion = parseLibVersion(null, extensionLib),
         lang = if (languages.size == 1) languages.first() else "all",
         contentWarning = when (contentWarning) {
             2 -> ContentWarning.MIXED
@@ -229,7 +230,7 @@ internal fun JsonExtension.toAvailable(
         iconUrl = resources.iconUrl,
         versionCode = versionCode,
         versionName = versionName,
-        libVersion = extensionLib.toDoubleOrNull(),
+        libVersion = parseLibVersion(null, extensionLib),
         lang = if (languages.size == 1) languages.first() else "all",
         contentWarning = when (contentWarning) {
             2 -> ContentWarning.MIXED
@@ -263,7 +264,7 @@ internal fun LegacyExtension.toAvailable(
     iconUrl = "$storeBaseUrl/icon/$pkg.png",
     versionCode = code,
     versionName = version,
-    libVersion = version.substringBeforeLast('.').toDoubleOrNull(),
+    libVersion = parseLibVersion(null, version),
     lang = lang,
     contentWarning = if (nsfw == 1) ContentWarning.NSFW else ContentWarning.SAFE,
     sources = sources?.map {

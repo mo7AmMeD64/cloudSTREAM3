@@ -1,5 +1,8 @@
 package com.kodastream.app.manga.store
 
+import com.kodastream.app.manga.isNewerLib
+import com.kodastream.app.manga.signatureMatches
+
 /** Pure filters used by the Extensions screen and by tests. */
 object MangaFilters {
 
@@ -53,7 +56,7 @@ object MangaFilters {
         signatures: Collection<String>,
     ): AvailableExtension? {
         return available
-            .filter { it.pkgName == pkgName && signatures.isNotEmpty() && it.storeSigningKey in signatures }
+            .filter { it.pkgName == pkgName && signatureMatches(signatures, it.storeSigningKey) }
             .maxWithOrNull(compareBy<AvailableExtension> { it.versionCode }.thenBy { it.libVersion ?: 0.0 })
     }
 
@@ -70,7 +73,7 @@ object MangaFilters {
     ): Boolean {
         if (listing == null) return false
         return listing.versionCode > installedVersionCode ||
-            (installedLibVersion != null && (listing.libVersion ?: 0.0) > installedLibVersion)
+            (installedLibVersion != null && isNewerLib(listing.libVersion, installedLibVersion))
     }
 
     fun isInstalled(pkgName: String, installed: Collection<String>): Boolean =

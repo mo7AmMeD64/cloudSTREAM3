@@ -1,5 +1,7 @@
 package com.kodastream.app.manga.extension
 
+import com.kodastream.app.manga.isNewerLib
+import com.kodastream.app.manga.signatureMatches
 import com.kodastream.app.manga.store.ContentWarning
 import com.kodastream.app.manga.store.ExtensionStore
 import eu.kanade.tachiyomi.source.Source
@@ -40,13 +42,13 @@ sealed interface MangaExtension {
             available: List<com.kodastream.app.manga.store.AvailableExtension>,
         ): com.kodastream.app.manga.store.AvailableExtension? {
             return available
-                .filter { it.pkgName == pkgName && it.storeSigningKey in signatures }
+                .filter { it.pkgName == pkgName && signatureMatches(signatures, it.storeSigningKey) }
                 .maxWithOrNull(
                     compareBy<com.kodastream.app.manga.store.AvailableExtension> { it.versionCode }
                         .thenBy { it.libVersion ?: 0.0 },
                 )
                 ?.takeIf {
-                    it.versionCode > versionCode || (libVersion != null && (it.libVersion ?: 0.0) > libVersion)
+                    it.versionCode > versionCode || (libVersion != null && isNewerLib(it.libVersion, libVersion))
                 }
         }
     }

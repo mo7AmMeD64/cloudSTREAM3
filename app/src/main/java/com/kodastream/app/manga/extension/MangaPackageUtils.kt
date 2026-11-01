@@ -6,6 +6,7 @@ import android.content.pm.PackageInfo
 import android.content.pm.PackageManager
 import android.os.Build
 import androidx.core.content.pm.PackageInfoCompat
+import com.kodastream.app.manga.parseLibVersion
 import com.kodastream.app.manga.store.ContentWarning
 import java.security.MessageDigest
 
@@ -19,8 +20,6 @@ internal object MangaPackageUtils {
     const val METADATA_EXTENSION_LIB = "tachiyomix.extensionLib"
     const val METADATA_CONTENT_WARNING = "tachiyomix.contentWarning"
     const val PRIVATE_EXTENSION_EXTENSION = "ext"
-
-    val SUPPORTED_LIB_VERSIONS = listOf(1.4, 1.6)
 
     @Suppress("DEPRECATION")
     val PACKAGE_FLAGS: Int = PackageManager.GET_CONFIGURATIONS or
@@ -42,9 +41,20 @@ internal object MangaPackageUtils {
         PackageInfoCompat.getLongVersionCode(packageInfo)
 
     fun libVersion(packageInfo: PackageInfo): Double? {
-        val metadata = packageInfo.applicationInfo?.metaData ?: return null
-        if (!metadata.containsKey(METADATA_EXTENSION_LIB)) return null
-        return runCatching { metadata.getFloat(METADATA_EXTENSION_LIB).toDouble() }.getOrNull()
+        val metadata = packageInfo.applicationInfo?.metaData
+        val metaFloat = if (metadata != null && metadata.containsKey(METADATA_EXTENSION_LIB)) {
+            // The Mihon path is getFloat; get() also tolerates a store that wrote a String or Int.
+            runCatching { metadata.getFloat(METADATA_EXTENSION_LIB) }.getOrNull()
+                ?.takeUnless { it == 0f }
+                ?: when (val raw = metadata.get(METADATA_EXTENSION_LIB)) {
+                    is Number -> raw.toFloat()
+                    is String -> raw.toFloatOrNull()
+                    else -> null
+                }
+        } else {
+            null
+        }
+        return parseLibVersion(metaFloat, packageInfo.versionName)
     }
 
     fun contentWarning(packageInfo: PackageInfo): ContentWarning {
