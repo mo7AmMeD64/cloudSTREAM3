@@ -73,6 +73,9 @@ axMedia3 = "1.9.3" # matches nextlib 1.9.3-0.12.0 and the ported CloudStream pla
 axCoil = "2.7.0"
 axMaterialColors = "1.12.0"
 axOkhttp = "4.12.0"
+# NiceHttp in :library already resolves OkHttp to 5.3.2, so the compression
+# artifacts must match the runtime version instead of the declared one.
+axOkhttpCompression = "5.3.2"
 composeMaterial3 = "1.12.0-alpha03"
 composeMultiplatform = "1.12.0"
 lifecycleViewmodelCompose = "2.11.0"
@@ -205,8 +208,9 @@ ax-media3-datasource-okhttp = { group = "androidx.media3", name = "media3-dataso
 ax-coil-compose = { group = "io.coil-kt", name = "coil-compose", version.ref = "axCoil" }
 ax-material-colors = { group = "com.google.android.material", name = "material", version.ref = "axMaterialColors" }
 ax-okhttp = { group = "com.squareup.okhttp3", name = "okhttp", version.ref = "axOkhttp" }
-ax-okhttp-brotli = { group = "com.squareup.okhttp3", name = "okhttp-brotli", version.ref = "axOkhttp" }
-ax-okhttp-mockwebserver = { group = "com.squareup.okhttp3", name = "mockwebserver", version.ref = "axOkhttp" }
+ax-okhttp-brotli = { group = "com.squareup.okhttp3", name = "okhttp-brotli", version.ref = "axOkhttpCompression" }
+ax-okhttp-zstd = { group = "com.squareup.okhttp3", name = "okhttp-zstd", version.ref = "axOkhttpCompression" }
+ax-okhttp-mockwebserver = { group = "com.squareup.okhttp3", name = "mockwebserver", version.ref = "axOkhttpCompression" }
 # The ported CloudStream player UI is RecyclerView-heavy; the transitive
 # version lacks absoluteAdapterPosition and pool sharing fixes.
 ax-recyclerview = { group = "androidx.recyclerview", name = "recyclerview", version = "1.3.2" }

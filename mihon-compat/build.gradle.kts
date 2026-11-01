@@ -45,7 +45,9 @@ dependencies {
 
     // Kept public: the app and the extensions link against these types.
     api(libs.ax.okhttp)
+    // OkHttp 5 keeps the compression algorithms in separate artifacts.
     api(libs.ax.okhttp.brotli)
+    api(libs.ax.okhttp.zstd)
     api(libs.jsoup)
     api(libs.kotlinx.serialization.json)
     api(libs.kotlinx.serialization.json.okio)
