@@ -3,6 +3,8 @@ package com.kodastream.app.manga.extension
 import android.content.Context
 import android.content.pm.PackageInfo
 import androidx.core.content.pm.PackageInfoCompat
+import com.kodastream.app.manga.normalizeSignature
+import com.kodastream.app.manga.signatureMatches
 import com.kodastream.app.manga.store.ExtensionStore
 
 /** Manual trust list, keyed exactly as `pkg:versionCode:signature`. */
@@ -44,7 +46,7 @@ class MangaTrustStore(context: Context) {
 }
 
 internal fun extensionTrustKey(pkgName: String, versionCode: Long, signature: String): String =
-    "$pkgName:$versionCode:$signature"
+    "$pkgName:$versionCode:${normalizeSignature(signature)}"
 
 /** Store keys trust any version of their extensions; manual keys trust one exact build. */
 internal fun isExtensionTrusted(
@@ -55,7 +57,9 @@ internal fun isExtensionTrusted(
     manualTrustKeys: Collection<String>,
 ): Boolean {
     if (signatures.isEmpty()) return false
-    val storeKeys = storeSigningKeys.filter { it.isNotBlank() }.toSet()
-    if (signatures.any { it in storeKeys }) return true
-    return signatures.any { extensionTrustKey(pkgName, versionCode, it) in manualTrustKeys }
+    if (storeSigningKeys.any { signatureMatches(signatures, it) }) return true
+    return signatures.any { signature ->
+        val key = extensionTrustKey(pkgName, versionCode, signature)
+        manualTrustKeys.any { it.equals(key, ignoreCase = true) }
+    }
 }

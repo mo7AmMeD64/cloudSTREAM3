@@ -1,6 +1,8 @@
 package com.kodastream.app.manga.extension
 
 import android.content.Context
+import com.kodastream.app.manga.isSupportedLib
+import com.kodastream.app.manga.rootMessage
 import com.kodastream.app.manga.store.AvailableExtension
 import eu.kanade.tachiyomi.compat.MangaEngine
 import kotlinx.coroutines.Dispatchers
@@ -13,13 +15,29 @@ import java.io.File
 import java.io.IOException
 import kotlin.coroutines.cancellation.CancellationException
 
+enum class InstallFailureStep { Download, Validate, Trust, Install, Load }
+
 sealed interface InstallStep {
     data object Pending : InstallStep
     data class Downloading(val percent: Int) : InstallStep
     data object Installing : InstallStep
     data object Installed : InstallStep
-    data class Error(val message: String) : InstallStep
+    data class Error(
+        val message: String,
+        val step: InstallFailureStep,
+        val name: String,
+        val pkgName: String,
+        val versionName: String,
+        val stackTrace: String,
+    ) : InstallStep
 }
+
+/** Marks which part of the install rejected the file; the UI shows it in the error dialog. */
+internal class InstallStepException(
+    val step: InstallFailureStep,
+    message: String,
+    cause: Throwable? = null,
+) : IOException(message, cause)
 
 /** The two IO halves of an install, so the step machine can run against a fake downloader. */
 internal interface ExtensionInstallBackend {
@@ -35,6 +53,7 @@ internal fun installExtensionFlow(
 ): Flow<InstallStep> = flow {
     emit(InstallStep.Pending)
     target.delete()
+    var phase = InstallFailureStep.Download
     try {
         var lastPercent = -1
         backend.download(extension, target).collect { value ->
@@ -44,13 +63,23 @@ internal fun installExtensionFlow(
                 emit(InstallStep.Downloading(percent))
             }
         }
+        phase = InstallFailureStep.Install
         emit(InstallStep.Installing)
         backend.install(extension, target)
         emit(InstallStep.Installed)
     } catch (e: CancellationException) {
         throw e
     } catch (e: Exception) {
-        emit(InstallStep.Error(e.message ?: "Install failed"))
+        emit(
+            InstallStep.Error(
+                message = rootMessage(e),
+                step = (e as? InstallStepException)?.step ?: phase,
+                name = extension.name,
+                pkgName = extension.pkgName,
+                versionName = extension.versionName,
+                stackTrace = e.stackTraceToString(),
+            ),
+        )
     } finally {
         target.delete()
     }
@@ -105,22 +134,44 @@ class ExtensionInstaller(private val context: Context) {
 
         override fun install(extension: AvailableExtension, target: File) {
             val packageInfo = MangaPackageUtils.archivePackageInfo(appContext, target)
-                ?: throw IOException("The downloaded file is not a valid APK")
+                ?: throw InstallStepException(
+                    InstallFailureStep.Validate,
+                    "The downloaded file is not a valid APK",
+                )
             if (packageInfo.packageName != extension.pkgName) {
-                throw IOException("The APK package does not match the store listing")
+                throw InstallStepException(
+                    InstallFailureStep.Validate,
+                    "The APK package does not match the store listing",
+                )
             }
             if (!MangaPackageUtils.isExtension(packageInfo)) {
-                throw IOException("The APK is not a Mihon extension")
+                throw InstallStepException(
+                    InstallFailureStep.Validate,
+                    "The APK is not a Mihon extension",
+                )
             }
             val lib = MangaPackageUtils.libVersion(packageInfo)
-            if (lib == null || lib !in MangaPackageUtils.SUPPORTED_LIB_VERSIONS) {
-                throw IOException("Unsupported extension library version: $lib")
+            if (!isSupportedLib(lib)) {
+                throw InstallStepException(
+                    InstallFailureStep.Validate,
+                    "Unsupported extension library version: $lib",
+                )
             }
             val classNames = packageInfo.applicationInfo?.metaData
                 ?.getString(MangaPackageUtils.METADATA_SOURCE_CLASS)
-            if (classNames.isNullOrBlank()) throw IOException("The APK has no source class")
+            if (classNames.isNullOrBlank()) {
+                throw InstallStepException(
+                    InstallFailureStep.Validate,
+                    "The APK has no source class",
+                )
+            }
             val signatures = MangaPackageUtils.signatureSha256(packageInfo)
-            if (signatures.isEmpty()) throw IOException("The APK is not signed")
+            if (signatures.isEmpty()) {
+                throw InstallStepException(
+                    InstallFailureStep.Trust,
+                    "The APK is not signed",
+                )
+            }
             val trusted = isExtensionTrusted(
                 pkgName = packageInfo.packageName,
                 versionCode = MangaPackageUtils.versionCode(packageInfo),
@@ -129,10 +180,16 @@ class ExtensionInstaller(private val context: Context) {
                 manualTrustKeys = trustStore.trustedKeys(),
             )
             if (!trusted) {
-                throw IOException("The APK is not signed with the store's signing key")
+                throw InstallStepException(
+                    InstallFailureStep.Trust,
+                    "The APK is not signed with the store's signing key",
+                )
             }
             if (extension.versionCode > 0 && MangaPackageUtils.versionCode(packageInfo) != extension.versionCode) {
-                throw IOException("The downloaded version does not match the store listing")
+                throw InstallStepException(
+                    InstallFailureStep.Validate,
+                    "The downloaded version does not match the store listing",
+                )
             }
 
             installPrivate(packageInfo, target)
@@ -146,15 +203,21 @@ class ExtensionInstaller(private val context: Context) {
         )
         val current = if (target.isFile) MangaPackageUtils.archivePackageInfo(appContext, target) else null
         if (current != null) {
-            check(MangaPackageUtils.versionCode(packageInfo) >= MangaPackageUtils.versionCode(current)) {
-                "The installed version is newer, and downgrading isn't allowed"
+            if (MangaPackageUtils.versionCode(packageInfo) < MangaPackageUtils.versionCode(current)) {
+                throw InstallStepException(
+                    InstallFailureStep.Install,
+                    "The installed version is newer, and downgrading isn't allowed",
+                )
             }
             val currentSignatures = MangaPackageUtils.signatureSha256(current)
-            check(
-                currentSignatures.isNotEmpty() &&
-                    MangaPackageUtils.signatureSha256(packageInfo).containsAll(currentSignatures),
+            if (
+                currentSignatures.isEmpty() ||
+                !MangaPackageUtils.signatureSha256(packageInfo).containsAll(currentSignatures)
             ) {
-                "It isn't signed with the same key as the installed extension"
+                throw InstallStepException(
+                    InstallFailureStep.Install,
+                    "It isn't signed with the same key as the installed extension",
+                )
             }
         }
 
@@ -163,7 +226,12 @@ class ExtensionInstaller(private val context: Context) {
         try {
             source.copyTo(staged, overwrite = true)
             staged.setReadOnly()
-            if (!staged.renameTo(target)) throw IOException("Unable to replace ${target.name}")
+            if (!staged.renameTo(target)) {
+                throw InstallStepException(
+                    InstallFailureStep.Install,
+                    "Unable to replace ${target.name}",
+                )
+            }
         } finally {
             staged.delete()
         }

@@ -2,6 +2,7 @@ package com.kodastream.app.manga.extension
 
 import com.kodastream.app.manga.store.AvailableExtension
 import com.kodastream.app.manga.store.ContentWarning
+import com.kodastream.app.manga.store.MangaFilters
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.toList
@@ -55,6 +56,27 @@ class TrustAndInstallTest {
     }
 
     @Test
+    fun storeKeysAreNormalisedBeforeComparison() {
+        assertTrue(
+            isExtensionTrusted(
+                "pkg", 7, listOf("abcdef0123"), listOf("AB:CD:EF:01:23"), emptySet(),
+            )
+        )
+        assertFalse(
+            isExtensionTrusted(
+                "pkg", 7, listOf("abcdef0123"), listOf("AB:CD:EF:01:24"), emptySet(),
+            )
+        )
+    }
+
+    @Test
+    fun listingLookupUsesTheSameSignatureNormalisation() {
+        val listing = extension().copy(storeSigningKey = "AB:CD:EF")
+
+        assertEquals(listing, MangaFilters.findListing("pkg", listOf(listing), listOf("abcdef")))
+    }
+
+    @Test
     fun installFlowEmitsTheWholeSequenceAndDeletesTheTempFile() = runBlocking {
         val target = tempFile()
         var existsDuringInstall = false
@@ -105,11 +127,38 @@ class TrustAndInstallTest {
 
         val steps = installExtensionFlow(extension(), target, backend).toList()
 
-        assertEquals(
-            listOf(InstallStep.Pending, InstallStep.Error("offline")),
-            steps,
-        )
+        val error = steps.last() as InstallStep.Error
+        assertEquals("offline", error.message)
+        assertEquals(InstallFailureStep.Download, error.step)
+        assertEquals("pkg", error.pkgName)
+        assertEquals("Extension", error.name)
+        assertEquals("1.0", error.versionName)
+        assertTrue(error.stackTrace.isNotBlank())
         assertFalse(target.exists())
+    }
+
+    @Test
+    fun installFlowReportsTheDeepestCauseAndTheFailedStep() = runBlocking {
+        val target = tempFile()
+        val backend = object : ExtensionInstallBackend {
+            override fun download(extension: AvailableExtension, target: File): Flow<Int> = flow {
+                emit(100)
+            }
+
+            override fun install(extension: AvailableExtension, target: File) {
+                throw InstallStepException(
+                    InstallFailureStep.Validate,
+                    "outer message",
+                    IOException("bad manifest"),
+                )
+            }
+        }
+
+        val steps = installExtensionFlow(extension(), target, backend).toList()
+
+        val error = steps.last() as InstallStep.Error
+        assertEquals("bad manifest", error.message)
+        assertEquals(InstallFailureStep.Validate, error.step)
     }
 
     @Test

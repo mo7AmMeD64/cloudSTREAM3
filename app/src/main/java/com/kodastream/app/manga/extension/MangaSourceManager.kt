@@ -1,6 +1,7 @@
 package com.kodastream.app.manga.extension
 
 import android.content.Context
+import com.kodastream.app.manga.rootMessage
 import com.kodastream.app.manga.store.ExtensionStore
 import eu.kanade.tachiyomi.source.CatalogueSource
 import eu.kanade.tachiyomi.source.Source
@@ -15,6 +16,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
+import java.io.File
 import java.util.concurrent.atomic.AtomicBoolean
 
 /** Single owner of loaded extensions and their sources. Part 11 reads [sources]. */
@@ -46,25 +48,45 @@ class MangaSourceManager private constructor(context: Context) {
         _error.value = null
         try {
             val loaded = loader.loadAll(stores)
-            _extensions.value = loaded.sortedBy { it.name.lowercase() }
-            _sources.value = loaded
-                .filterIsInstance<MangaExtension.Loaded>()
-                .flatMap { extension ->
-                    extension.sources.map { source ->
-                        LoadedSource(
-                            source = source,
-                            extension = extension,
-                            language = source.lang.ifBlank { extension.lang.orEmpty() },
-                        )
-                    }
-                }
-                .sortedBy { it.source.name.lowercase() }
+            publish(loaded)
             started.set(true)
         } catch (e: Throwable) {
-            _error.value = e.message ?: "Could not load extensions"
+            _error.value = rootMessage(e)
         } finally {
             _loading.value = false
         }
+    }
+
+    /** Reloads one package after install, so the Installed tab updates without a restart. */
+    suspend fun reloadPackage(pkgName: String, stores: List<ExtensionStore>) =
+        withContext(Dispatchers.IO) {
+            val file = File(
+                MangaPackageUtils.extensionDir(appContext),
+                "$pkgName.${MangaPackageUtils.PRIVATE_EXTENSION_EXTENSION}",
+            )
+            if (!file.isFile) {
+                reload(stores)
+                return@withContext
+            }
+            val installed = loader.loadOne(file, stores)
+            publish(_extensions.value.filterNot { it.pkgName == pkgName } + installed)
+            started.set(true)
+        }
+
+    private fun publish(installedExtensions: List<MangaExtension.Installed>) {
+        _extensions.value = installedExtensions.sortedBy { it.name.lowercase() }
+        _sources.value = installedExtensions
+            .filterIsInstance<MangaExtension.Loaded>()
+            .flatMap { extension ->
+                extension.sources.map { source ->
+                    LoadedSource(
+                        source = source,
+                        extension = extension,
+                        language = source.lang.ifBlank { extension.lang.orEmpty() },
+                    )
+                }
+            }
+            .sortedBy { it.source.name.lowercase() }
     }
 
     suspend fun uninstall(pkgName: String, stores: List<ExtensionStore>) {

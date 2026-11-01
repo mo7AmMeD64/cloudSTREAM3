@@ -1,6 +1,7 @@
 package com.kodastream.app.manga.extension
 
 import android.os.SystemClock
+import com.kodastream.app.manga.rootMessage
 import eu.kanade.tachiyomi.compat.MangaEngine
 import eu.kanade.tachiyomi.network.await
 import eu.kanade.tachiyomi.source.Source
@@ -153,7 +154,7 @@ class MangaSourceTester(private val engine: MangaEngine.State) {
         } catch (e: TimeoutCancellationException) {
             TestStep.Fail("Timed out after ${TIMEOUT_MS / 1000} seconds")
         } catch (e: Throwable) {
-            TestStep.Fail(e.message ?: e.javaClass.simpleName, e.stackTraceToString())
+            TestStep.Fail(rootMessage(e), e.stackTraceToString())
         }
     }
 

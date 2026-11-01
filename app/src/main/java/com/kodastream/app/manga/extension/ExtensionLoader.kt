@@ -1,6 +1,9 @@
 package com.kodastream.app.manga.extension
 
 import android.content.Context
+import com.kodastream.app.manga.isSupportedLib
+import com.kodastream.app.manga.rootMessage
+import com.kodastream.app.manga.signatureMatches
 import com.kodastream.app.manga.store.ContentWarning
 import com.kodastream.app.manga.store.ExtensionStore
 import eu.kanade.tachiyomi.source.Source
@@ -50,6 +53,10 @@ class ExtensionLoader(private val context: Context) {
 
     fun cached(): Map<String, MangaExtension.Loaded> = cache.toMap()
 
+    /** Loads one file, used right after install so the row appears without a full reload. */
+    fun loadOne(file: File, stores: List<ExtensionStore>): MangaExtension.Installed =
+        loadFile(file, stores, cache)
+
     fun clearCache() {
         cache.clear()
     }
@@ -77,7 +84,7 @@ class ExtensionLoader(private val context: Context) {
         val pkgName = packageInfo.packageName
         val versionCode = MangaPackageUtils.versionCode(packageInfo)
         val signatures = MangaPackageUtils.signatureSha256(packageInfo)
-        val store = stores.firstOrNull { it.signingKey.isNotBlank() && it.signingKey in signatures }
+        val store = stores.firstOrNull { signatureMatches(signatures, it.signingKey) }
         val name = MangaPackageUtils.displayName(appContext, packageInfo)
         val contentWarning = try {
             MangaPackageUtils.contentWarning(packageInfo)
@@ -104,7 +111,7 @@ class ExtensionLoader(private val context: Context) {
         if (packageInfo.versionName.isNullOrEmpty()) return failed(MangaExtension.NotLoaded.Reason.Malformed)
 
         val libVersion = MangaPackageUtils.libVersion(packageInfo)
-        if (libVersion == null || libVersion !in MangaPackageUtils.SUPPORTED_LIB_VERSIONS) {
+        if (!isSupportedLib(libVersion)) {
             return failed(MangaExtension.NotLoaded.Reason.UnsupportedLibVersion, libVersion)
         }
         if (signatures.isEmpty()) return failed(MangaExtension.NotLoaded.Reason.Unsigned, libVersion)
@@ -126,7 +133,10 @@ class ExtensionLoader(private val context: Context) {
         val classLoader = try {
             DelegateLastClassLoaderCompat(appInfo.sourceDir, null, appContext.classLoader)
         } catch (e: Throwable) {
-            return failed(MangaExtension.NotLoaded.Reason.Failed(e.message ?: "Class loader failed", e.stackTraceToString()), libVersion)
+            return failed(
+                MangaExtension.NotLoaded.Reason.Failed(rootMessage(e), e.stackTraceToString()),
+                libVersion,
+            )
         }
 
         val sources = classNames.split(";").flatMap { rawName ->
@@ -143,10 +153,7 @@ class ExtensionLoader(private val context: Context) {
                 }
             } catch (e: Throwable) {
                 return failed(
-                    MangaExtension.NotLoaded.Reason.Failed(
-                        e.message ?: "Could not create source $className",
-                        e.stackTraceToString(),
-                    ),
+                    MangaExtension.NotLoaded.Reason.Failed(rootMessage(e), e.stackTraceToString()),
                     libVersion,
                 )
             }
