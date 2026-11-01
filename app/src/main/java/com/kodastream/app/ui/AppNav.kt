@@ -39,12 +39,17 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.MenuBook
+import androidx.compose.material.icons.automirrored.rounded.MenuBook
+import androidx.compose.material.icons.outlined.Explore
 import androidx.compose.material.icons.outlined.Extension
 import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.VideoLibrary
+import androidx.compose.material.icons.rounded.AutoStories
+import androidx.compose.material.icons.rounded.Explore
 import androidx.compose.material.icons.rounded.Extension
 import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material.icons.rounded.History
@@ -73,6 +78,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
@@ -84,6 +92,7 @@ import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.AP
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -97,6 +106,10 @@ import com.kodastream.app.data.AppPrefs
 import com.kodastream.app.data.DetailsArgs
 import com.kodastream.app.data.NavArgs
 import com.kodastream.app.data.PlayerArgs
+import com.kodastream.app.manga.MangaPrefs
+import com.kodastream.app.manga.extension.MangaSourceManager
+import com.kodastream.app.manga.store.MangaStoreRepository
+import com.kodastream.app.ui.components.EmptyBox
 import com.kodastream.app.ui.components.softSpring
 import com.kodastream.app.ui.details.DetailsScreen
 import com.kodastream.app.ui.details.DetailsViewModel
@@ -107,6 +120,9 @@ import com.kodastream.app.ui.home.HomeScreen
 import com.kodastream.app.ui.home.SectionScreen
 import com.kodastream.app.ui.home.hero.LocalScreenActive
 import com.kodastream.app.ui.library.LibraryScreen
+import com.kodastream.app.ui.manga.MangaExtensionsScreen
+import com.kodastream.app.ui.manga.MangaStoresScreen
+import com.kodastream.app.ui.manga.SourcePreferencesScreen
 import com.kodastream.app.ui.player.PlayerActivity
 import com.kodastream.app.ui.search.SearchScreen
 import com.kodastream.app.ui.settings.SettingsScreen
@@ -126,6 +142,20 @@ private object Routes {
     const val DETAILS = "details/{id}"
 }
 
+/** Manga navigation stays on its own graph; no route here is used by the video side. */
+private object MangaRoutes {
+    const val BROWSE = "manga_browse"
+    const val SEARCH = "manga_search"
+    const val LIBRARY = "manga_library"
+    const val HISTORY = "manga_history"
+    const val EXTENSIONS = "manga_extensions"
+    const val SETTINGS = "manga_settings"
+    const val STORES = "manga_stores"
+    const val SOURCE = "manga_source/{id}"
+
+    fun source(id: Long) = "manga_source/$id"
+}
+
 private data class TopLevel(
     val route: String,
     val labelRes: Int,
@@ -133,13 +163,32 @@ private data class TopLevel(
     val outlinedIcon: ImageVector,
 )
 
-private val topLevelDestinations = listOf(
+private val watchTopLevelDestinations = listOf(
     TopLevel(Routes.HOME, R.string.nav_home, Icons.Rounded.Home, Icons.Outlined.Home),
     TopLevel(Routes.SEARCH, R.string.nav_search, Icons.Rounded.Search, Icons.Outlined.Search),
     TopLevel(Routes.LIBRARY, R.string.nav_library, Icons.Rounded.VideoLibrary, Icons.Outlined.VideoLibrary),
     TopLevel(Routes.HISTORY, R.string.nav_history, Icons.Rounded.History, Icons.Outlined.History),
     TopLevel(Routes.EXTENSIONS, R.string.nav_extensions, Icons.Rounded.Extension, Icons.Outlined.Extension),
     TopLevel(Routes.SETTINGS, R.string.nav_settings, Icons.Rounded.Settings, Icons.Outlined.Settings),
+)
+
+private val mangaTopLevelDestinations = listOf(
+    TopLevel(MangaRoutes.BROWSE, R.string.nav_browse, Icons.Rounded.Explore, Icons.Outlined.Explore),
+    TopLevel(MangaRoutes.SEARCH, R.string.nav_search, Icons.Rounded.Search, Icons.Outlined.Search),
+    TopLevel(
+        MangaRoutes.LIBRARY,
+        R.string.nav_library,
+        Icons.AutoMirrored.Rounded.MenuBook,
+        Icons.AutoMirrored.Outlined.MenuBook,
+    ),
+    TopLevel(MangaRoutes.HISTORY, R.string.nav_history, Icons.Rounded.History, Icons.Outlined.History),
+    TopLevel(
+        MangaRoutes.EXTENSIONS,
+        R.string.nav_extensions,
+        Icons.Rounded.Extension,
+        Icons.Outlined.Extension,
+    ),
+    TopLevel(MangaRoutes.SETTINGS, R.string.nav_settings, Icons.Rounded.Settings, Icons.Outlined.Settings),
 )
 
 // ------------------------------------------------------------------ shared nav motion
@@ -219,11 +268,25 @@ private fun NavHostController.openDetails(item: SearchResponse) {
 
 @Composable
 fun AppRoot(themeViewModel: ThemeViewModel) {
-    val navController = rememberNavController()
+    val context = LocalContext.current
+    val watchNavController = rememberNavController()
+    val mangaNavController = rememberNavController()
+
+    var appMode by remember {
+        mutableStateOf(
+            if (MangaPrefs.mangaSectionEnabled(context)) AppPrefs.appMode(context)
+            else AppPrefs.MODE_WATCH
+        )
+    }
+    var mangaSection by remember { mutableStateOf(MangaPrefs.mangaSectionEnabled(context)) }
+    val mangaActive = mangaSection && appMode == AppPrefs.MODE_MANGA
+    val destinations = if (mangaActive) mangaTopLevelDestinations else watchTopLevelDestinations
+    val navController = if (mangaActive) mangaNavController else watchNavController
     val backStackEntry by navController.currentBackStackEntryAsState()
     val route = backStackEntry?.destination?.route
-    val showBar = topLevelDestinations.any { it.route == route }
-    val sourceVisible = route == Routes.HOME || route == Routes.SEARCH
+    val showBar = destinations.any { it.route == route }
+    val sourceVisible = !mangaActive && (route == Routes.HOME || route == Routes.SEARCH)
+
     val sources: SourceViewModel = viewModel()
     // Activity-scoped: paged Home sections survive rotation and Back to Home.
     val expanded: ExpandedHomeViewModel = viewModel()
@@ -234,13 +297,47 @@ fun AppRoot(themeViewModel: ThemeViewModel) {
     val homeSource by sources.home.collectAsState()
     val searchScope by sources.search.collectAsState()
 
+    val setMangaSection: (Boolean) -> Unit = { enabled ->
+        mangaSection = enabled
+        if (!enabled) {
+            appMode = AppPrefs.MODE_WATCH
+            AppPrefs.setAppMode(context, AppPrefs.MODE_WATCH)
+        }
+    }
+    val switchMode: () -> Unit = {
+        val next = if (mangaActive) AppPrefs.MODE_WATCH else AppPrefs.MODE_MANGA
+        appMode = next
+        AppPrefs.setAppMode(context, next)
+        sourceSheetOpen = false
+    }
+
+    // Turning the manga section off always leaves Watch selected, including after a restart.
+    LaunchedEffect(mangaSection) {
+        if (!mangaSection && appMode == AppPrefs.MODE_MANGA) {
+            appMode = AppPrefs.MODE_WATCH
+            AppPrefs.setAppMode(context, AppPrefs.MODE_WATCH)
+        }
+    }
+
     // A repository link opened from outside the app: go to the Extensions tab, which shows the dialog.
     val pendingRepo by AppEvents.pendingRepoUrl.collectAsState()
     LaunchedEffect(pendingRepo) {
-        if (pendingRepo != null) navController.navigateTopLevel(Routes.EXTENSIONS)
+        if (pendingRepo != null) {
+            appMode = AppPrefs.MODE_WATCH
+            AppPrefs.setAppMode(context, AppPrefs.MODE_WATCH)
+            watchNavController.navigateTopLevel(Routes.EXTENSIONS)
+        }
     }
 
-    val context = LocalContext.current
+    // Installed extensions are loaded on Dispatchers.IO once manga mode is entered, never at app start.
+    LaunchedEffect(mangaActive) {
+        if (mangaActive) {
+            val stores = MangaStoreRepository.get(context)
+            stores.ensureDefaultStore()
+            MangaSourceManager.get(context).ensureLoaded { stores.stores.value }
+        }
+    }
+
     val navPosition by AppPrefs.navPosition.collectAsState(initial = AppPrefs.navPosition(context))
     val sideMode = showBar && navPosition != AppPrefs.NAV_BOTTOM
 
@@ -257,31 +354,48 @@ fun AppRoot(themeViewModel: ThemeViewModel) {
         )
     }
 
-    if (sideMode) {
-        Box(Modifier.fillMaxSize()) {
-            // The bar mirrors with the locale: left in LTR, right in Arabic.
-            // `start` on both the content padding and the bar keeps them on
-            // the same side without direction-dependent branches.
-            Box(
-                Modifier
-                    .fillMaxSize()
-                    .padding(start = SideBarWidth + SideBarMargin)
-            ) {
+    Box(Modifier.fillMaxSize()) {
+        // The bar mirrors with the locale: left in LTR, right in Arabic.
+        // `start` on both the content padding and the bar keeps them on the
+        // same side without direction-dependent branches.
+        Box(
+            Modifier
+                .fillMaxSize()
+                .then(
+                    if (sideMode) Modifier.padding(start = SideBarWidth + SideBarMargin)
+                    else Modifier
+                )
+        ) {
+            if (mangaActive) {
+                MangaNavGraph(
+                    navController = mangaNavController,
+                    themeViewModel = themeViewModel,
+                    contentPadding = contentPadding,
+                    onMangaSectionChanged = setMangaSection,
+                )
+            } else {
                 AppNavGraph(
-                    navController = navController,
+                    navController = watchNavController,
                     themeViewModel = themeViewModel,
                     contentPadding = contentPadding,
                     sources = sources,
                     expanded = expanded,
                     onOpenSources = { sourceSheetOpen = true },
+                    onMangaSectionChanged = setMangaSection,
                 )
             }
+        }
 
+        if (sideMode) {
             FloatingSideBar(
+                destinations = destinations,
                 selectedRoute = route,
                 onSelect = { navController.navigateTopLevel(it) },
                 sourceVisible = sourceVisible,
                 onOpenSources = { sourceSheetOpen = true },
+                showModeSwitch = mangaSection,
+                inMangaMode = mangaActive,
+                onToggleMode = switchMode,
                 modifier = Modifier
                     .align(Alignment.CenterStart)
                     .statusBarsPadding()
@@ -289,17 +403,7 @@ fun AppRoot(themeViewModel: ThemeViewModel) {
                     .displayCutoutPadding()
                     .padding(start = SideBarMargin),
             )
-        }
-    } else {
-        Box(Modifier.fillMaxSize()) {
-            AppNavGraph(
-                navController = navController,
-                themeViewModel = themeViewModel,
-                contentPadding = contentPadding,
-                sources = sources,
-                expanded = expanded,
-                onOpenSources = { sourceSheetOpen = true },
-            )
+        } else {
             AnimatedVisibility(
                 visible = showBar,
                 enter = fadeIn(tween(220)) +
@@ -331,7 +435,14 @@ fun AppRoot(themeViewModel: ThemeViewModel) {
                             )
                         }
                     }
-                    FloatingNavPill(selectedRoute = route, onSelect = { navController.navigateTopLevel(it) })
+                    FloatingNavPill(
+                        destinations = destinations,
+                        selectedRoute = route,
+                        onSelect = { navController.navigateTopLevel(it) },
+                        showModeSwitch = mangaSection,
+                        inMangaMode = mangaActive,
+                        onToggleMode = switchMode,
+                    )
                 }
             }
         }
@@ -365,6 +476,7 @@ private fun AppNavGraph(
     sources: SourceViewModel,
     expanded: ExpandedHomeViewModel,
     onOpenSources: () -> Unit,
+    onMangaSectionChanged: (Boolean) -> Unit,
 ) {
     val context = LocalContext.current
     fun openPlayer(playerArgs: PlayerArgs) {
@@ -417,8 +529,23 @@ private fun AppNavGraph(
             ExtensionsScreen(contentPadding = contentPadding)
         }
         composable(Routes.SETTINGS) {
-            SettingsScreen(contentPadding = contentPadding, themeViewModel = themeViewModel)
+            SettingsScreen(
+                contentPadding = contentPadding,
+                themeViewModel = themeViewModel,
+                onOpenMangaExtensions = { navController.navigate(MangaRoutes.EXTENSIONS) },
+                onOpenMangaStores = { navController.navigate(MangaRoutes.STORES) },
+                onMangaSectionChanged = onMangaSectionChanged,
+            )
         }
+        composable(MangaRoutes.EXTENSIONS) {
+            MangaExtensionsScreen(
+                contentPadding = contentPadding,
+                onOpenStores = { navController.navigate(MangaRoutes.STORES) },
+                onOpenSourcePreferences = { navController.navigate(MangaRoutes.source(it)) },
+                onBack = { navController.popBackStack() },
+            )
+        }
+        mangaPushedRoutes(navController, contentPadding)
         composable(Routes.SECTION) {
             SectionScreen(
                 viewModel = expanded,
@@ -451,6 +578,82 @@ private fun AppNavGraph(
 }
 
 /**
+ * The manga graph: its own start destination and back stack, so switching modes
+ * keeps each side where it was. Only Extensions and Settings exist in Part 10.
+ */
+@Composable
+private fun MangaNavGraph(
+    navController: NavHostController,
+    themeViewModel: ThemeViewModel,
+    contentPadding: PaddingValues,
+    onMangaSectionChanged: (Boolean) -> Unit,
+) {
+    NavHost(
+        navController = navController,
+        startDestination = MangaRoutes.BROWSE,
+        modifier = Modifier.fillMaxSize(),
+    ) {
+        composable(MangaRoutes.BROWSE) { MangaComingNextScreen(contentPadding) }
+        composable(MangaRoutes.SEARCH) { MangaComingNextScreen(contentPadding) }
+        composable(MangaRoutes.LIBRARY) { MangaComingNextScreen(contentPadding) }
+        composable(MangaRoutes.HISTORY) { MangaComingNextScreen(contentPadding) }
+        composable(MangaRoutes.EXTENSIONS) {
+            MangaExtensionsScreen(
+                contentPadding = contentPadding,
+                onOpenStores = { navController.navigate(MangaRoutes.STORES) },
+                onOpenSourcePreferences = { navController.navigate(MangaRoutes.source(it)) },
+            )
+        }
+        composable(MangaRoutes.SETTINGS) {
+            SettingsScreen(
+                contentPadding = contentPadding,
+                themeViewModel = themeViewModel,
+                onOpenMangaExtensions = { navController.navigateTopLevel(MangaRoutes.EXTENSIONS) },
+                onOpenMangaStores = { navController.navigate(MangaRoutes.STORES) },
+                onMangaSectionChanged = onMangaSectionChanged,
+            )
+        }
+        mangaPushedRoutes(navController, contentPadding)
+    }
+}
+
+/** Routes both graphs push on top of their tabs; Back always returns. */
+private fun NavGraphBuilder.mangaPushedRoutes(
+    navController: NavHostController,
+    contentPadding: PaddingValues,
+) {
+    composable(MangaRoutes.STORES) {
+        MangaStoresScreen(
+            contentPadding = contentPadding,
+            onBack = { navController.popBackStack() },
+        )
+    }
+    composable(
+        route = MangaRoutes.SOURCE,
+        arguments = listOf(navArgument("id") { type = NavType.LongType }),
+    ) { entry ->
+        SourcePreferencesScreen(
+            sourceId = entry.arguments?.getLong("id") ?: 0L,
+            onBack = { navController.popBackStack() },
+        )
+    }
+}
+
+@Composable
+private fun MangaComingNextScreen(contentPadding: PaddingValues) {
+    Box(
+        Modifier
+            .fillMaxSize()
+            .padding(contentPadding)
+    ) {
+        EmptyBox(
+            title = stringResource(R.string.manga_coming_next_title),
+            hint = stringResource(R.string.manga_coming_next_hint),
+        )
+    }
+}
+
+/**
  * The floating side pill: a stadium-ended vertical bar on the start edge
  * (left in LTR, right in Arabic), wrapping its content, over the page
  * rather than attached to it. Same five destinations, same icons, same
@@ -460,10 +663,14 @@ private fun AppNavGraph(
  */
 @Composable
 private fun FloatingSideBar(
+    destinations: List<TopLevel>,
     selectedRoute: String?,
     onSelect: (String) -> Unit,
     sourceVisible: Boolean,
     onOpenSources: () -> Unit,
+    showModeSwitch: Boolean,
+    inMangaMode: Boolean,
+    onToggleMode: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Surface(
@@ -480,7 +687,13 @@ private fun FloatingSideBar(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            topLevelDestinations.forEach { destination ->
+            if (showModeSwitch) {
+                ModeSwitchButton(
+                    inMangaMode = inMangaMode,
+                    onToggle = onToggleMode,
+                )
+            }
+            destinations.forEach { destination ->
                 SideNavItem(
                     destination = destination,
                     selected = selectedRoute == destination.route,
@@ -511,6 +724,44 @@ private fun FloatingSideBar(
                     }
                 }
             }
+        }
+    }
+}
+
+/**
+ * The compact mode switch that opens both navigation shells. The icon shows
+ * where the tap goes; the state description names the mode that is open now.
+ */
+@Composable
+private fun ModeSwitchButton(
+    inMangaMode: Boolean,
+    onToggle: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val action = stringResource(
+        if (inMangaMode) R.string.manga_switch_to_watch else R.string.manga_switch_to_manga
+    )
+    val state = stringResource(
+        if (inMangaMode) R.string.manga_mode_manga else R.string.manga_mode_watch
+    )
+    Surface(
+        onClick = onToggle,
+        shape = CircleShape,
+        color = MaterialTheme.colorScheme.tertiaryContainer,
+        contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+        modifier = modifier
+            .size(48.dp)
+            .semantics {
+                contentDescription = action
+                stateDescription = state
+            },
+    ) {
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Icon(
+                imageVector = if (inMangaMode) Icons.Rounded.VideoLibrary else Icons.Rounded.AutoStories,
+                contentDescription = null,
+                modifier = Modifier.size(NavIconSize),
+            )
         }
     }
 }
@@ -590,11 +841,24 @@ private fun SideNavItem(
  */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun FloatingNavPill(selectedRoute: String?, onSelect: (String) -> Unit) {
+private fun FloatingNavPill(
+    destinations: List<TopLevel>,
+    selectedRoute: String?,
+    onSelect: (String) -> Unit,
+    showModeSwitch: Boolean,
+    inMangaMode: Boolean,
+    onToggleMode: () -> Unit,
+) {
     HorizontalFloatingToolbar(
         expanded = true,
         content = {
-            topLevelDestinations.forEach { destination ->
+            if (showModeSwitch) {
+                ModeSwitchButton(
+                    inMangaMode = inMangaMode,
+                    onToggle = onToggleMode,
+                )
+            }
+            destinations.forEach { destination ->
                 val selected = selectedRoute == destination.route
 
                 val animatedPadding = navItemPadding(selected)

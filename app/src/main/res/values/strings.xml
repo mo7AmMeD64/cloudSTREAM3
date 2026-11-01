@@ -20,6 +20,7 @@
 
     <!-- Navigation -->
     <string name="nav_home">Home</string>
+    <string name="nav_browse">Browse</string>
     <string name="nav_search">Search</string>
     <string name="nav_extensions">Extensions</string>
     <string name="nav_settings">Settings</string>
@@ -600,6 +601,14 @@
     <string name="manga_store_empty_title">No stores</string>
     <string name="manga_store_empty_hint">Add a store to browse and install manga extensions.</string>
     <string name="manga_store_refresh">Refresh stores</string>
+
+    <!-- Manga navigation -->
+    <string name="manga_switch_to_manga">Switch to manga</string>
+    <string name="manga_switch_to_watch">Switch to watch</string>
+    <string name="manga_mode_manga">Manga mode</string>
+    <string name="manga_mode_watch">Watch mode</string>
+    <string name="manga_coming_next_title">Coming next</string>
+    <string name="manga_coming_next_hint">This manga screen arrives in the next update.</string>
 
     <!-- Manga settings -->
     <string name="settings_manga">Manga</string>

@@ -20,6 +20,7 @@
 
     <!-- التنقل -->
     <string name="nav_home">الرئيسية</string>
+    <string name="nav_browse">تصفح</string>
     <string name="nav_search">البحث</string>
     <string name="nav_extensions">الإضافات</string>
     <string name="nav_settings">الإعدادات</string>
@@ -485,6 +486,14 @@
     <string name="manga_store_empty_title">لا توجد متاجر</string>
     <string name="manga_store_empty_hint">أضف متجرًا لتصفح إضافات المانجا وتثبيتها.</string>
     <string name="manga_store_refresh">تحديث المتاجر</string>
+
+    <!-- تنقل المانجا -->
+    <string name="manga_switch_to_manga">التبديل إلى المانجا</string>
+    <string name="manga_switch_to_watch">التبديل إلى المشاهدة</string>
+    <string name="manga_mode_manga">وضع المانجا</string>
+    <string name="manga_mode_watch">وضع المشاهدة</string>
+    <string name="manga_coming_next_title">قريبًا</string>
+    <string name="manga_coming_next_hint">تصل شاشة المانجا هذه في التحديث القادم.</string>
 
     <!-- إعدادات المانجا -->
     <string name="settings_manga">المانجا</string>

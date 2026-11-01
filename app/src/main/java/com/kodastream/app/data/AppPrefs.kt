@@ -16,6 +16,7 @@ object AppPrefs {
     private const val KEY_PROVIDER = "selected_provider"
     private const val KEY_AUTO_UPDATE = "auto_update_extensions"
     private const val KEY_NAV_POSITION = "nav_position"
+    private const val KEY_APP_MODE = "app_mode"
     private const val KEY_HOME_HERO_STYLE = "home_hero_style"
     private const val KEY_SPEED = "playback_speed"
     private const val KEY_PAUSE_HISTORY = "pause_history"
@@ -163,6 +164,18 @@ object AppPrefs {
     private fun prefs(context: Context) = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
     fun selectedProvider(context: Context): String? = prefs(context).getString(KEY_PROVIDER, null)
+
+    const val MODE_WATCH = "watch"
+    const val MODE_MANGA = "manga"
+
+    /** Watch or manga; the navigation remembers which one was open. */
+    fun appMode(context: Context): String =
+        prefs(context).getString(KEY_APP_MODE, MODE_WATCH)
+            .takeIf { it == MODE_MANGA } ?: MODE_WATCH
+
+    fun setAppMode(context: Context, mode: String) {
+        prefs(context).edit { putString(KEY_APP_MODE, mode) }
+    }
 
     fun setSelectedProvider(context: Context, name: String?) {
         prefs(context).edit { if (name == null) remove(KEY_PROVIDER) else putString(KEY_PROVIDER, name) }

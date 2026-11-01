@@ -102,6 +102,7 @@ fun SettingsScreen(
     themeViewModel: ThemeViewModel,
     onOpenMangaExtensions: () -> Unit = {},
     onOpenMangaStores: () -> Unit = {},
+    onMangaSectionChanged: (Boolean) -> Unit = {},
 ) {
     val context = LocalContext.current
     val uriHandler = LocalUriHandler.current
@@ -487,6 +488,7 @@ fun SettingsScreen(
                         onCheckedChange = { value ->
                             MangaPrefs.setMangaSectionEnabled(context, value)
                             mangaSection = value
+                            onMangaSectionChanged(value)
                         },
                     )
                 }
