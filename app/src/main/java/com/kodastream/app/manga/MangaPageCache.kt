@@ -173,8 +173,7 @@ data class MangaPage(
     val page: Page,
 )
 
-/** An extension's icon, either a store URL or the package icon fallback. */
+/** An extension's store icon URL. */
 data class MangaExtensionIcon(
-    val pkgName: String,
-    val url: String?,
+    val url: String,
 )

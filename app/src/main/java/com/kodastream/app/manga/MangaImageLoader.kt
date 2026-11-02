@@ -163,7 +163,7 @@ class MangaPageFetcher(
 
 class ExtensionIconKeyer : Keyer<MangaExtensionIcon> {
     override fun key(data: MangaExtensionIcon, options: Options): String =
-        "manga-icon:${data.pkgName}:${data.url.orEmpty()}"
+        "manga-icon:${data.url}"
 }
 
 class ExtensionIconFetcher(
@@ -172,8 +172,7 @@ class ExtensionIconFetcher(
     private val client: OkHttpClient,
 ) : Fetcher {
     override suspend fun fetch(): FetchResult {
-        val url = data.url ?: throw IOException("No icon URL")
-        val request = Request.Builder().url(url).build()
+        val request = Request.Builder().url(data.url).build()
         val bytes = client.newCall(request).execute().use { response ->
             if (!response.isSuccessful) throw IOException("HTTP ${response.code}")
             response.body?.bytes() ?: throw IOException("Empty icon response")
