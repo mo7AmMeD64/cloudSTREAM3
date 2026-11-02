@@ -77,14 +77,19 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import android.app.Application
@@ -107,9 +112,9 @@ import com.kodastream.app.data.DetailsArgs
 import com.kodastream.app.data.NavArgs
 import com.kodastream.app.data.PlayerArgs
 import com.kodastream.app.manga.MangaPrefs
+import com.kodastream.app.manga.MangaRef
 import com.kodastream.app.manga.extension.MangaSourceManager
 import com.kodastream.app.manga.store.MangaStoreRepository
-import com.kodastream.app.ui.components.EmptyBox
 import com.kodastream.app.ui.components.softSpring
 import com.kodastream.app.ui.details.DetailsScreen
 import com.kodastream.app.ui.details.DetailsViewModel
@@ -120,7 +125,12 @@ import com.kodastream.app.ui.home.HomeScreen
 import com.kodastream.app.ui.home.SectionScreen
 import com.kodastream.app.ui.home.hero.LocalScreenActive
 import com.kodastream.app.ui.library.LibraryScreen
+import com.kodastream.app.ui.manga.MangaBrowseScreen
+import com.kodastream.app.ui.manga.MangaDetailsScreen
 import com.kodastream.app.ui.manga.MangaExtensionsScreen
+import com.kodastream.app.ui.manga.MangaHistoryScreen
+import com.kodastream.app.ui.manga.MangaLibraryScreen
+import com.kodastream.app.ui.manga.MangaSearchScreen
 import com.kodastream.app.ui.manga.MangaStoresScreen
 import com.kodastream.app.ui.manga.SourcePreferencesScreen
 import com.kodastream.app.ui.player.PlayerActivity
@@ -152,8 +162,11 @@ private object MangaRoutes {
     const val SETTINGS = "manga_settings"
     const val STORES = "manga_stores"
     const val SOURCE = "manga_source/{id}"
+    const val DETAILS = "manga_details/{id}"
 
     fun source(id: Long) = "manga_source/$id"
+
+    fun details(ref: MangaRef) = "manga_details/${NavArgs.put(ref)}"
 }
 
 private data class TopLevel(
@@ -593,10 +606,31 @@ private fun MangaNavGraph(
         startDestination = MangaRoutes.BROWSE,
         modifier = Modifier.fillMaxSize(),
     ) {
-        composable(MangaRoutes.BROWSE) { MangaComingNextScreen(contentPadding) }
-        composable(MangaRoutes.SEARCH) { MangaComingNextScreen(contentPadding) }
-        composable(MangaRoutes.LIBRARY) { MangaComingNextScreen(contentPadding) }
-        composable(MangaRoutes.HISTORY) { MangaComingNextScreen(contentPadding) }
+        composable(MangaRoutes.BROWSE) {
+            MangaBrowseScreen(
+                contentPadding = contentPadding,
+                onOpenDetails = { ref -> navController.navigate(MangaRoutes.details(ref)) },
+                onOpenExtensions = { navController.navigateTopLevel(MangaRoutes.EXTENSIONS) },
+            )
+        }
+        composable(MangaRoutes.SEARCH) {
+            MangaSearchScreen(
+                contentPadding = contentPadding,
+                onOpenDetails = { ref -> navController.navigate(MangaRoutes.details(ref)) },
+            )
+        }
+        composable(MangaRoutes.LIBRARY) {
+            MangaLibraryScreen(
+                contentPadding = contentPadding,
+                onOpenDetails = { ref -> navController.navigate(MangaRoutes.details(ref)) },
+            )
+        }
+        composable(MangaRoutes.HISTORY) {
+            MangaHistoryScreen(
+                contentPadding = contentPadding,
+                onOpenDetails = { ref -> navController.navigate(MangaRoutes.details(ref)) },
+            )
+        }
         composable(MangaRoutes.EXTENSIONS) {
             MangaExtensionsScreen(
                 contentPadding = contentPadding,
@@ -614,6 +648,7 @@ private fun MangaNavGraph(
             )
         }
         mangaPushedRoutes(navController, contentPadding)
+        mangaDetailsRoute(navController, contentPadding)
     }
 }
 
@@ -639,17 +674,28 @@ private fun NavGraphBuilder.mangaPushedRoutes(
     }
 }
 
-@Composable
-private fun MangaComingNextScreen(contentPadding: PaddingValues) {
-    Box(
-        Modifier
-            .fillMaxSize()
-            .padding(contentPadding)
-    ) {
-        EmptyBox(
-            title = stringResource(R.string.manga_coming_next_title),
-            hint = stringResource(R.string.manga_coming_next_hint),
-        )
+/**
+ * The manga details route. Arguments are in-memory like the video details;
+ * after process death there is nothing to show, so Back is the only action.
+ */
+private fun NavGraphBuilder.mangaDetailsRoute(
+    navController: NavHostController,
+    contentPadding: PaddingValues,
+) {
+    composable(
+        route = MangaRoutes.DETAILS,
+        arguments = listOf(navArgument("id") { type = NavType.IntType }),
+    ) { entry ->
+        val ref = NavArgs.manga(entry.arguments?.getInt("id") ?: -1)
+        if (ref == null) {
+            LaunchedEffect(Unit) { navController.popBackStack() }
+        } else {
+            MangaDetailsScreen(
+                ref = ref,
+                contentPadding = contentPadding,
+                onBack = { navController.popBackStack() },
+            )
+        }
     }
 }
 
@@ -778,8 +824,7 @@ private fun SideNavItem(
     destination: TopLevel,
     selected: Boolean,
     onClick: () -> Unit,
-) {
-    val animatedPadding = navItemPadding(selected)
+) {    val animatedPadding = navItemPadding(selected)
     val animatedContainerColor = navContainerColor(
         selected = selected,
         activeContainer = MaterialTheme.colorScheme.secondaryContainer,
@@ -821,25 +866,51 @@ private fun SideNavItem(
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Spacer(modifier = Modifier.height(NavLabelGap))
-                    Text(
-                        text = stringResource(destination.labelRes),
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.SemiBold,
-                        textAlign = TextAlign.Center,
-                        maxLines = 1,
-                    )
+                    SideBarLabel(text = stringResource(destination.labelRes))
                 }
             }
         }
     }
 }
 
+/** The label column is 48dp wide; long labels and font scale 1.3 must still fit. */
+private val SideLabelWidth = 48.dp
+
+@Composable
+private fun SideBarLabel(text: String) {
+    val base = MaterialTheme.typography.labelSmall
+    val measurer = rememberTextMeasurer()
+    val available = with(LocalDensity.current) { SideLabelWidth.toPx() }
+    val style = remember(text, base, available, measurer) {
+        val width = measurer.measure(
+            text = AnnotatedString(text),
+            style = base,
+            maxLines = 1,
+            softWrap = false,
+        ).size.width
+        if (width <= 0 || width <= available) {
+            base
+        } else {
+            // Shrink to the measured ratio, but never below an 8sp legible floor.
+            base.copy(fontSize = (base.fontSize.value * available / width).coerceAtLeast(8f).sp)
+        }
+    }
+    Text(
+        text = text,
+        style = style,
+        fontWeight = FontWeight.SemiBold,
+        textAlign = TextAlign.Center,
+        maxLines = 1,
+        softWrap = false,
+        overflow = TextOverflow.Ellipsis,
+    )
+}
+
 /**
  * The floating bottom pill: one tonal capsule, the open tab expanding to
  * say its name, the rest as icons. Its items use the same shared specs as
  * the side bar's, expanding on the horizontal axis instead.
- */
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+ */@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun FloatingNavPill(
     destinations: List<TopLevel>,

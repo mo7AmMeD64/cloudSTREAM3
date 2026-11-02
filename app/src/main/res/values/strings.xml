@@ -618,6 +618,17 @@
     <string name="manga_coming_next_title">Coming next</string>
     <string name="manga_coming_next_hint">This manga screen arrives in the next update.</string>
 
+    <!-- Manga browse, search, library and history -->
+    <string name="manga_browse_no_sources_title">No manga sources yet</string>
+    <string name="manga_browse_no_sources_hint">Install a manga extension to browse and read manga.</string>
+    <string name="manga_browse_open_extensions">Go to Extensions</string>
+    <string name="manga_search_empty_title">Search manga</string>
+    <string name="manga_search_empty_hint">Type a title to search the selected sources.</string>
+    <string name="manga_library_empty_title">Your manga library is empty</string>
+    <string name="manga_library_empty_hint">Add a manga from its details screen to keep it here.</string>
+    <string name="manga_history_empty_title">Nothing read yet</string>
+    <string name="manga_history_empty_hint">Chapters you open show up here, grouped by day.</string>
+
     <!-- Manga settings -->
     <string name="settings_manga">Manga</string>
     <string name="settings_manga_extensions_summary">Install, update and remove manga sources</string>

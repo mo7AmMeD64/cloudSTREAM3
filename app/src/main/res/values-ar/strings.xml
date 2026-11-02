@@ -503,6 +503,17 @@
     <string name="manga_coming_next_title">قريبًا</string>
     <string name="manga_coming_next_hint">تصل شاشة المانجا هذه في التحديث القادم.</string>
 
+    <!-- تصفح المانجا والبحث والمكتبة والسجل -->
+    <string name="manga_browse_no_sources_title">لا توجد مصادر مانجا بعد</string>
+    <string name="manga_browse_no_sources_hint">ثبّت إضافة مانجا لتتصفح المانجا وتقرأها.</string>
+    <string name="manga_browse_open_extensions">الانتقال إلى الإضافات</string>
+    <string name="manga_search_empty_title">ابحث عن مانجا</string>
+    <string name="manga_search_empty_hint">اكتب عنوانًا للبحث في المصادر المحددة.</string>
+    <string name="manga_library_empty_title">مكتبة المانجا فارغة</string>
+    <string name="manga_library_empty_hint">أضف مانجا من شاشة التفاصيل لتظهر هنا.</string>
+    <string name="manga_history_empty_title">لم تقرأ شيئًا بعد</string>
+    <string name="manga_history_empty_hint">تظهر الفصول التي تفتحها هنا، مجمعة حسب اليوم.</string>
+
     <!-- إعدادات المانجا -->
     <string name="settings_manga">المانجا</string>
     <string name="settings_manga_extensions_summary">ثبّت مصادر المانجا وحدّثها وأزلها</string>
