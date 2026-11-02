@@ -74,7 +74,11 @@ private object CoverRequests {
 
     suspend fun load(key: String, block: suspend () -> ByteArray): ByteArray {
         val mine = kotlinx.coroutines.CompletableDeferred<ByteArray>()
-        val existing = lock.withLock { inFlight[key] ?: null.also { inFlight[key] = mine } }
+        val existing = lock.withLock {
+            val current = inFlight[key]
+            if (current == null) inFlight[key] = mine
+            current
+        }
         if (existing != null) return existing.await()
         return try {
             block().also { mine.complete(it) }

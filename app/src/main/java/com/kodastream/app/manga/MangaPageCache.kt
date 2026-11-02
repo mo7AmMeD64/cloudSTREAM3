@@ -163,6 +163,7 @@ object MangaPageCache {
 data class MangaCover(
     val sourceId: Long,
     val url: String,
+    val thumbnailUrl: String? = null,
 )
 
 /** A page request for animated/small images; static reader pages use the file cache. */
