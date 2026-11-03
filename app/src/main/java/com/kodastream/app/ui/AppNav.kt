@@ -113,6 +113,7 @@ import com.kodastream.app.data.NavArgs
 import com.kodastream.app.data.PlayerArgs
 import com.kodastream.app.manga.MangaPrefs
 import com.kodastream.app.manga.MangaRef
+import com.kodastream.app.manga.reader.MangaReaderActivity
 import com.kodastream.app.manga.extension.MangaSourceManager
 import com.kodastream.app.manga.store.MangaStoreRepository
 import com.kodastream.app.ui.components.softSpring
@@ -702,11 +703,16 @@ private fun NavGraphBuilder.mangaDetailsRoute(
         if (ref == null) {
             LaunchedEffect(Unit) { navController.popBackStack() }
         } else {
+            val context = LocalContext.current
             MangaDetailsScreen(
                 ref = ref,
                 contentPadding = contentPadding,
                 onBack = { navController.popBackStack() },
-                onOpenChapter = { _, _ -> },
+                onOpenChapter = { chapter, page ->
+                    context.startActivity(
+                        MangaReaderActivity.intent(context, ref, chapter.url, page),
+                    )
+                },
                 onSearchGenre = { genre ->
                     // Browse is the source's own search: land there with the
                     // genre typed in, on the source this title came from.

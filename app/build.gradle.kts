@@ -168,6 +168,12 @@ dependencies {
     // HCT colour generation used by Koda's palette system
     implementation(libs.ax.material.colors)
     implementation(libs.ax.coil.compose)
+    implementation(libs.ax.coil.gif)
+    // Manga reader viewers: Mihon's directional pager and tiled image view.
+    implementation(libs.ax.directional.viewpager)
+    implementation(libs.ax.subsampling) {
+        exclude(group = "ca.mpreg", module = "imagedecoder")
+    }
 
     // ---- Player ----
     implementation(libs.ax.media3.exoplayer)

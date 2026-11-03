@@ -73,6 +73,8 @@ axMedia3 = "1.9.3" # matches nextlib 1.9.3-0.12.0 and the ported CloudStream pla
 axCoil = "2.7.0"
 axMaterialColors = "1.12.0"
 axOkhttp = "4.12.0"
+directionalViewPager = "1.0.0"
+subsamplingScaleImageView = "72a0537151"
 # NiceHttp in :library already resolves OkHttp to 5.3.2, so the compression
 # artifacts must match the runtime version instead of the declared one.
 axOkhttpCompression = "5.3.2"
@@ -206,6 +208,9 @@ ax-media3-exoplayer-hls = { group = "androidx.media3", name = "media3-exoplayer-
 ax-media3-ui = { group = "androidx.media3", name = "media3-ui", version.ref = "axMedia3" }
 ax-media3-datasource-okhttp = { group = "androidx.media3", name = "media3-datasource-okhttp", version.ref = "axMedia3" }
 ax-coil-compose = { group = "io.coil-kt", name = "coil-compose", version.ref = "axCoil" }
+ax-coil-gif = { group = "io.coil-kt", name = "coil-gif", version.ref = "axCoil" }
+ax-directional-viewpager = { group = "com.github.tachiyomiorg", name = "DirectionalViewPager", version.ref = "directionalViewPager" }
+ax-subsampling = { group = "com.github.mihonapp", name = "subsampling-scale-image-view", version.ref = "subsamplingScaleImageView" }
 ax-material-colors = { group = "com.google.android.material", name = "material", version.ref = "axMaterialColors" }
 ax-okhttp = { group = "com.squareup.okhttp3", name = "okhttp", version.ref = "axOkhttp" }
 ax-okhttp-brotli = { group = "com.squareup.okhttp3", name = "okhttp-brotli", version.ref = "axOkhttpCompression" }

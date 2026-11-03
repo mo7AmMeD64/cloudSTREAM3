@@ -107,12 +107,14 @@ object MangaPageCache {
         source: HttpSource,
         page: Page,
         now: Long = System.currentTimeMillis(),
+        onProgress: ((Int) -> Unit)? = null,
     ): File = withContext(Dispatchers.IO) {
         val imageUrl = page.imageUrl?.takeIf { it.isNotBlank() }
             ?: source.getImageUrl(page).also { page.imageUrl = it }
         val target = File(directory(context), fileName(source.id, imageUrl))
         if (target.isFile && target.length() > 0L) {
             target.setLastModified(now)
+            onProgress?.invoke(100)
             return@withContext target
         }
         val lock = locks.getOrPut(target.path) { Mutex() }
@@ -124,8 +126,19 @@ object MangaPageCache {
                     throw HttpException(response.code)
                 }
                 val body = response.body ?: throw IllegalStateException("Empty page response")
+                val total = body.contentLength()
+                var copied = 0L
                 body.byteStream().use { input ->
-                    temp.outputStream().use { output -> input.copyTo(output, 64 * 1024) }
+                    temp.outputStream().use { output ->
+                        val buffer = ByteArray(64 * 1024)
+                        while (true) {
+                            val read = input.read(buffer)
+                            if (read < 0) break
+                            output.write(buffer, 0, read)
+                            copied += read
+                            if (total > 0) onProgress?.invoke((100 * copied / total).toInt())
+                        }
+                    }
                 }
             }
             if (!temp.renameTo(target)) {

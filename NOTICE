@@ -137,5 +137,62 @@ DataStore) removed from the API module; Cloudflare WebView handling and a
 QuickJS JavaScript engine wired to the app; Android string resources added
 for the app-side screens.
 
+The manga reader is a port of Mihon's reader. These files were copied or
+adapted into app/src/main/java/com/kodastream/app/manga/reader/:
+
+- app/src/main/java/eu/kanade/tachiyomi/ui/reader/model/ReaderChapter.kt
+- app/src/main/java/eu/kanade/tachiyomi/ui/reader/model/ReaderPage.kt
+- app/src/main/java/eu/kanade/tachiyomi/ui/reader/model/ViewerChapters.kt
+- app/src/main/java/eu/kanade/tachiyomi/ui/reader/model/ChapterTransition.kt
+  -> ReaderModels.kt
+- app/src/main/java/eu/kanade/tachiyomi/ui/reader/viewer/Viewer.kt
+- app/src/main/java/eu/kanade/tachiyomi/ui/reader/viewer/ViewerItems.kt
+- app/src/main/java/eu/kanade/tachiyomi/ui/reader/viewer/ReaderTransitionView.kt
+- app/src/main/java/eu/kanade/tachiyomi/ui/reader/viewer/pager/PagerViewer.kt
+- app/src/main/java/eu/kanade/tachiyomi/ui/reader/viewer/pager/PagerPageHolder.kt
+- app/src/main/java/eu/kanade/tachiyomi/ui/reader/viewer/pager/PagerTransitionHolder.kt
+- app/src/main/java/eu/kanade/tachiyomi/ui/reader/viewer/pager/PagerItems.kt
+- app/src/main/java/eu/kanade/tachiyomi/ui/reader/viewer/webtoon/WebtoonViewer.kt
+- app/src/main/java/eu/kanade/tachiyomi/ui/reader/viewer/webtoon/WebtoonAdapter.kt
+- app/src/main/java/eu/kanade/tachiyomi/ui/reader/viewer/webtoon/WebtoonPageHolder.kt
+- app/src/main/java/eu/kanade/tachiyomi/ui/reader/viewer/webtoon/WebtoonBaseHolder.kt
+- app/src/main/java/eu/kanade/tachiyomi/ui/reader/viewer/webtoon/WebtoonTransitionHolder.kt
+- app/src/main/java/eu/kanade/tachiyomi/ui/reader/viewer/webtoon/WebtoonItems.kt
+  -> ReaderViewers.kt
+- app/src/main/java/eu/kanade/tachiyomi/ui/reader/viewer/ReaderPageImageView.kt
+  -> ReaderPageImageView.kt
+- app/src/main/java/eu/kanade/tachiyomi/ui/reader/viewer/GestureDetectorWithLongTap.kt
+- app/src/main/java/eu/kanade/tachiyomi/ui/reader/viewer/pager/Pager.kt
+  -> Pager.kt
+- app/src/main/java/eu/kanade/tachiyomi/ui/reader/viewer/webtoon/WebtoonRecyclerView.kt
+- app/src/main/java/eu/kanade/tachiyomi/ui/reader/viewer/webtoon/WebtoonFrame.kt
+  -> WebtoonTouch.kt
+- app/src/main/java/eu/kanade/tachiyomi/ui/reader/viewer/webtoon/WebtoonLayoutManager.kt
+  -> WebtoonLayoutManager.kt
+- app/src/main/java/eu/kanade/tachiyomi/ui/reader/viewer/webtoon/WebtoonStripImageView.kt
+  -> WebtoonStripImageView.kt
+- app/src/main/java/eu/kanade/tachiyomi/ui/reader/loader/PageLoader.kt
+- app/src/main/java/eu/kanade/tachiyomi/ui/reader/loader/HttpPageLoader.kt
+- app/src/main/java/eu/kanade/tachiyomi/ui/reader/loader/ChapterLoader.kt
+  -> ReaderLoaders.kt
+- app/src/main/java/eu/kanade/tachiyomi/ui/reader/ReaderViewModel.kt
+  -> MangaReaderViewModel.kt
+- app/src/main/java/eu/kanade/tachiyomi/ui/reader/setting/ReaderPreferences.kt
+- app/src/main/java/eu/kanade/tachiyomi/ui/reader/setting/ReadingMode.kt
+- app/src/main/java/eu/kanade/tachiyomi/ui/reader/setting/ReaderOrientation.kt
+  -> MangaReaderSettings.kt, MangaPrefs.kt
+- app/src/main/java/eu/kanade/tachiyomi/ui/reader/viewer/ViewerNavigation.kt
+- app/src/main/java/eu/kanade/tachiyomi/ui/reader/viewer/navigation/*.kt
+  -> tapRegions() in MangaModels.kt
+
+Adaptations for KodaStream: Coil 3 replaced with Coil 2.7 and source fetchers;
+Mihon's DI graph, SQLDelight models, Voyager, Metro, Injekt preferences, the
+download manager, archive/epub/local loaders and the WebGPU viewer are not
+ported. The WebtoonStripImageView decodes cached files with BitmapRegionDecoder
+(with a sampled BitmapFactory fallback) instead of ca.mpreg:imagedecoder.
+Wide-page splitting (InsertPage) and the dual-page viewer are skipped. Chapter
+transitions are Compose views; the reader overlay, settings sheet and error
+states are new Compose code written for KodaStream.
+
 The KodaStream project as a whole is licensed under the GNU General Public
 License v3.0 (see LICENSE).
