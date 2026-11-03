@@ -639,9 +639,15 @@ private fun MangaNavGraph(
             )
         }
         composable(MangaRoutes.HISTORY) {
+            val context = LocalContext.current
             MangaHistoryScreen(
                 contentPadding = contentPadding,
                 onOpenDetails = { ref -> navController.navigate(MangaRoutes.details(ref)) },
+                onResume = { ref, chapterUrl, page ->
+                    context.startActivity(
+                        MangaReaderActivity.intent(context, ref, chapterUrl, page),
+                    )
+                },
             )
         }
         composable(MangaRoutes.EXTENSIONS) {

@@ -741,6 +741,21 @@
     <string name="settings_manga_section">Manga section</string>
     <string name="settings_manga_section_summary">Show the Watch/Manga switch in the navigation bar</string>
 
+    <string name="manga_history_search_hint">Search your history</string>
+    <!-- Manga reader settings in the settings screen -->
+    <string name="settings_manga_reader_mode">Default reading mode</string>
+    <string name="settings_manga_reader_direction">Default reading direction</string>
+    <string name="manga_reader_direction_rtl">Right to left</string>
+    <string name="manga_reader_direction_ltr">Left to right</string>
+    <string name="settings_manga_cache_size">Chapter cache size</string>
+    <string name="manga_cache_mb">%1$d MB</string>
+    <string name="settings_manga_cache_clear">Clear cache</string>
+    <string name="settings_manga_cache_used">%1$s used</string>
+    <string name="settings_manga_cache_cleared">Cache cleared</string>
+    <string name="settings_manga_check_on_open">Check for updates on open</string>
+    <string name="settings_manga_check_on_open_summary">Check your manga library for new chapters when the manga section opens.</string>
+    <string name="settings_manga_nsfw_global">18+ manga in global search</string>
+    <string name="settings_manga_nsfw_global_summary">Include titles from 18+ sources when searching every source.</string>
     <!-- Manga reader -->
     <string name="manga_reader_more">More options</string>
     <string name="manga_reader_open_browser">Open chapter in browser</string>

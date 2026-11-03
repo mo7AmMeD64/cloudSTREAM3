@@ -638,6 +638,21 @@
     <string name="settings_manga_section">قسم المانجا</string>
     <string name="settings_manga_section_summary">إظهار مفتاح التبديل بين المشاهدة والمانجا في شريط التنقل</string>
 
+    <string name="manga_history_search_hint">ابحث في سجلك</string>
+    <!-- إعدادات قارئ المانجا في شاشة الإعدادات -->
+    <string name="settings_manga_reader_mode">وضع القراءة الافتراضي</string>
+    <string name="settings_manga_reader_direction">اتجاه القراءة الافتراضي</string>
+    <string name="manga_reader_direction_rtl">من اليمين إلى اليسار</string>
+    <string name="manga_reader_direction_ltr">من اليسار إلى اليمين</string>
+    <string name="settings_manga_cache_size">حجم ذاكرة الفصول</string>
+    <string name="manga_cache_mb">%1$d ميغابايت</string>
+    <string name="settings_manga_cache_clear">مسح الذاكرة المؤقتة</string>
+    <string name="settings_manga_cache_used">%1$s مستخدمة</string>
+    <string name="settings_manga_cache_cleared">مُسحت الذاكرة المؤقتة</string>
+    <string name="settings_manga_check_on_open">التحقق من التحديثات عند الفتح</string>
+    <string name="settings_manga_check_on_open_summary">تحقق من مكتبة المانجا بحثًا عن فصول جديدة عند فتح قسم المانجا.</string>
+    <string name="settings_manga_nsfw_global">مانجا 18+ في البحث الشامل</string>
+    <string name="settings_manga_nsfw_global_summary">تضمين العناوين من مصادر 18+ عند البحث في كل المصادر.</string>
     <!-- قارئ المانجا -->
     <string name="manga_reader_more">خيارات أخرى</string>
     <string name="manga_reader_open_browser">فتح الفصل في المتصفح</string>
