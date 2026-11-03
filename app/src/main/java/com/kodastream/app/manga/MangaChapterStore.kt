@@ -116,11 +116,8 @@ object MangaChapterStore {
         chapters: List<MangaChapter>,
         chapterUrl: String,
     ) {
-        val ordered = readingOrder(chapters)
-        val index = ordered.indexOfFirst { it.url == chapterUrl }
-        if (index <= 0) return
         val now = System.currentTimeMillis()
-        ordered.take(index).forEach { chapter ->
+        chaptersBefore(chapters, chapterUrl).forEach { chapter ->
             setRead(context, sourceId, mangaUrl, chapter.url, read = true, at = now)
         }
     }

@@ -179,6 +179,13 @@ fun previousChapter(chapters: List<MangaChapter>, currentUrl: String): MangaChap
     return if (index > 0) ordered[index - 1] else null
 }
 
+/** Chapters before [currentUrl] in reading order; opening one marks them read. */
+fun chaptersBefore(chapters: List<MangaChapter>, currentUrl: String): List<MangaChapter> {
+    val ordered = readingOrder(chapters)
+    val index = ordered.indexOfFirst { it.url == currentUrl }
+    return if (index <= 0) emptyList() else ordered.take(index)
+}
+
 /**
  * The details screen's Continue button. An in-progress chapter wins, then the
  * oldest unread chapter in source order (Mihon's `getNextUnread`), then the
