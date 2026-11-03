@@ -634,6 +634,7 @@ private fun MangaNavGraph(
             MangaLibraryScreen(
                 contentPadding = contentPadding,
                 onOpenDetails = { ref -> navController.navigate(MangaRoutes.details(ref)) },
+                onOpenBrowse = { navController.navigateTopLevel(MangaRoutes.BROWSE) },
             )
         }
         composable(MangaRoutes.HISTORY) {

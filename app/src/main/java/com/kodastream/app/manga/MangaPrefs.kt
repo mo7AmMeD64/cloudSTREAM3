@@ -22,6 +22,12 @@ object MangaPrefs {
     private const val KEY_HISTORY_POSTER = "history_poster_step"
     private const val KEY_LIBRARY_SORT = "library_sort"
     private const val KEY_LIBRARY_DESC = "library_desc"
+    private const val KEY_LIBRARY_FILTER_UNREAD = "library_filter_unread"
+    private const val KEY_LIBRARY_FILTER_STARTED = "library_filter_started"
+    private const val KEY_LIBRARY_FILTER_COMPLETED = "library_filter_completed"
+    private const val KEY_LIBRARY_FILTER_SOURCE = "library_filter_source"
+    private const val KEY_LIBRARY_FILTER_LANGUAGE = "library_filter_language"
+    private const val KEY_LIBRARY_LAST_CHECK = "library_last_check"
     private const val KEY_READER_MODE = "reader_mode"
     private const val KEY_READER_TAP = "reader_tap"
     private const val KEY_READER_INVERT = "reader_invert"
@@ -150,6 +156,37 @@ object MangaPrefs {
 
     fun setLibraryDescending(context: Context, value: Boolean) {
         prefs(context).edit { putBoolean(KEY_LIBRARY_DESC, value) }
+    }
+
+    fun libraryFilter(context: Context): MangaLibraryFilter {
+        val p = prefs(context)
+        return MangaLibraryFilter(
+            unreadOnly = p.getBoolean(KEY_LIBRARY_FILTER_UNREAD, false),
+            startedOnly = p.getBoolean(KEY_LIBRARY_FILTER_STARTED, false),
+            completedOnly = p.getBoolean(KEY_LIBRARY_FILTER_COMPLETED, false),
+            sourceName = p.getString(KEY_LIBRARY_FILTER_SOURCE, null),
+            language = p.getString(KEY_LIBRARY_FILTER_LANGUAGE, null),
+        )
+    }
+
+    fun setLibraryFilter(context: Context, filter: MangaLibraryFilter) {
+        prefs(context).edit {
+            putBoolean(KEY_LIBRARY_FILTER_UNREAD, filter.unreadOnly)
+            putBoolean(KEY_LIBRARY_FILTER_STARTED, filter.startedOnly)
+            putBoolean(KEY_LIBRARY_FILTER_COMPLETED, filter.completedOnly)
+            if (filter.sourceName == null) remove(KEY_LIBRARY_FILTER_SOURCE)
+            else putString(KEY_LIBRARY_FILTER_SOURCE, filter.sourceName)
+            if (filter.language == null) remove(KEY_LIBRARY_FILTER_LANGUAGE)
+            else putString(KEY_LIBRARY_FILTER_LANGUAGE, filter.language)
+        }
+    }
+
+    /** When the library last checked sources for new chapters. */
+    fun libraryLastCheck(context: Context): Long =
+        prefs(context).getLong(KEY_LIBRARY_LAST_CHECK, 0L)
+
+    fun setLibraryLastCheck(context: Context, at: Long) {
+        prefs(context).edit { putLong(KEY_LIBRARY_LAST_CHECK, at) }
     }
 
     // ---------------------------------------------------------------- reader

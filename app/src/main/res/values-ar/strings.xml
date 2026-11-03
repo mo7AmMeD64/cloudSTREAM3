@@ -577,6 +577,60 @@
     <string name="manga_history_empty_title">لم تقرأ شيئًا بعد</string>
     <string name="manga_history_empty_hint">تظهر الفصول التي تفتحها هنا، مجمعة حسب اليوم.</string>
 
+    <string name="manga_library_search_hint">ابحث في مكتبتك</string>
+    <string name="manga_library_sort_filter">الترتيب والتصفية</string>
+    <string name="manga_library_sort_title">العنوان</string>
+    <string name="manga_library_sort_last_read">آخر قراءة</string>
+    <string name="manga_library_sort_last_updated">آخر تحديث</string>
+    <string name="manga_library_sort_date_added">تاريخ الإضافة</string>
+    <string name="manga_library_sort_unread">الفصول غير المقروءة</string>
+    <string name="manga_library_sort_total">إجمالي الفصول</string>
+    <string name="manga_library_descending">تنازلي</string>
+    <string name="manga_library_filter_unread">غير المقروء فقط</string>
+    <string name="manga_library_filter_started">بدأت قراءته</string>
+    <string name="manga_library_filter_completed">مكتمل</string>
+    <string name="manga_library_filter_source">المصدر</string>
+    <string name="manga_library_filter_language">اللغة</string>
+    <string name="manga_library_filter_all">الكل</string>
+    <string name="manga_library_filter_source_value">المصدر: %1$s</string>
+    <string name="manga_library_filter_language_value">اللغة: %1$s</string>
+    <string name="manga_library_check">التحقق من الفصول الجديدة</string>
+    <string name="manga_library_checking">جارٍ التحقق %1$d من %2$d</string>
+    <string name="manga_library_check_done">مكتبتك محدثة</string>
+    <string name="manga_library_check_failed_title">فشل بعض عمليات التحقق</string>
+    <string name="manga_library_check_details">التفاصيل</string>
+    <string name="manga_library_check_close">إغلاق</string>
+    <plurals name="manga_library_check_failed">
+        <item quantity="zero">لم تفشل أي عملية تحقق</item>
+        <item quantity="one">فشلت عملية تحقق واحدة</item>
+        <item quantity="two">فشلت عمليتا تحقق</item>
+        <item quantity="few">فشلت %1$d عمليات تحقق</item>
+        <item quantity="many">فشلت %1$d عملية تحقق</item>
+        <item quantity="other">فشلت %1$d عملية تحقق</item>
+    </plurals>
+    <plurals name="manga_library_unread_badge">
+        <item quantity="zero">لا فصول غير مقروءة</item>
+        <item quantity="one">فصل واحد غير مقروء</item>
+        <item quantity="two">فصلان غير مقروءين</item>
+        <item quantity="few">%1$d فصول غير مقروءة</item>
+        <item quantity="many">%1$d فصلًا غير مقروء</item>
+        <item quantity="other">%1$d فصل غير مقروء</item>
+    </plurals>
+    <string name="manga_library_language_badge">اللغة %1$s</string>
+    <string name="manga_library_browse">تصفح المانجا</string>
+    <string name="manga_library_no_results_title">لا شيء مطابق</string>
+    <string name="manga_library_no_results_hint">غيّر البحث أو عوامل التصفية.</string>
+    <string name="manga_library_source_gone">المصدر غير مثبت</string>
+    <string name="manga_category_delete_text">ستبقى عناوينه البالغة %1$d في مكتبة المانجا.</string>
+    <plurals name="manga_library_removed">
+        <item quantity="zero">لم تتم إزالة أي عنوان من مكتبتك</item>
+        <item quantity="one">أُزيل عنوان واحد من مكتبتك</item>
+        <item quantity="two">أُزيل عنوانان من مكتبتك</item>
+        <item quantity="few">أُزيلت %1$d عناوين من مكتبتك</item>
+        <item quantity="many">أُزيل %1$d عنوانًا من مكتبتك</item>
+        <item quantity="other">أُزيل %1$d عنوان من مكتبتك</item>
+    </plurals>
+
     <!-- إعدادات المانجا -->
     <string name="settings_manga">المانجا</string>
     <string name="settings_manga_extensions_summary">ثبّت مصادر المانجا وحدّثها وأزلها</string>

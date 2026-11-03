@@ -29,6 +29,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -57,6 +58,8 @@ fun MangaPosterCard(
     selectionMode: Boolean = false,
     selected: Boolean = false,
     onLongClick: (() -> Unit)? = null,
+    unreadCount: Int = 0,
+    language: String? = null,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val pressed by interactionSource.collectIsPressedAsState()
@@ -143,6 +146,46 @@ fun MangaPosterCard(
                             modifier = Modifier.size(12.dp),
                         )
                     }
+                }
+                if (unreadCount > 0) {
+                    val unreadLabel = pluralStringResource(
+                        R.plurals.manga_library_unread_badge,
+                        unreadCount,
+                        unreadCount,
+                    )
+                    Text(
+                        text = unreadCount.toString(),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onPrimary,
+                        maxLines = 1,
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .padding(6.dp)
+                            .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(10.dp))
+                            .padding(horizontal = 7.dp, vertical = 2.dp)
+                            .semantics { contentDescription = unreadLabel },
+                    )
+                }
+                if (!language.isNullOrBlank()) {
+                    val languageLabel = stringResource(
+                        R.string.manga_library_language_badge,
+                        language,
+                    )
+                    Text(
+                        text = language.uppercase(),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color.White,
+                        maxLines = 1,
+                        modifier = Modifier
+                            .align(Alignment.BottomStart)
+                            .padding(6.dp)
+                            .background(
+                                MaterialTheme.colorScheme.scrim.copy(alpha = 0.8f),
+                                RoundedCornerShape(4.dp),
+                            )
+                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                            .semantics { contentDescription = languageLabel },
+                    )
                 }
             }
             Box(Modifier.padding(horizontal = 10.dp, vertical = 8.dp)) {

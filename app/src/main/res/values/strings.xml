@@ -692,6 +692,48 @@
     <string name="manga_history_empty_title">Nothing read yet</string>
     <string name="manga_history_empty_hint">Chapters you open show up here, grouped by day.</string>
 
+    <string name="manga_library_search_hint">Search your library</string>
+    <string name="manga_library_sort_filter">Sort and filter</string>
+    <string name="manga_library_sort_title">Title</string>
+    <string name="manga_library_sort_last_read">Last read</string>
+    <string name="manga_library_sort_last_updated">Last updated</string>
+    <string name="manga_library_sort_date_added">Date added</string>
+    <string name="manga_library_sort_unread">Unread chapters</string>
+    <string name="manga_library_sort_total">Total chapters</string>
+    <string name="manga_library_descending">Descending</string>
+    <string name="manga_library_filter_unread">Unread only</string>
+    <string name="manga_library_filter_started">Started</string>
+    <string name="manga_library_filter_completed">Completed</string>
+    <string name="manga_library_filter_source">Source</string>
+    <string name="manga_library_filter_language">Language</string>
+    <string name="manga_library_filter_all">All</string>
+    <string name="manga_library_filter_source_value">Source: %1$s</string>
+    <string name="manga_library_filter_language_value">Language: %1$s</string>
+    <string name="manga_library_check">Check for new chapters</string>
+    <string name="manga_library_checking">Checking %1$d of %2$d</string>
+    <string name="manga_library_check_done">Library is up to date</string>
+    <string name="manga_library_check_failed_title">Some checks failed</string>
+    <string name="manga_library_check_details">Details</string>
+    <string name="manga_library_check_close">Close</string>
+    <plurals name="manga_library_check_failed">
+        <item quantity="one">%1$d check failed</item>
+        <item quantity="other">%1$d checks failed</item>
+    </plurals>
+    <plurals name="manga_library_unread_badge">
+        <item quantity="one">%1$d unread chapter</item>
+        <item quantity="other">%1$d unread chapters</item>
+    </plurals>
+    <string name="manga_library_language_badge">Language %1$s</string>
+    <string name="manga_library_browse">Browse manga</string>
+    <string name="manga_library_no_results_title">Nothing matches</string>
+    <string name="manga_library_no_results_hint">Change the search or filters.</string>
+    <string name="manga_library_source_gone">source not installed</string>
+    <string name="manga_category_delete_text">Its %1$d titles stay in your manga library.</string>
+    <plurals name="manga_library_removed">
+        <item quantity="one">Removed %1$d title from your library</item>
+        <item quantity="other">Removed %1$d titles from your library</item>
+    </plurals>
+
     <!-- Manga settings -->
     <string name="settings_manga">Manga</string>
     <string name="settings_manga_extensions_summary">Install, update and remove manga sources</string>

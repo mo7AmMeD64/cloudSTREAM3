@@ -619,7 +619,7 @@ fun LibraryScreen(
 }
 
 @Composable
-private fun SelectionBar(
+internal fun SelectionBar(
     count: Int,
     onMove: () -> Unit,
     onRemove: () -> Unit,
@@ -670,7 +670,7 @@ private fun SelectionBar(
 /** A category chip that opens its actions on long-press and from the selected chip. */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun CategoryChip(
+internal fun CategoryChip(
     name: String,
     count: Int,
     selected: Boolean,
