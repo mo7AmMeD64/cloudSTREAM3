@@ -5,6 +5,9 @@ import com.lagradost.cloudstream3.utils.DataStore.getKey
 import com.lagradost.cloudstream3.utils.DataStore.getKeys
 import com.lagradost.cloudstream3.utils.DataStore.removeKey
 import com.lagradost.cloudstream3.utils.DataStore.setKey
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 
 /**
  * Cached chapters (`manga_chapters`) and per-chapter reading state
@@ -14,6 +17,10 @@ import com.lagradost.cloudstream3.utils.DataStore.setKey
 object MangaChapterStore {
     internal const val CHAPTERS = "manga_chapters"
     internal const val PROGRESS = "manga_progress"
+
+    /** Bumped on every write so open screens refresh read marks. */
+    private val _revision = MutableStateFlow(0L)
+    val revision: StateFlow<Long> = _revision.asStateFlow()
 
     fun chapters(context: Context, sourceId: Long, mangaUrl: String): List<MangaChapter> =
         context.getKey<MangaChapterList>(CHAPTERS, mangaKey(sourceId, mangaUrl))?.chapters.orEmpty()
@@ -25,6 +32,7 @@ object MangaChapterStore {
         chapters: List<MangaChapter>,
     ) {
         context.setKey(CHAPTERS, mangaKey(sourceId, mangaUrl), MangaChapterList(chapters))
+        _revision.value++
     }
 
     fun allProgress(context: Context): List<MangaProgressRecord> =
@@ -64,6 +72,7 @@ object MangaChapterStore {
             progressKey(sourceId, mangaUrl, chapterUrl),
             MangaProgressRecord(sourceId, mangaUrl, chapterUrl, progress),
         )
+        _revision.value++
     }
 
     fun setRead(
@@ -149,5 +158,6 @@ object MangaChapterStore {
                 it.sourceId == sourceId && it.mangaUrl == mangaUrl
             } == true }
             .forEach { path -> context.removeKey(path) }
+        _revision.value++
     }
 }

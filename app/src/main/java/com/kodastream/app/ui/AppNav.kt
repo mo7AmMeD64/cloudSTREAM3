@@ -153,6 +153,10 @@ private object Routes {
 }
 
 /** Manga navigation stays on its own graph; no route here is used by the video side. */
+/** Set on the browse entry when a genre chip sends the user there. */
+private const val GenreQueryKey = "manga_genre_query"
+private const val GenreSourceKey = "manga_genre_source"
+
 private object MangaRoutes {
     const val BROWSE = "manga_browse"
     const val SEARCH = "manga_search"
@@ -606,11 +610,18 @@ private fun MangaNavGraph(
         startDestination = MangaRoutes.BROWSE,
         modifier = Modifier.fillMaxSize(),
     ) {
-        composable(MangaRoutes.BROWSE) {
+        composable(MangaRoutes.BROWSE) { entry ->
+            val genre = entry.savedStateHandle.get<String>(GenreQueryKey)
+            val genreSource = entry.savedStateHandle.get<Long>(GenreSourceKey) ?: 0L
             MangaBrowseScreen(
                 contentPadding = contentPadding,
                 onOpenDetails = { ref -> navController.navigate(MangaRoutes.details(ref)) },
                 onOpenExtensions = { navController.navigateTopLevel(MangaRoutes.EXTENSIONS) },
+                pendingGenre = if (genre.isNullOrBlank()) null else genreSource to genre,
+                onPendingGenreConsumed = {
+                    entry.savedStateHandle.remove<String>(GenreQueryKey)
+                    entry.savedStateHandle.remove<Long>(GenreSourceKey)
+                },
             )
         }
         composable(MangaRoutes.SEARCH) {
@@ -694,6 +705,16 @@ private fun NavGraphBuilder.mangaDetailsRoute(
                 ref = ref,
                 contentPadding = contentPadding,
                 onBack = { navController.popBackStack() },
+                onOpenChapter = { _, _ -> },
+                onSearchGenre = { genre ->
+                    // Browse is the source's own search: land there with the
+                    // genre typed in, on the source this title came from.
+                    navController.navigateTopLevel(MangaRoutes.BROWSE)
+                    navController.currentBackStackEntry?.savedStateHandle?.let { handle ->
+                        handle[GenreQueryKey] = genre
+                        handle[GenreSourceKey] = ref.sourceId
+                    }
+                },
             )
         }
     }

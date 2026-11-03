@@ -28,6 +28,10 @@ data class MangaEntry(
     val description: String? = null,
     val genres: List<String> = emptyList(),
     val status: Int = 0,
+    /** SManga.UpdateStrategy name, so an "only fetch once" title can skip updates. */
+    val updateStrategy: String = "ALWAYS_UPDATE",
+    /** The source's opaque extra metadata, kept as JSON text. */
+    val memo: String = "",
     val sourceName: String = "",
     val language: String = "",
     val addedAt: Long = 0L,
@@ -43,6 +47,8 @@ data class MangaChapter(
     val scanlator: String? = null,
     val dateUpload: Long = 0L,
     val sourceOrder: Int = 0,
+    /** The source's opaque extra metadata, kept as JSON text. */
+    val memo: String = "",
 )
 
 data class MangaChapterList(
@@ -192,9 +198,10 @@ fun continueReading(
     if (inProgress != null) {
         return ContinueReading(inProgress.first, inProgress.second.lastPageRead)
     }
-    val unread = chapters.lastOrNull { progress[it.url]?.read != true }
+    val ordered = readingOrder(chapters)
+    val unread = ordered.firstOrNull { progress[it.url]?.read != true }
     if (unread != null) return ContinueReading(unread, 0)
-    return ContinueReading(chapters.first(), 0, allRead = true)
+    return ContinueReading(ordered.first(), 0, allRead = true)
 }
 
 /** Unread chapters in a title, using read flags only. */

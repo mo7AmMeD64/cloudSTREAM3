@@ -33,6 +33,7 @@ import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -80,9 +81,12 @@ fun MangaBrowseScreen(
     contentPadding: PaddingValues,
     onOpenDetails: (MangaRef) -> Unit,
     onOpenExtensions: () -> Unit,
+    pendingGenre: Pair<Long, String>? = null,
+    onPendingGenreConsumed: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val viewModel: MangaBrowseViewModel = viewModel()
+
     val sources by viewModel.sources.collectAsState()
     val loadingSources by viewModel.loadingSources.collectAsState()
     val selected by viewModel.selected.collectAsState()
@@ -107,6 +111,13 @@ fun MangaBrowseScreen(
 
     val catalogue = selected?.source as? CatalogueSource
     val emptySource = sources.isEmpty() && !loadingSources
+
+    LaunchedEffect(pendingGenre) {
+        val (sourceId, genre) = pendingGenre ?: return@LaunchedEffect
+        if (sourceId > 0L && sourceId != selected?.source?.id) viewModel.selectSource(sourceId)
+        viewModel.setQuery(genre)
+        onPendingGenreConsumed()
+    }
 
     Column(
         modifier = Modifier

@@ -31,6 +31,9 @@ object MangaLibraryStore {
             .filter { it.url.isNotBlank() }
             .sortedByDescending { it.addedAt }
 
+    fun entry(context: Context, sourceId: Long, url: String): MangaEntry? =
+        context.getKey<MangaEntry>(LIBRARY, mangaKey(sourceId, url))
+
     fun isFavorite(context: Context, sourceId: Long, url: String): Boolean =
         context.containsKey(LIBRARY, mangaKey(sourceId, url))
 
