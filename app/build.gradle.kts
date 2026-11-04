@@ -21,8 +21,8 @@ android {
         // desugaring enabled below on anything older than API 33.
         minSdk = 26
         targetSdk = libs.versions.targetSdk.get().toInt()
-        versionCode = 15
-        versionName = "0.11.2"
+        versionCode = 16
+        versionName = "0.11.3"
     }
 
     // CI decodes the stable release keystore from secrets; without it (local
@@ -181,6 +181,7 @@ dependencies {
     implementation(libs.ax.subsampling) {
         exclude(group = "ca.mpreg", module = "imagedecoder")
     }
+    implementation(libs.image.decoder)
 
     // ---- Player ----
     implementation(libs.ax.media3.exoplayer)
