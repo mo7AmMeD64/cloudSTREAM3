@@ -141,6 +141,8 @@ class HttpPageLoaderTest {
             pages: List<Page>,
         ) = Unit
 
+        override suspend fun invalidatePageList(sourceId: Long, chapterUrl: String) = Unit
+
         override suspend fun file(
             source: HttpSource,
             page: ReaderPage,

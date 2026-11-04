@@ -64,11 +64,24 @@ class MangaDetailsViewModel(
     private val loaded: LoadedSource? =
         manager.sources.value.firstOrNull { it.source.id == ref.sourceId }
 
-    private val _state = MutableStateFlow(initialState())
+    // The instant state, so the header paints before any store is parsed.
+    private val _state = MutableStateFlow(
+        MangaDetailsState(
+            entry = ref.toEntry(source?.name.orEmpty(), loaded?.language.orEmpty()),
+            loading = true,
+            sourceAvailable = source != null,
+        ),
+    )
     val state: StateFlow<MangaDetailsState> = _state.asStateFlow()
 
     init {
-        viewModelScope.launch { refresh(first = true) }
+        viewModelScope.launch {
+            // Chapter lists and progress are large shared-preference values;
+            // parsing them on the UI thread is what made details open late.
+            val initial = withContext(Dispatchers.IO) { initialState() }
+            _state.update { initial }
+            refresh(first = true)
+        }
     }
 
     private fun initialState(): MangaDetailsState {
@@ -133,12 +146,15 @@ class MangaDetailsViewModel(
                 chapter.toModel(index)
             }
             val sync: ChapterSyncResult = syncChapters(before.chapters, fetched)
-            MangaChapterStore.saveChapters(app, ref.sourceId, ref.url, sync.chapters)
-            MangaChapterStore.applyAliases(app, ref.sourceId, ref.url, sync.aliases)
+            val progress = withContext(Dispatchers.IO) {
+                MangaChapterStore.saveChapters(app, ref.sourceId, ref.url, sync.chapters)
+                MangaChapterStore.applyAliases(app, ref.sourceId, ref.url, sync.aliases)
+                MangaChapterStore.progress(app, ref.sourceId, ref.url)
+            }
             _state.update {
                 it.copy(
                     chapters = sync.chapters,
-                    progress = MangaChapterStore.progress(app, ref.sourceId, ref.url),
+                    progress = progress,
                     loading = false,
                     error = null,
                 )
@@ -159,7 +175,7 @@ class MangaDetailsViewModel(
                 )
             MangaDetailsCache.put(ref.key(), entry)
             if (favorite) {
-                MangaLibraryStore.mergeDetails(app, entry)
+                withContext(Dispatchers.IO) { MangaLibraryStore.mergeDetails(app, entry) }
             }
             _state.update {
                 it.copy(entry = entry, favorite = favorite)
@@ -175,54 +191,65 @@ class MangaDetailsViewModel(
 
     fun toggleFavorite() {
         val current = _state.value
-        if (current.favorite) {
-            MangaLibraryStore.remove(app, ref.sourceId, ref.url)
-            _state.update { it.copy(favorite = false, categoryId = null) }
-        } else {
-            MangaLibraryStore.add(app, ref)
-            if (current.entry.title.isNotBlank()) {
-                MangaLibraryStore.mergeDetails(app, current.entry)
-            }
-            _state.update {
-                it.copy(
-                    favorite = true,
-                    categoryId = MangaCategoryStore.categoryOf(app, ref.sourceId, ref.url),
-                )
+        viewModelScope.launch(Dispatchers.IO) {
+            if (current.favorite) {
+                MangaLibraryStore.remove(app, ref.sourceId, ref.url)
+                _state.update { it.copy(favorite = false, categoryId = null) }
+            } else {
+                MangaLibraryStore.add(app, ref)
+                if (current.entry.title.isNotBlank()) {
+                    MangaLibraryStore.mergeDetails(app, current.entry)
+                }
+                val category = MangaCategoryStore.categoryOf(app, ref.sourceId, ref.url)
+                _state.update { it.copy(favorite = true, categoryId = category) }
             }
         }
     }
 
     fun moveToCategory(categoryId: String?) {
-        MangaCategoryStore.move(app, listOf(ref.key()), categoryId)
         _state.update { it.copy(categoryId = categoryId) }
+        viewModelScope.launch(Dispatchers.IO) {
+            MangaCategoryStore.move(app, listOf(ref.key()), categoryId)
+        }
     }
 
     fun setChapterRead(chapterUrl: String, read: Boolean) {
-        MangaChapterStore.setRead(app, ref.sourceId, ref.url, chapterUrl, read)
-        refreshProgress()
+        changeProgress {
+            MangaChapterStore.setRead(app, ref.sourceId, ref.url, chapterUrl, read)
+        }
     }
 
     fun markPreviousRead(chapterUrl: String) {
-        MangaChapterStore.markPreviousRead(
-            app,
-            ref.sourceId,
-            ref.url,
-            _state.value.chapters,
-            chapterUrl,
-        )
-        refreshProgress()
+        val chapters = _state.value.chapters
+        changeProgress {
+            MangaChapterStore.markPreviousRead(
+                app,
+                ref.sourceId,
+                ref.url,
+                chapters,
+                chapterUrl,
+            )
+        }
     }
 
     fun toggleBookmark(chapterUrl: String) {
         val current = _state.value.progress[chapterUrl]?.bookmarked == true
-        MangaChapterStore.setBookmarked(app, ref.sourceId, ref.url, chapterUrl, !current)
-        refreshProgress()
+        changeProgress {
+            MangaChapterStore.setBookmarked(app, ref.sourceId, ref.url, chapterUrl, !current)
+        }
     }
 
     /** Called when returning from the reader so the marks match the store. */
     fun refreshProgress() {
-        _state.update {
-            it.copy(progress = MangaChapterStore.progress(app, ref.sourceId, ref.url))
+        changeProgress {}
+    }
+
+    /** Writes a progress change off the UI thread, then republishes the marks. */
+    private fun changeProgress(block: () -> Unit) {
+        viewModelScope.launch(Dispatchers.IO) {
+            block()
+            val progress = MangaChapterStore.progress(app, ref.sourceId, ref.url)
+            _state.update { it.copy(progress = progress) }
         }
     }
 

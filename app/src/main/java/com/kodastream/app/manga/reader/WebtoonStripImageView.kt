@@ -14,7 +14,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -24,23 +24,32 @@ import kotlin.math.roundToInt
 /**
  * Ported from Mihon's `viewer/webtoon/WebtoonStripImageView.kt`. A tall page
  * is drawn as a stack of decoded strips, so an 800 x 20000 page never becomes
- * one GPU texture. Strips are decoded from the disk cache at a sample size
- * that keeps each strip around 1024 px tall on screen.
+ * one GPU texture.
  *
- * The Mihon decoder (`ca.mpreg:imagedecoder`) is not bundled here; this uses
- * [BitmapRegionDecoder] and falls back to a sampled [BitmapFactory] decode for
- * formats it cannot region-decode. See the report for that one fallback.
+ * Strips are decoded progressively: the page's height is known after the
+ * header pass, the area near the current scroll position is decoded first,
+ * and each finished strip is drawn immediately. The old version decoded the
+ * whole page before showing anything, which is what made webtoon pages feel
+ * slow on long chapters.
  */
 class WebtoonStripImageView(context: Context) : View(context) {
 
-    private var strips: List<Bitmap> = emptyList()
+    private var strips: Array<Bitmap?> = emptyArray()
     private var imageWidth = 0
     private var imageHeight = 0
+    private var sourceRowsPerStrip = 0
+    private var sampleSize = 1
+    private var sourceFile: File? = null
+
     private val paint = Paint(Paint.FILTER_BITMAP_FLAG)
     private val clipRect = Rect()
     private val dstRect = Rect()
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private var decodeJob: Job? = null
+
+    /** The strip nearest the viewport when decoding started. */
+    private var firstVisibleStrip = 0
+    private var isReleasedOffScreen = false
 
     var colorFilter: ColorFilter?
         get() = paint.colorFilter
@@ -55,18 +64,61 @@ class WebtoonStripImageView(context: Context) : View(context) {
     fun setImage(file: File) {
         decodeJob?.cancel()
         releaseStrips()
+        sourceFile = file
         imageWidth = 0
         imageHeight = 0
+        isReleasedOffScreen = false
         decodeJob = scope.launch {
             try {
                 val width = width.takeIf { it > 0 } ?: resources.displayMetrics.widthPixels
-                val decoded = withContext(Dispatchers.IO) { decode(file, max(1, width)) }
-                strips = decoded.strips
-                imageWidth = decoded.width
-                imageHeight = decoded.height
-                onLoaded?.invoke()
+                val bounds = withContext(Dispatchers.IO) { readBounds(file) }
+                if (bounds.width <= 0 || bounds.height <= 0) {
+                    throw IllegalStateException("Unreadable page image")
+                }
+                var sample = 1
+                while (bounds.width / (sample * 2) >= max(1, width)) sample *= 2
+                val stripRows = max(1, STRIP_BYTES / (bounds.width / sample).coerceAtLeast(1) / 4)
+                strips = arrayOfNulls((bounds.height + stripRows - 1) / stripRows)
+                imageWidth = bounds.width
+                imageHeight = bounds.height
+                sampleSize = sample
+                sourceRowsPerStrip = stripRows
+                firstVisibleStrip = stripNearest()
                 requestLayout()
                 invalidate()
+
+                val region = withContext(Dispatchers.IO) {
+                    runCatching { BitmapRegionDecoder.newInstance(file.path, false) }.getOrNull()
+                }
+                if (region == null) {
+                    withContext(Dispatchers.IO) { decodeFallback(file) }
+                    onLoaded?.invoke()
+                    requestLayout()
+                    invalidate()
+                    return@launch
+                }
+                var first = true
+                try {
+                    val order = stripOrder(firstVisibleStrip)
+                    for (index in order) {
+                        if (!isActive) return@launch
+                        val bitmap = withContext(Dispatchers.IO) { decodeRegion(region, index) } ?: continue
+                        if (!isActive) {
+                            bitmap.recycle()
+                            return@launch
+                        }
+                        strips[index] = bitmap
+                        if (first) {
+                            first = false
+                            // The page is on screen as soon as its first strip
+                            // is, instead of after every strip decoded.
+                            onLoaded?.invoke()
+                        }
+                        invalidate()
+                    }
+                } finally {
+                    withContext(Dispatchers.IO) { region.recycle() }
+                }
             } catch (e: Throwable) {
                 if (e is kotlinx.coroutines.CancellationException) throw e
                 onError?.invoke(e)
@@ -76,12 +128,38 @@ class WebtoonStripImageView(context: Context) : View(context) {
 
     fun recycle() {
         decodeJob?.cancel()
-        scope.cancel()
+        decodeJob = null
         releaseStrips()
+        sourceFile = null
         onLoaded = null
         onError = null
         imageWidth = 0
         imageHeight = 0
+        isReleasedOffScreen = false
+        requestLayout()
+        // The scope is deliberately kept: RecyclerView recycles the same view
+        // for another page and a cancelled scope would never decode again.
+    }
+
+    // The viewer keeps a few pages off screen without recycling them, which
+    // adds up for huge pages. The height stays known, so the layout does not
+    // move while the page decodes again on the way back.
+    override fun onDetachedFromWindow() {
+        super.onDetachedFromWindow()
+        val used = strips.sumOf { it?.allocationByteCount?.toLong() ?: 0L }
+        if (used > LARGE_PAGE_BYTES) {
+            decodeJob?.cancel()
+            releaseStrips(keepLayout = true)
+            isReleasedOffScreen = true
+        }
+    }
+
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+        if (isReleasedOffScreen) {
+            isReleasedOffScreen = false
+            sourceFile?.let(::setImage)
+        }
     }
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
@@ -91,16 +169,16 @@ class WebtoonStripImageView(context: Context) : View(context) {
     }
 
     override fun onDraw(canvas: Canvas) {
-        if (imageWidth <= 0) return
+        if (imageWidth <= 0 || sourceRowsPerStrip <= 0) return
         canvas.getClipBounds(clipRect)
         val scale = width.toFloat() / imageWidth
-        var srcTop = 0
-        for (strip in strips) {
+        strips.forEachIndexed { index, strip ->
+            if (strip == null) return@forEachIndexed
+            val srcTop = index * sourceRowsPerStrip
             val top = (srcTop * scale).roundToInt()
-            srcTop += strip.height
-            val bottom = (srcTop * scale).roundToInt()
-            if (bottom <= clipRect.top) continue
-            if (top >= clipRect.bottom) break
+            val bottom = ((srcTop + sourceRowsPerStrip).toLong() * scale).toInt()
+            if (bottom <= clipRect.top) return@forEachIndexed
+            if (top >= clipRect.bottom) return@forEachIndexed
             dstRect.set(0, top, width, bottom)
             canvas.drawBitmap(strip, null, dstRect, paint)
         }
@@ -108,62 +186,67 @@ class WebtoonStripImageView(context: Context) : View(context) {
 
     override fun onTouchEvent(event: MotionEvent): Boolean = false
 
-    private fun releaseStrips() {
-        val released = strips
-        strips = emptyList()
-        released.forEach(Bitmap::recycle)
-    }
-
-    private data class Strips(val strips: List<Bitmap>, val width: Int, val height: Int)
-
-    private fun decode(file: File, targetWidth: Int): Strips {
+    private fun readBounds(file: File): IntSize {
         val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
         BitmapFactory.decodeFile(file.path, bounds)
-        if (bounds.outWidth <= 0 || bounds.outHeight <= 0) {
-            throw IllegalStateException("Unreadable page image")
-        }
-        // Keep the cached image close to screen resolution; tiled decoding then
-        // only pays for what is visible.
-        var sample = 1
-        while (bounds.outWidth / (sample * 2) >= targetWidth) sample *= 2
+        return IntSize(bounds.outWidth, bounds.outHeight)
+    }
 
-        val region = try {
-            BitmapRegionDecoder.newInstance(file.path, false)
-        } catch (_: Throwable) {
-            null
-        }
+    private fun decodeRegion(region: BitmapRegionDecoder, index: Int): Bitmap? {
+        val top = index * sourceRowsPerStrip
+        if (top >= imageHeight) return null
+        val bottom = minOf(top + sourceRowsPerStrip, imageHeight)
+        val options = BitmapFactory.Options().apply { inSampleSize = sampleSize }
+        return runCatching {
+            region.decodeRegion(Rect(0, top, imageWidth, bottom), options)
+        }.getOrNull()
+    }
 
-        if (region != null) {
-            val options = BitmapFactory.Options().apply { inSampleSize = sample }
-            val scaledWidth = bounds.outWidth / sample
-            val scaledHeight = bounds.outHeight / sample
-            // One output strip is at most this many source rows.
-            val stripSource = max(1, (1024 * sample))
-            val result = ArrayList<Bitmap>()
-            var y = 0
-            try {
-                while (y < bounds.outHeight) {
-                    val height = minOf(stripSource, bounds.outHeight - y)
-                    val bitmap = region.decodeRegion(Rect(0, y, bounds.outWidth, y + height), options)
-                        ?: throw IllegalStateException("Unreadable page region")
-                    result.add(bitmap)
-                    y += height
-                }
-            } finally {
-                region.recycle()
-            }
-            return Strips(result, scaledWidth, scaledHeight)
-        }
+    /** The visible area, then the rest in reading order, then upwards. */
+    private fun stripOrder(from: Int): List<Int> {
+        if (strips.isEmpty()) return emptyList()
+        val start = from.coerceIn(0, strips.lastIndex)
+        val order = ArrayList<Int>(strips.size)
+        for (index in start..strips.lastIndex) order.add(index)
+        for (index in start - 1 downTo 0) order.add(index)
+        return order
+    }
 
-        // Formats without a region decoder (some WebP/AVIF on old APIs) still
-        // need a bounded bitmap, so sample until the height is manageable.
-        var fallbackSample = sample
-        while (bounds.outWidth / fallbackSample > 4096 || bounds.outHeight / fallbackSample > 12288) {
-            fallbackSample *= 2
-        }
-        val options = BitmapFactory.Options().apply { inSampleSize = fallbackSample }
+    private fun stripNearest(): Int {
+        if (strips.isEmpty() || sourceRowsPerStrip <= 0 || imageWidth <= 0) return 0
+        val scale = width.toFloat() / imageWidth
+        val center = (clipRect.top + clipRect.bottom) / 2f
+        if (scale <= 0f) return 0
+        val sourceRow = (center / scale).toInt()
+        return (sourceRow / sourceRowsPerStrip).coerceIn(0, strips.lastIndex)
+    }
+
+    private fun decodeFallback(file: File) {
+        var fallback = sampleSize
+        while (imageWidth / fallback > 4096 || imageHeight / fallback > 12288) fallback *= 2
+        val options = BitmapFactory.Options().apply { inSampleSize = fallback }
         val bitmap = BitmapFactory.decodeFile(file.path, options)
             ?: throw IllegalStateException("Unreadable page image")
-        return Strips(listOf(bitmap), bitmap.width, bitmap.height)
+        strips = arrayOf(bitmap)
+        sourceRowsPerStrip = imageHeight
+        invalidate()
+    }
+
+    private fun releaseStrips(keepLayout: Boolean = false) {
+        val released = strips
+        strips = emptyArray()
+        released.forEach { it?.recycle() }
+        if (!keepLayout) {
+            imageWidth = 0
+            imageHeight = 0
+            sourceRowsPerStrip = 0
+        }
+    }
+
+    private data class IntSize(val width: Int, val height: Int)
+
+    private companion object {
+        const val STRIP_BYTES = 2 * 1024 * 1024
+        const val LARGE_PAGE_BYTES = 64L * 1024 * 1024
     }
 }

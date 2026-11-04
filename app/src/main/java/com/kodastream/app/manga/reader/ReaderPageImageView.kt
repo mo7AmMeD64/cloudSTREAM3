@@ -2,8 +2,8 @@ package com.kodastream.app.manga.reader
 
 import android.content.Context
 import android.graphics.PointF
-import android.graphics.drawable.Drawable
 import android.net.Uri
+import android.view.View
 import android.view.ViewGroup.LayoutParams.MATCH_PARENT
 import android.view.ViewGroup.LayoutParams.WRAP_CONTENT
 import android.widget.FrameLayout
@@ -20,7 +20,6 @@ import com.kodastream.app.manga.MangaReaderSettings
 import com.kodastream.app.manga.MangaScaleType
 import com.kodastream.app.manga.MangaZoomStart
 import java.io.File
-import java.io.InputStream
 
 /**
  * Ported from Mihon's `viewer/ReaderPageImageView.kt`: a [FrameLayout] that
@@ -32,7 +31,11 @@ open class ReaderPageImageView @JvmOverloads constructor(
     private val isWebtoon: Boolean = false,
 ) : FrameLayout(context) {
 
-    private var pageView: android.view.View? = null
+    private var pageView: View? = null
+
+    /** The page and file currently on screen, so a rebind never decodes twice. */
+    private var boundPage: ReaderPage? = null
+    private var boundFile: File? = null
 
     var onImageLoaded: (() -> Unit)? = null
     var onImageLoadError: ((Throwable?) -> Unit)? = null
@@ -41,6 +44,10 @@ open class ReaderPageImageView @JvmOverloads constructor(
 
     fun setPage(page: ReaderPage, settings: MangaReaderSettings, sourceId: Long) {
         val file = page.file ?: return
+        if (page === boundPage && file === boundFile && pageView != null) return
+        boundPage = page
+        boundFile = file
+
         if (isWebtoon) {
             prepareStripImageView()
             val strip = pageView as WebtoonStripImageView
@@ -53,7 +60,7 @@ open class ReaderPageImageView @JvmOverloads constructor(
             return
         }
 
-        if (isAnimated(file)) {
+        if (page.animated) {
             prepareAnimatedImageView()
             val image = pageView as ImageView
             image.load(
@@ -105,10 +112,8 @@ open class ReaderPageImageView @JvmOverloads constructor(
             is ImageView -> view.setImageDrawable(null)
         }
         pageView?.isVisible = false
-        onImageLoaded = null
-        onImageLoadError = null
-        onViewClicked = null
-        onScaleChanged = null
+        boundPage = null
+        boundFile = null
     }
 
     fun canPanLeft(): Boolean = canPan { it.left }
@@ -192,39 +197,6 @@ open class ReaderPageImageView @JvmOverloads constructor(
         pageView = WebtoonStripImageView(context)
         addView(pageView, MATCH_PARENT, WRAP_CONTENT)
     }
-
-    private fun isAnimated(file: File): Boolean = runCatching {
-        file.inputStream().use { input ->
-            val header = ByteArray(64)
-            val count = input.read(header)
-            if (count >= 6 &&
-                header[0] == 'G'.code.toByte() && header[1] == 'I'.code.toByte() &&
-                header[2] == 'F'.code.toByte() && header[3] == '8'.code.toByte()
-            ) {
-                return true
-            }
-            if (count >= 12 &&
-                header[0] == 'R'.code.toByte() && header[1] == 'I'.code.toByte() &&
-                header[2] == 'F'.code.toByte() && header[3] == 'F'.code.toByte() &&
-                header[8] == 'W'.code.toByte() && header[9] == 'E'.code.toByte() &&
-                header[10] == 'B'.code.toByte() && header[11] == 'P'.code.toByte()
-            ) {
-                val window = ByteArray(64 * 1024)
-                var seen = count
-                if (seen > 0) {
-                    window.copyInto(window, 0, 0, count)
-                    while (seen < window.size) {
-                        val read = input.read(window, seen, window.size - seen)
-                        if (read <= 0) break
-                        seen += read
-                    }
-                    val text = String(window, 0, seen, Charsets.ISO_8859_1)
-                    return text.contains("ANIM") || text.contains("ANMF")
-                }
-            }
-        }
-        false
-    }.getOrDefault(false)
 
     private fun MangaScaleType.minimumScaleType(): Int = when (this) {
         MangaScaleType.FIT_SCREEN -> 1

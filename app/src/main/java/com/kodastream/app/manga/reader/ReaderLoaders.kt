@@ -5,6 +5,7 @@ import com.kodastream.app.manga.CachedPage
 import com.kodastream.app.manga.MangaPageCache
 import com.kodastream.app.manga.MangaPageListStore
 import com.kodastream.app.manga.PageFetchInfo
+import com.kodastream.app.manga.isAnimatedImage
 import com.kodastream.app.manga.rootMessage
 import com.kodastream.app.ui.manga.toSChapter
 import eu.kanade.tachiyomi.network.HttpException
@@ -31,6 +32,7 @@ import java.util.concurrent.ConcurrentHashMap
 interface ReaderPageStore {
     suspend fun pageList(sourceId: Long, chapterUrl: String): List<CachedPage>?
     suspend fun savePageList(sourceId: Long, chapterUrl: String, pages: List<Page>)
+    suspend fun invalidatePageList(sourceId: Long, chapterUrl: String)
     suspend fun file(
         source: HttpSource,
         page: ReaderPage,
@@ -46,6 +48,10 @@ class AndroidReaderPageStore(private val context: Context) : ReaderPageStore {
 
     override suspend fun savePageList(sourceId: Long, chapterUrl: String, pages: List<Page>) {
         MangaPageListStore.save(context, sourceId, chapterUrl, pages)
+    }
+
+    override suspend fun invalidatePageList(sourceId: Long, chapterUrl: String) {
+        MangaPageListStore.remove(context, sourceId, chapterUrl)
     }
 
     override suspend fun file(
@@ -104,6 +110,10 @@ class HttpPageLoader(
     private var chunkProcessJob: Job? = null
     private val downloadJobs = ConcurrentHashMap<Int, Job>()
 
+    /** Keeps a rebind of an already-ready page from restarting the chunk chain. */
+    @Volatile
+    private var lastPlannedIndex = -1
+
     override var isLocal: Boolean = false
 
     override suspend fun getPages(): List<ReaderPage> {
@@ -135,13 +145,30 @@ class HttpPageLoader(
     private data class CachedPageReader(val url: String, val imageUrl: String?)
 
     override suspend fun loadPage(page: ReaderPage) = withContext(Dispatchers.IO) {
-        if (page.status is Page.State.Error) page.status = Page.State.Queue
+        // Mihon notices a page evicted from its cache and fetches it again.
+        if (page.status is Page.State.Ready) {
+            val file = page.file
+            val stillThere = file != null && file.isFile && file.length() > 0L
+            if (!stillThere) {
+                page.file = null
+                page.status = Page.State.Queue
+            } else if (lastPlannedIndex == page.index) {
+                // Already on screen and still cached: rebinding it must not
+                // cancel and rebuild the download plan of the chapter.
+                return@withContext
+            }
+        }
+        if (page.status is Page.State.Error) {
+            page.status = Page.State.Queue
+            page.file = null
+        }
         // Start the page being read before planning: planning walks the whole
         // chapter and takes chunkProcessLock.
         launchLoadOnce(page)
 
         val pages = page.chapter.pages.orEmpty()
         if (page.index !in pages.indices) return@withContext
+        lastPlannedIndex = page.index
         pages.loadByRollingChunked(page.index, 3, 5) { chunks ->
             val continueLoading = chunks.take(2).flatten().map { it.index }.toSet()
             downloadJobs.keys.filter { it !in continueLoading }
@@ -167,6 +194,18 @@ class HttpPageLoader(
         super.recycle()
         scope.cancel()
         downloadJobs.clear()
+
+        // Keep the resolved image URLs for the next open, like Mihon's
+        // ChapterCache does in HttpPageLoader.recycle. Reopening a chapter then
+        // skips one getImageUrl round trip per page.
+        chapter.pages?.let { pages ->
+            val snapshot = pages.map { Page(it.index, it.url, it.imageUrl) }
+            val sourceId = source.id
+            val chapterUrl = chapter.chapter.url
+            pageListSaveScope.launch {
+                runCatching { store.savePageList(sourceId, chapterUrl, snapshot) }
+            }
+        }
     }
 
     private fun Job.track(index: Int) = also { job ->
@@ -274,14 +313,29 @@ class HttpPageLoader(
                 existing
             } else {
                 setState(page, Page.State.DownloadImage)
-                store.file(
-                    source = source,
-                    page = page,
-                    onProgress = { page.progress = it },
-                    onFetched = { info -> recordFetched(page, info) },
-                )
+                try {
+                    store.file(
+                        source = source,
+                        page = page,
+                        onProgress = { page.progress = it },
+                        onFetched = { info -> recordFetched(page, info) },
+                    )
+                } catch (e: HttpException) {
+                    if (e.code != 401 && e.code != 403) throw e
+                    // Cached page lists keep signed image URLs that expire.
+                    // One fresh page-list pass gives the next attempt a new one.
+                    store.invalidatePageList(source.id, page.chapter.chapter.url)
+                    page.imageUrl = source.getImageUrl(page)
+                    store.file(
+                        source = source,
+                        page = page,
+                        onProgress = { page.progress = it },
+                        onFetched = { info -> recordFetched(page, info) },
+                    )
+                }
             }
             page.file = file
+            page.animated = isAnimatedImage(file)
             page.stream = { file.inputStream() }
             setState(page, Page.State.Ready)
         } catch (e: Throwable) {
@@ -346,6 +400,9 @@ class HttpPageLoader(
 }
 
 private const val LIMITED_PAGES_AHEAD = 4
+
+/** Outlives one loader so the resolved page list is still written after a chapter switch. */
+private val pageListSaveScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
 /** The source answered, but with an empty page list. */
 class EmptyChapterException : Exception("The source returned no pages for this chapter")

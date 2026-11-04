@@ -496,7 +496,11 @@ fun SettingsScreen(
                 var readerPageNumber by remember { mutableStateOf(readerDefaults.showPageNumber) }
                 var readerVolume by remember { mutableStateOf(readerDefaults.volumeKeys) }
                 var readerCacheMb by remember { mutableStateOf(MangaPrefs.readerCacheMb(context)) }
-                var cacheUsed by remember { mutableStateOf(MangaPageCache.usedBytes(context)) }
+                var cacheUsed by remember { mutableStateOf(0L) }
+                LaunchedEffect(Unit) {
+                    // The first call walks the whole page cache; keep it off the UI thread.
+                    cacheUsed = withContext(Dispatchers.IO) { MangaPageCache.usedBytes(context) }
+                }
                 var checkOnOpen by remember { mutableStateOf(MangaPrefs.checkUpdatesOnOpen(context)) }
                 var nsfwGlobal by remember { mutableStateOf(MangaPrefs.showNsfwGlobalSearch(context)) }
                 val directionShown = readerMode == MangaReadingMode.PAGED_RTL ||

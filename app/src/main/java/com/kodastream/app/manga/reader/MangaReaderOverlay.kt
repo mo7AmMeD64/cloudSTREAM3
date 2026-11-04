@@ -25,18 +25,26 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowLeft
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
+import androidx.compose.material.icons.rounded.AutoStories
 import androidx.compose.material.icons.rounded.Bookmark
 import androidx.compose.material.icons.rounded.BookmarkBorder
 import androidx.compose.material.icons.rounded.BugReport
+import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.CropFree
 import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.OpenInBrowser
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.Share
+import androidx.compose.material.icons.rounded.ViewList
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
@@ -98,7 +106,6 @@ import kotlin.math.roundToInt
 fun MangaReaderOverlay(
     state: ReaderOverlayState,
     onClose: () -> Unit,
-    onHideMenu: () -> Unit,
     onModeChange: (MangaReadingMode) -> Unit,
     onSettings: (MangaReaderSettings) -> Unit,
     onPageSelected: (Int) -> Unit,
@@ -110,23 +117,26 @@ fun MangaReaderOverlay(
     onSavePage: () -> Unit,
     onRetry: () -> Unit,
     onOpenWebView: () -> Unit,
+    onChapterSelected: (Int) -> Unit,
+    /** True while the slider thumb is held, so a drag doesn't close the menu. */
+    onSliderDragging: (Boolean) -> Unit = {},
+    /** Closes the top and bottom bars, used when the drawer opens. */
+    onCloseMenu: () -> Unit = {},
     onShowDiagnostics: () -> Unit,
 ) {
+    var showChapters by remember { mutableStateOf(false) }
     Box(Modifier.fillMaxSize()) {
         ReaderError(state, onRetry, onOpenWebView)
 
+        // A scrim with no pointer input: the page keeps the tap, like Mihon's
+        // overlay, so tapping a page zone turns the page with the menu open.
         AnimatedVisibility(
             visible = state.menuVisible,
             enter = fadeIn(),
             exit = fadeOut(),
             modifier = Modifier.fillMaxSize(),
         ) {
-            Box(
-                Modifier
-                    .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.38f))
-                    .clickable(onClick = onHideMenu),
-            )
+            Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.18f)))
         }
 
         AnimatedVisibility(
@@ -151,6 +161,7 @@ fun MangaReaderOverlay(
                 onOpenBrowser = onOpenBrowser,
                 onSharePage = onSharePage,
                 onSavePage = onSavePage,
+                onOpenChapterList = { showChapters = true; onCloseMenu() },
                 onShowDiagnostics = onShowDiagnostics,
             )
         }
@@ -175,8 +186,21 @@ fun MangaReaderOverlay(
                 onPageSelected = onPageSelected,
                 onPreviousChapter = onPreviousChapter,
                 onNextChapter = onNextChapter,
+                onOpenChapterList = { showChapters = true; onCloseMenu() },
                 onSettings = onSettings,
                 onModeChange = onModeChange,
+                onSliderDragging = onSliderDragging,
+            )
+        }
+
+        if (showChapters) {
+            ReaderChapterSheet(
+                state = state,
+                onDismiss = { showChapters = false },
+                onSelected = { index ->
+                    showChapters = false
+                    onChapterSelected(index)
+                },
             )
         }
 
@@ -213,6 +237,7 @@ private fun ReaderTopBar(
     onOpenBrowser: () -> Unit,
     onSharePage: () -> Unit,
     onSavePage: () -> Unit,
+    onOpenChapterList: () -> Unit,
     onShowDiagnostics: () -> Unit,
 ) {
     var menu by remember { mutableStateOf(false) }
@@ -233,7 +258,11 @@ private fun ReaderTopBar(
                     contentDescription = stringResource(R.string.back),
                 )
             }
-            Column(Modifier.weight(1f)) {
+            Column(
+                Modifier
+                    .weight(1f)
+                    .clickable(onClick = onOpenChapterList),
+            ) {
                 Text(
                     text = state.mangaTitle,
                     style = MaterialTheme.typography.titleSmall,
@@ -247,6 +276,12 @@ private fun ReaderTopBar(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
+                )
+            }
+            IconButton(onClick = onOpenChapterList) {
+                Icon(
+                    Icons.Rounded.ViewList,
+                    contentDescription = stringResource(R.string.manga_reader_chapters),
                 )
             }
             IconButton(onClick = onBookmark) {
@@ -314,10 +349,14 @@ private fun ReaderBottomBar(
     onPageSelected: (Int) -> Unit,
     onPreviousChapter: () -> Unit,
     onNextChapter: () -> Unit,
+    /** True while the slider thumb is held, so a drag doesn't close the menu. */
+    onSliderDragging: (Boolean) -> Unit = {},
+    onOpenChapterList: () -> Unit,
     onSettings: (MangaReaderSettings) -> Unit,
     onModeChange: (MangaReadingMode) -> Unit,
 ) {
     var showSettings by remember { mutableStateOf(false) }
+    var showModes by remember { mutableStateOf(false) }
     val readingRtl = state.settings.mode.readingRtl
     val uiRtl = LocalLayoutDirection.current == LayoutDirection.Rtl
     val pages = state.pageCount.coerceAtLeast(1)
@@ -362,6 +401,7 @@ private fun ReaderBottomBar(
                         Slider(
                             value = slider,
                             onValueChange = {
+                                if (!dragging) onSliderDragging(true)
                                 dragging = true
                                 slider = it
                                 val now = SystemClock.elapsedRealtime()
@@ -374,6 +414,7 @@ private fun ReaderBottomBar(
                             },
                             onValueChangeFinished = {
                                 dragging = false
+                                onSliderDragging(false)
                                 onPageSelected(
                                     pageFromSliderValue(slider, pages, readingRtl, uiRtl),
                                 )
@@ -399,14 +440,66 @@ private fun ReaderBottomBar(
                     style = MaterialTheme.typography.labelLarge,
                 )
                 Spacer(Modifier.weight(1f))
-                if (state.chapterIndex > 0) {
-                    TextButton(onClick = onPreviousChapter) {
-                        Text(stringResource(R.string.manga_reader_previous_chapter))
-                    }
+                IconButton(
+                    onClick = onPreviousChapter,
+                    enabled = state.chapterIndex > 0,
+                ) {
+                    Icon(
+                        Icons.AutoMirrored.Rounded.KeyboardArrowLeft,
+                        contentDescription = stringResource(R.string.manga_reader_previous_chapter),
+                    )
                 }
-                if (state.chapterIndex < state.chapterCount - 1) {
-                    TextButton(onClick = onNextChapter) {
-                        Text(stringResource(R.string.manga_reader_next_chapter))
+                IconButton(
+                    onClick = onNextChapter,
+                    enabled = state.chapterIndex < state.chapterCount - 1,
+                ) {
+                    Icon(
+                        Icons.AutoMirrored.Rounded.KeyboardArrowRight,
+                        contentDescription = stringResource(R.string.manga_reader_next_chapter),
+                    )
+                }
+                IconButton(onClick = onOpenChapterList) {
+                    Icon(
+                        Icons.Rounded.ViewList,
+                        contentDescription = stringResource(R.string.manga_reader_chapters),
+                    )
+                }
+                IconButton(
+                    onClick = { onSettings(state.settings.copy(cropBorders = !state.settings.cropBorders)) },
+                ) {
+                    Icon(
+                        Icons.Rounded.CropFree,
+                        contentDescription = stringResource(R.string.manga_reader_setting_crop),
+                        tint = if (state.settings.cropBorders) {
+                            MaterialTheme.colorScheme.primary
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        },
+                    )
+                }
+                Box {
+                    IconButton(onClick = { showModes = true }) {
+                        Icon(
+                            Icons.Rounded.AutoStories,
+                            contentDescription = stringResource(R.string.manga_reader_setting_mode),
+                            tint = MaterialTheme.colorScheme.primary,
+                        )
+                    }
+                    DropdownMenu(expanded = showModes, onDismissRequest = { showModes = false }) {
+                        MangaReadingMode.entries.forEach { mode ->
+                            DropdownMenuItem(
+                                text = { Text(modeLabel(mode)) },
+                                trailingIcon = if (mode == state.settings.mode) {
+                                    { Icon(Icons.Rounded.Check, contentDescription = null) }
+                                } else {
+                                    null
+                                },
+                                onClick = {
+                                    showModes = false
+                                    onModeChange(mode)
+                                },
+                            )
+                        }
                     }
                 }
                 IconButton(onClick = { showSettings = true }) {
@@ -428,6 +521,92 @@ private fun ReaderBottomBar(
         )
     }
 }
+
+/** Mihon's chapter drawer: jump to any chapter without leaving the reader. */
+@Composable
+private fun ReaderChapterSheet(
+    state: ReaderOverlayState,
+    onDismiss: () -> Unit,
+    onSelected: (Int) -> Unit,
+) {
+    val listState = rememberLazyListState(
+        initialFirstVisibleItemIndex = (state.chapterIndex - 3).coerceAtLeast(0),
+    )
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = stringResource(R.string.manga_reader_chapters),
+                style = MaterialTheme.typography.titleLarge,
+                modifier = Modifier.weight(1f),
+            )
+            Text(
+                text = "${state.chapterIndex + 1} / ${state.chapterCount}",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        HorizontalDivider()
+        LazyColumn(
+            state = listState,
+            modifier = Modifier.fillMaxHeight(0.85f),
+            contentPadding = PaddingValues(bottom = 24.dp),
+        ) {
+            items(state.chapters, key = { it.index }) { chapter ->
+                val current = chapter.index == state.chapterIndex
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onSelected(chapter.index) }
+                        .background(
+                            if (current) {
+                                MaterialTheme.colorScheme.secondaryContainer
+                            } else {
+                                Color.Transparent
+                            },
+                        )
+                        .padding(horizontal = 24.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            text = chapter.name,
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = if (current) FontWeight.SemiBold else FontWeight.Normal,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        if (chapter.number >= 0f) {
+                            Text(
+                                text = stringResource(R.string.manga_chapter_number, formatChapterNumber(chapter.number)),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                    if (current) {
+                        Icon(
+                            Icons.Rounded.Check,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                        )
+                    }
+                }
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
+            }
+        }
+    }
+}
+
+private fun formatChapterNumber(value: Float): String =
+    if (value % 1f == 0f) value.toInt().toString() else value.toString()
 
 @Composable
 private fun ReaderError(

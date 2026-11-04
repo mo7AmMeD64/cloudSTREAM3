@@ -658,6 +658,13 @@
     <string name="manga_favorite">Add to library</string>
     <string name="manga_unfavorite">Remove from library</string>
     <string name="manga_open_browser">Open in browser</string>
+    <string name="manga_web_view">Web view</string>
+    <string name="manga_action_unread">%1$d unread</string>
+    <string name="manga_action_bookmarks">%1$d saved</string>
+    <string name="manga_action_start">Start</string>
+    <string name="manga_action_resume">Resume</string>
+    <string name="manga_no_description">No description provided.</string>
+    <string name="manga_unknown_author">Unknown author</string>
     <string name="manga_share">Share</string>
     <string name="manga_refresh">Refresh</string>
     <string name="manga_source_missing">This source is no longer installed. Cached data is read-only.</string>
@@ -780,6 +787,7 @@
     <string name="manga_reader_settings">Reader settings</string>
     <string name="manga_reader_previous_chapter">Previous chapter</string>
     <string name="manga_reader_next_chapter">Next chapter</string>
+    <string name="manga_reader_chapters">Chapters</string>
     <string name="manga_reader_finished_chapter">Finished %1$s</string>
     <string name="manga_reader_next_chapter_named">Next: %1$s</string>
     <string name="manga_reader_start_chapter">Start of %1$s</string>

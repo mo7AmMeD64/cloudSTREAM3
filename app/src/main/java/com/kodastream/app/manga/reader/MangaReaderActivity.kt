@@ -79,6 +79,7 @@ class MangaReaderActivity : AppCompatActivity(), ReaderViewerHost {
     private lateinit var ref: MangaRef
     private lateinit var readerModel: MangaReaderViewModel
     private lateinit var viewerHost: FrameLayout
+    private lateinit var readerRoot: FrameLayout
 
     @Volatile
     override var settings: MangaReaderSettings = MangaReaderSettings()
@@ -90,6 +91,8 @@ class MangaReaderActivity : AppCompatActivity(), ReaderViewerHost {
     private var viewer: ReaderViewer? = null
     private var currentChapters: ViewerChapters? = null
     private var currentPage: ReaderPage? = null
+    @Volatile
+    private var sliderDragging = false
     private val overlayState = mutableStateOf(ReaderOverlayState())
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -160,18 +163,20 @@ class MangaReaderActivity : AppCompatActivity(), ReaderViewerHost {
                             MangaReaderOverlay(
                                 state = state,
                                 onClose = ::finishReader,
-                                onHideMenu = { readerModel.setMenuVisible(false) },
                                 onModeChange = readerModel::setReadingMode,
                                 onSettings = readerModel::updateSettings,
                                 onPageSelected = ::moveToPage,
                                 onPreviousChapter = { openAdjacent(-1) },
                                 onNextChapter = { openAdjacent(1) },
+                                onSliderDragging = { sliderDragging = it },
                                 onBookmark = ::toggleBookmark,
                                 onOpenBrowser = ::openInBrowser,
                                 onSharePage = { sharePage(share = true) },
                                 onSavePage = { sharePage(share = false) },
                                 onRetry = readerModel::retry,
                                 onOpenWebView = ::openInWebView,
+                                onChapterSelected = readerModel::openChapter,
+                                onCloseMenu = { readerModel.setMenuVisible(false) },
                                 onShowDiagnostics = {
                                     diagnosticsText = buildDiagnosticsText()
                                 },
@@ -191,6 +196,7 @@ class MangaReaderActivity : AppCompatActivity(), ReaderViewerHost {
                 ),
             )
         }
+        readerRoot = root
         setContentView(root)
         applySettings(settings)
         hideSystemBars()
@@ -253,12 +259,33 @@ class MangaReaderActivity : AppCompatActivity(), ReaderViewerHost {
                 }
             }
         }
+        when (keyCode) {
+            KeyEvent.KEYCODE_DPAD_RIGHT,
+            KeyEvent.KEYCODE_DPAD_DOWN,
+            KeyEvent.KEYCODE_PAGE_DOWN,
+            KeyEvent.KEYCODE_SPACE,
+            -> {
+                viewer?.moveForward()
+                return true
+            }
+            KeyEvent.KEYCODE_DPAD_LEFT,
+            KeyEvent.KEYCODE_DPAD_UP,
+            KeyEvent.KEYCODE_PAGE_UP,
+            -> {
+                viewer?.moveBackward()
+                return true
+            }
+        }
         return super.onKeyDown(keyCode, event)
     }
 
     override fun onPageSelected(page: ReaderPage) {
         currentPage = page
         readerModel.onPageSelected(page)
+        // Mihon closes the bars on a turn; a slider drag keeps them open.
+        if (overlayState.value.menuVisible && !sliderDragging) {
+            readerModel.setMenuVisible(false)
+        }
     }
 
     override fun onTransitionSelected(transition: ChapterTransition) = Unit
@@ -298,10 +325,6 @@ class MangaReaderActivity : AppCompatActivity(), ReaderViewerHost {
         startActivity(MangaWebViewActivity.intent(this, url))
     }
 
-    override fun onNoNextChapter() {
-        readerModel.setMenuVisible(true)
-    }
-
     private fun createViewer() {
         val mode = settings.mode
         val created: ReaderViewer = if (mode.isPaged) {
@@ -320,16 +343,16 @@ class MangaReaderActivity : AppCompatActivity(), ReaderViewerHost {
 
     private fun recreateViewer() {
         val chapters = currentChapters
-        val page = currentPage
+        val stillThere = currentPage?.takeIf { chapters?.currChapter?.pages?.contains(it) == true }
+        val index = stillThere?.index ?: overlayState.value.page
         viewer?.destroy()
         viewer = null
         viewerHost.removeAllViews()
         if (chapters == null) return
         createViewer()
         viewer?.setChapters(chapters)
-        if (page != null && chapters.currChapter.pages?.contains(page) == true) {
-            viewer?.moveToPage(page)
-        }
+        val target = stillThere ?: chapters.currChapter.pages?.getOrNull(index)
+        if (target != null) viewer?.moveToPage(target)
     }
 
     private fun applySettings(next: MangaReaderSettings) {
@@ -345,6 +368,7 @@ class MangaReaderActivity : AppCompatActivity(), ReaderViewerHost {
             MangaReaderOrientation.LANDSCAPE -> ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
         }
         window.decorView.setBackgroundColor(readerBackground(next.theme))
+        if (::readerRoot.isInitialized) readerRoot.setBackgroundColor(readerBackground(next.theme))
         if (previous != next && (previous.mode != next.mode ||
                 previous.scaleType != next.scaleType ||
                 previous.zoomStart != next.zoomStart ||

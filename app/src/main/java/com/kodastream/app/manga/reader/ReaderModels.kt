@@ -24,6 +24,10 @@ class ReaderPage(
     @Volatile
     var file: File? = null
 
+    /** Decided once while loading, so the reader never sniffs a file on the main thread. */
+    @Volatile
+    var animated: Boolean = false
+
     /** Kept for parity with Mihon; the loader points it at [file]. */
     var stream: (() -> InputStream)? = null
 }
@@ -163,6 +167,14 @@ private fun MangaChapter.isRecognizedNumber(): Boolean = number >= 0f
 /** Chapters in the order the reader shows them. */
 fun readerChapterOrder(chapters: List<MangaChapter>): List<MangaChapter> = readingOrder(chapters)
 
+/** One row of the reader's chapter drawer. */
+data class ReaderOverlayChapter(
+    val index: Int,
+    val name: String,
+    val number: Float,
+    val read: Boolean,
+)
+
 /** A menu/overlay snapshot, independent of the views. */
 data class ReaderOverlayState(
     val mangaTitle: String = "",
@@ -173,6 +185,7 @@ data class ReaderOverlayState(
     val pageCount: Int = 0,
     val chapterIndex: Int = 0,
     val chapterCount: Int = 0,
+    val chapters: List<ReaderOverlayChapter> = emptyList(),
     val loading: Boolean = true,
     val error: String? = null,
     val noPages: Boolean = false,

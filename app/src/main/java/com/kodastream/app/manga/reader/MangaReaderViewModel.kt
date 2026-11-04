@@ -17,6 +17,7 @@ import com.kodastream.app.manga.clampPage
 import com.kodastream.app.manga.extension.MangaSourceManager
 import com.kodastream.app.manga.isLastPage
 import com.kodastream.app.manga.readingOrder
+import com.kodastream.app.manga.store.MangaStoreRepository
 import com.kodastream.app.ui.manga.toModel
 import com.kodastream.app.ui.manga.toSChapter
 import com.kodastream.app.ui.manga.toSManga
@@ -30,10 +31,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import kotlin.math.max
 
 /** A viewer update with a version, because equal ViewerChapters do not emit. */
 data class ReaderViewerState(
@@ -53,10 +52,11 @@ class MangaReaderViewModel(
 ) : AndroidViewModel(application) {
 
     private val app = application
-    private val source: HttpSource?
-    private val chapterLoader: ChapterLoader?
+    private var source: HttpSource? = null
+    private var chapterLoader: ChapterLoader? = null
     private val chaptersByUrl = HashMap<String, ReaderChapter>()
     private var ordered: List<MangaChapter> = emptyList()
+    private var overlayChapters: List<ReaderOverlayChapter> = emptyList()
 
     private val _overlay = MutableStateFlow(
         ReaderOverlayState(
@@ -74,26 +74,47 @@ class MangaReaderViewModel(
     private var currentChapter: ReaderChapter? = null
     private var currentIndex = 0
     private var saveJob: Job? = null
-    private var preloadJob: Job? = null
 
     init {
-        MangaEngine.get(app)
-        val manager = MangaSourceManager.get(app)
-        source = manager.catalogueSourceById(ref.sourceId) as? HttpSource
-        chapterLoader = source?.let { ChapterLoader(app, it) }
-        if (source == null) {
-            _overlay.value = _overlay.value.copy(
-                loading = false,
-                error = "This source is not installed.",
-            )
-        } else {
-            viewModelScope.launch { init() }
+        viewModelScope.launch {
+            try {
+                // The reader can be relaunched into a fresh process (notification,
+                // recents, process death) before the manga section has loaded the
+                // extensions. Without this the source looks uninstalled.
+                val manager = MangaSourceManager.get(app)
+                if (manager.sources.value.isEmpty()) {
+                    val stores = MangaStoreRepository.get(app)
+                    stores.ensureDefaultStore()
+                    manager.ensureLoaded { stores.stores.value }
+                }
+                MangaEngine.get(app)
+                source = manager.catalogueSourceById(ref.sourceId) as? HttpSource
+                chapterLoader = source?.let { ChapterLoader(app, it) }
+                if (source == null) {
+                    _overlay.value = _overlay.value.copy(
+                        loading = false,
+                        error = "This source is not installed.",
+                    )
+                    return@launch
+                }
+                init()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Throwable) {
+                _overlay.value = _overlay.value.copy(
+                    loading = false,
+                    error = e.message ?: "Could not open this chapter.",
+                )
+            }
         }
     }
 
     private suspend fun init() {
         try {
-            var chapters = MangaChapterStore.chapters(app, ref.sourceId, ref.url)
+            // The cached chapter list can be large; never parse it on the UI thread.
+            var chapters = withContext(Dispatchers.IO) {
+                MangaChapterStore.chapters(app, ref.sourceId, ref.url)
+            }
             if (chapters.isEmpty()) {
                 chapters = fetchChapters()
             }
@@ -105,6 +126,7 @@ class MangaReaderViewModel(
                 return
             }
             ordered = readingOrder(chapters)
+            buildOverlayChapters()
             val start = ordered.indexOfFirst { it.url == initialChapterUrl }
                 .takeIf { it >= 0 } ?: 0
             loadChapterAt(start, initialPage)
@@ -128,7 +150,9 @@ class MangaReaderViewModel(
         }
         val chapters = update.chapters.mapIndexedNotNull { index, chapter -> chapter.toModel(index) }
         if (chapters.isNotEmpty()) {
-            MangaChapterStore.saveChapters(app, ref.sourceId, ref.url, chapters)
+            withContext(Dispatchers.IO) {
+                MangaChapterStore.saveChapters(app, ref.sourceId, ref.url, chapters)
+            }
         }
         return chapters
     }
@@ -136,11 +160,17 @@ class MangaReaderViewModel(
     private fun chapterFor(chapter: MangaChapter): ReaderChapter =
         chaptersByUrl.getOrPut(chapter.url) { ReaderChapter(chapter) }
 
-    private suspend fun loadChapterAt(index: Int, page: Int = 0) {
+    private suspend fun loadChapterAt(index: Int, page: Int = 0, resumeProgress: Boolean = true) {
         val loader = chapterLoader ?: return
         val model = ordered.getOrNull(index) ?: return
         val chapter = chapterFor(model)
-        val progress = MangaChapterStore.progressFor(app, ref.sourceId, ref.url, model.url)
+        val progress = if (resumeProgress) {
+            withContext(Dispatchers.IO) {
+                MangaChapterStore.progressFor(app, ref.sourceId, ref.url, model.url)
+            }
+        } else {
+            null
+        }
         val startPage = when {
             progress?.read == true -> 0
             progress != null && progress.lastPageRead > 0 -> progress.lastPageRead
@@ -162,10 +192,10 @@ class MangaReaderViewModel(
                 chapterNumber = chapter.chapter.number,
                 chapterIndex = index,
                 chapterCount = ordered.size,
+                chapters = overlayChapters,
                 pageCount = chapter.pages?.size ?: 0,
                 page = startPage,
             )
-            viewerChapters?.let(::preloadNext)
         } catch (e: CancellationException) {
             throw e
         } catch (e: Throwable) {
@@ -177,6 +207,7 @@ class MangaReaderViewModel(
                 chapterUrl = chapter.chapter.url,
                 chapterIndex = index,
                 chapterCount = ordered.size,
+                chapters = overlayChapters,
             )
         }
     }
@@ -192,22 +223,15 @@ class MangaReaderViewModel(
         _viewer.value = ReaderViewerState(nextViewer, _viewer.value.version + 1)
     }
 
-    /** Preloads the next chapter only after the current pages have settled. */
-    private fun preloadNext(chapters: ViewerChapters) {
-        val next = chapters.nextChapter ?: return
-        preloadJob?.cancel()
-        preloadJob = viewModelScope.launch(Dispatchers.IO) {
-            if (!MangaPrefs.checkUpdatesOnOpen(app)) {
-                // No network-policy setting exists for this; loading ahead is
-                // always allowed, matching the default Mihon behaviour.
-            }
-            chapters.currChapter.pages.orEmpty().forEach { page ->
-                page.statusFlow.first {
-                    it == eu.kanade.tachiyomi.source.model.Page.State.Ready ||
-                        it is eu.kanade.tachiyomi.source.model.Page.State.Error
-                }
-            }
-            preloadChapter(next)
+    /** The chapter drawer's rows, rebuilt only when the chapter list changes. */
+    private fun buildOverlayChapters() {
+        overlayChapters = ordered.mapIndexed { index, chapter ->
+            ReaderOverlayChapter(
+                index = index,
+                name = chapter.name,
+                number = chapter.number,
+                read = false,
+            )
         }
     }
 
@@ -383,8 +407,20 @@ class MangaReaderViewModel(
     suspend fun openAdjacent(delta: Int): ReaderChapter? {
         val index = (currentIndex + delta).coerceIn(0, ordered.lastIndex)
         if (index == currentIndex) return null
-        loadChapterAt(index)
+        loadChapterAt(index, resumeProgress = false)
         return currentChapter
+    }
+
+    /** A row in the chapter drawer was picked. */
+    fun openChapter(index: Int) {
+        if (index == currentIndex) {
+            setMenuVisible(false)
+            return
+        }
+        viewModelScope.launch {
+            loadChapterAt(index.coerceIn(0, ordered.lastIndex), resumeProgress = false)
+            setMenuVisible(false)
+        }
     }
 
     fun retry() {

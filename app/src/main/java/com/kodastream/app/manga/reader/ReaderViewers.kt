@@ -29,6 +29,7 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.core.view.children
 import androidx.core.view.isVisible
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
@@ -59,7 +60,6 @@ interface ReaderViewerHost {
     fun requestPreloadChapter(chapter: ReaderChapter)
     fun reloadChapter(chapter: ReaderChapter)
     fun openInWebView()
-    fun onNoNextChapter()
 }
 
 interface ReaderViewer {
@@ -164,6 +164,22 @@ class PagerViewer(
     override fun moveBackward() = move(if (readingRtl) 1 else -1)
 
     private fun move(delta: Int) {
+        // Mihon gives a zoomed page the tap before turning it: panning to the
+        // edge and then tapping again turns the page.
+        val page = currentItem as? ReaderPage
+        val holder = pager.children
+            .filterIsInstance<PagerPageHolder>()
+            .firstOrNull { it.tag === page }
+        if (holder != null) {
+            if (delta > 0 && holder.canPanRight()) {
+                holder.panRight()
+                return
+            }
+            if (delta < 0 && holder.canPanLeft()) {
+                holder.panLeft()
+                return
+            }
+        }
         val next = (pager.currentItem + delta).coerceIn(0, adapter.count - 1)
         if (next != pager.currentItem) {
             pager.setCurrentItem(next, host.settings.pageTransitions)
@@ -186,8 +202,7 @@ class PagerViewer(
             }
             is ChapterTransition -> {
                 host.onTransitionSelected(item)
-                if (item is ChapterTransition.Next && item.to == null) host.onNoNextChapter()
-                else item.to?.let(host::requestPreloadChapter)
+                item.to?.let(host::requestPreloadChapter)
             }
         }
         if (previous is ReaderPage && item is ReaderPage && previous.chapter !== item.chapter) {
@@ -493,8 +508,6 @@ class WebtoonViewer(
                 override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
                     val position = layoutManager.findLastEndVisibleItemPosition()
                     tracker(position)
-                    val last = items.getOrNull(position)
-                    if (last is ChapterTransition.Next && last.to == null) host.onNoNextChapter()
                 }
             },
         )
@@ -617,7 +630,6 @@ private class WebtoonPageHolder(
 ) : RecyclerView.ViewHolder(frameView) {
 
     private val state = ReaderPageState(frameView, host) { ready ->
-        setFrameHeight(ViewGroup.LayoutParams.WRAP_CONTENT)
         frameView.setPage(ready, host.settings, host.sourceId)
     }
 
@@ -625,7 +637,7 @@ private class WebtoonPageHolder(
         val context = frameView.context
         frameView.layoutParams = RecyclerView.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT,
-            (context.resources.displayMetrics.widthPixels * 1.45f).toInt(),
+            placeholderHeight(),
         )
         val padding = (host.settings.webtoonPadding / 100f * context.resources.displayMetrics.widthPixels).toInt()
         val gap = if (host.settings.mode == com.kodastream.app.manga.MangaReadingMode.WEBTOON_GAPS) {
@@ -634,15 +646,30 @@ private class WebtoonPageHolder(
             0
         }
         frameView.setPadding(padding, gap, padding, gap)
-        frameView.onImageLoaded = { state.onImageLoaded() }
+        frameView.onImageLoaded = { onPageDecoded() }
         frameView.onImageLoadError = { e -> state.onImageError(e) }
     }
 
     fun bind(page: ReaderPage) {
-        val context = frameView.context
-        setFrameHeight((context.resources.displayMetrics.widthPixels * 1.45f).toInt())
+        // ReaderPageImageView.recycle clears the bound image, so the holder
+        // restores its listeners every time the view comes back from the pool.
+        frameView.onImageLoaded = { onPageDecoded() }
+        frameView.onImageLoadError = { e -> state.onImageError(e) }
+        setFrameHeight(placeholderHeight())
         state.bind(page)
     }
+
+    /**
+     * The placeholder keeps the list from jumping while the header decodes;
+     * the real aspect ratio takes over as soon as the page can be drawn.
+     */
+    private fun onPageDecoded() {
+        state.onImageLoaded()
+        setFrameHeight(ViewGroup.LayoutParams.WRAP_CONTENT)
+    }
+
+    private fun placeholderHeight(): Int =
+        (frameView.resources.displayMetrics.widthPixels * 1.45f).toInt()
 
     /**
      * Never replace an attached item's LayoutParams: a fresh instance has no

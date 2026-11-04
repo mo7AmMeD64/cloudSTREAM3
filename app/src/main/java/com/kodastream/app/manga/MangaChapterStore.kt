@@ -44,10 +44,15 @@ object MangaChapterStore {
         context: Context,
         sourceId: Long,
         mangaUrl: String,
-    ): Map<String, ChapterProgress> =
-        allProgress(context)
-            .filter { it.sourceId == sourceId && it.mangaUrl == mangaUrl }
+    ): Map<String, ChapterProgress> {
+        // Filter keys before parsing: a large library has thousands of
+        // progress rows and only this title's are needed.
+        val prefix = "$PROGRESS/${mangaKey(sourceId, mangaUrl)}|"
+        return context.getKeys(PROGRESS)
+            .filter { it.startsWith(prefix) }
+            .mapNotNull { path -> context.getKey<MangaProgressRecord>(path) }
             .associate { it.chapterUrl to it.progress }
+    }
 
     fun progressFor(
         context: Context,
@@ -150,10 +155,9 @@ object MangaChapterStore {
     }
 
     fun removeProgress(context: Context, sourceId: Long, mangaUrl: String) {
+        val prefix = "$PROGRESS/${mangaKey(sourceId, mangaUrl)}|"
         context.getKeys(PROGRESS)
-            .filter { path -> context.getKey<MangaProgressRecord>(path)?.let {
-                it.sourceId == sourceId && it.mangaUrl == mangaUrl
-            } == true }
+            .filter { it.startsWith(prefix) }
             .forEach { path -> context.removeKey(path) }
         _revision.value++
     }
