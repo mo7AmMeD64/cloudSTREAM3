@@ -617,10 +617,7 @@ private class WebtoonPageHolder(
 ) : RecyclerView.ViewHolder(frameView) {
 
     private val state = ReaderPageState(frameView, host) { ready ->
-        frameView.layoutParams = RecyclerView.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT,
-            ViewGroup.LayoutParams.WRAP_CONTENT,
-        )
+        setFrameHeight(ViewGroup.LayoutParams.WRAP_CONTENT)
         frameView.setPage(ready, host.settings, host.sourceId)
     }
 
@@ -643,11 +640,28 @@ private class WebtoonPageHolder(
 
     fun bind(page: ReaderPage) {
         val context = frameView.context
-        frameView.layoutParams = RecyclerView.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT,
-            (context.resources.displayMetrics.widthPixels * 1.45f).toInt(),
-        )
+        setFrameHeight((context.resources.displayMetrics.widthPixels * 1.45f).toInt())
         state.bind(page)
+    }
+
+    /**
+     * Never replace an attached item's LayoutParams: a fresh instance has no
+     * ViewHolder, and RecyclerView crashes in layout with a null holder.
+     */
+    private fun setFrameHeight(height: Int) {
+        val params = frameView.layoutParams
+        if (params is RecyclerView.LayoutParams) {
+            if (params.width != ViewGroup.LayoutParams.MATCH_PARENT || params.height != height) {
+                params.width = ViewGroup.LayoutParams.MATCH_PARENT
+                params.height = height
+                frameView.requestLayout()
+            }
+        } else {
+            frameView.layoutParams = RecyclerView.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                height,
+            )
+        }
     }
 
     fun recycle() {
