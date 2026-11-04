@@ -7,6 +7,7 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import android.os.SystemClock
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -53,24 +54,30 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.systemGestures
+import androidx.compose.foundation.systemGestureExclusion
 import com.kodastream.app.R
 import com.kodastream.app.manga.MangaReaderOrientation
 import com.kodastream.app.manga.MangaReaderSettings
@@ -300,13 +307,17 @@ private fun ReaderBottomBar(
 ) {
     var showSettings by remember { mutableStateOf(false) }
     val readingRtl = state.settings.mode.readingRtl
+    val uiRtl = LocalLayoutDirection.current == LayoutDirection.Rtl
     val pages = state.pageCount.coerceAtLeast(1)
     var slider by remember(state.chapterUrl, state.pageCount) {
-        mutableFloatStateOf(displayPage(state.page, pages, readingRtl).toFloat())
+        mutableFloatStateOf(sliderValueForPage(state.page, pages, readingRtl, uiRtl))
     }
     var dragging by remember { mutableStateOf(false) }
+    var lastLiveMove by remember { mutableLongStateOf(0L) }
     LaunchedEffect(state.page, state.pageCount, state.chapterUrl) {
-        if (!dragging) slider = displayPage(state.page, pages, readingRtl).toFloat()
+        if (!dragging) {
+            slider = sliderValueForPage(state.page, pages, readingRtl, uiRtl)
+        }
     }
 
     Surface(color = MaterialTheme.colorScheme.surface.copy(alpha = 0.94f)) {
@@ -316,25 +327,55 @@ private fun ReaderBottomBar(
                 .windowInsetsPadding(
                     WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal),
                 )
+                .windowInsetsPadding(
+                    WindowInsets.systemGestures.only(
+                        WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom,
+                    ),
+                )
                 .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 8.dp),
         ) {
             if (state.pageCount > 1) {
-                Slider(
-                    value = slider,
-                    onValueChange = {
-                        dragging = true
-                        slider = it
-                    },
-                    onValueChangeFinished = {
-                        dragging = false
-                        onPageSelected(pageFromDisplay(slider.roundToInt(), pages, readingRtl))
-                    },
-                    valueRange = 0f..(pages - 1).toFloat(),
-                    steps = (pages - 2).coerceAtLeast(0),
-                )
+                // The thumb is excluded from the system edge gesture; Android may
+                // cap that, so the inset and padding above are the real guard.
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .systemGestureExclusion()
+                        .padding(horizontal = 8.dp),
+                ) {
+                    CompositionLocalProvider(
+                        LocalLayoutDirection provides
+                            if (readingRtl) LayoutDirection.Rtl else LayoutDirection.Ltr,
+                    ) {
+                        Slider(
+                            value = slider,
+                            onValueChange = {
+                                dragging = true
+                                slider = it
+                                val now = SystemClock.elapsedRealtime()
+                                if (now - lastLiveMove >= LIVE_MOVE_INTERVAL_MS) {
+                                    lastLiveMove = now
+                                    onPageSelected(
+                                        pageFromSliderValue(it, pages, readingRtl, uiRtl),
+                                    )
+                                }
+                            },
+                            onValueChangeFinished = {
+                                dragging = false
+                                onPageSelected(
+                                    pageFromSliderValue(slider, pages, readingRtl, uiRtl),
+                                )
+                            },
+                            valueRange = 0f..(pages - 1).toFloat(),
+                            steps = if (pages <= 30) (pages - 2).coerceAtLeast(0) else 0,
+                        )
+                    }
+                }
             }
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
@@ -742,11 +783,7 @@ private fun SettingRow(
     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
 }
 
-private fun displayPage(page: Int, pages: Int, rtl: Boolean): Int =
-    if (rtl) pages - 1 - page else page
-
-private fun pageFromDisplay(value: Int, pages: Int, rtl: Boolean): Int =
-    if (rtl) pages - 1 - value else value
+private const val LIVE_MOVE_INTERVAL_MS = 80L
 
 @Composable
 private fun modeLabel(mode: MangaReadingMode): String = stringResource(

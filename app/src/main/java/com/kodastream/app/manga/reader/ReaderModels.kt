@@ -7,6 +7,7 @@ import eu.kanade.tachiyomi.source.model.Page
 import kotlinx.coroutines.flow.MutableStateFlow
 import java.io.File
 import java.io.InputStream
+import kotlin.math.roundToInt
 
 /**
  * Ported from Mihon's `ui/reader/model/ReaderPage`. The source `Page` keeps
@@ -179,3 +180,31 @@ data class ReaderOverlayState(
     val menuVisible: Boolean = false,
     val settings: MangaReaderSettings = MangaReaderSettings(),
 )
+
+/**
+ * Value for the reader slider. The slider is laid out in the reading
+ * direction by its caller, so neither the UI language nor the reading mode
+ * may flip the value: page 1 is always the first value in reading order.
+ * [uiRtl] is part of the contract so all four UI/reading combinations can be
+ * tested; the layout direction is what mirrors the track on screen.
+ */
+fun sliderValueForPage(
+    page: Int,
+    pageCount: Int,
+    readingRtl: Boolean,
+    uiRtl: Boolean,
+): Float {
+    val count = pageCount.coerceAtLeast(1)
+    return page.coerceIn(0, count - 1).toFloat()
+}
+
+/** Inverse of [sliderValueForPage], clamped to the pages that exist. */
+fun pageFromSliderValue(
+    value: Float,
+    pageCount: Int,
+    readingRtl: Boolean,
+    uiRtl: Boolean,
+): Int {
+    val count = pageCount.coerceAtLeast(1)
+    return value.roundToInt().coerceIn(0, count - 1)
+}
