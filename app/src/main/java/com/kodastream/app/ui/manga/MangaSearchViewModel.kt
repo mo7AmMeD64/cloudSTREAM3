@@ -9,6 +9,7 @@ import com.kodastream.app.manga.extension.LoadedSource
 import com.kodastream.app.manga.extension.MangaSourceManager
 import com.kodastream.app.manga.rootMessage
 import com.kodastream.app.manga.selectSource
+import com.kodastream.app.manga.urlOrNull
 import eu.kanade.tachiyomi.source.CatalogueSource
 import eu.kanade.tachiyomi.source.model.FilterList
 import eu.kanade.tachiyomi.source.model.SManga
@@ -111,7 +112,12 @@ class MangaSearchViewModel(application: Application) : AndroidViewModel(applicat
                                     catalogue.getSearchManga(1, text, FilterList())
                                 }
                                 update(entry.source.id) {
-                                    it.copy(loading = false, items = page.mangas.distinctBy { m -> m.url })
+                                    it.copy(
+                                        loading = false,
+                                        items = page.mangas
+                                            .filter { manga -> !manga.urlOrNull().isNullOrBlank() }
+                                            .distinctBy { manga -> manga.urlOrNull() },
+                                    )
                                 }
                             } catch (e: CancellationException) {
                                 throw e

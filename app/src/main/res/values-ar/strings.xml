@@ -458,6 +458,7 @@
     <string name="manga_test_step_details">التفاصيل والفصول</string>
     <string name="manga_test_step_pages">قائمة الصفحات</string>
     <string name="manga_test_step_image">الصورة</string>
+    <string name="manga_test_step_pipeline">مسار القارئ</string>
     <string name="manga_test_running">قيد التشغيل…</string>
     <string name="manga_test_passed">نجح</string>
     <string name="manga_test_failed">فشل</string>

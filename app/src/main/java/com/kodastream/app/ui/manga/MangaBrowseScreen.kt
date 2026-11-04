@@ -59,6 +59,8 @@ import com.kodastream.app.manga.SourceChoice
 import com.kodastream.app.manga.extension.LoadedSource
 import com.kodastream.app.manga.hasUsableFilters
 import com.kodastream.app.manga.store.MangaStoreRepository
+import com.kodastream.app.manga.titleOrEmpty
+import com.kodastream.app.manga.urlOrNull
 import com.kodastream.app.ui.components.EmptyBox
 import com.kodastream.app.ui.components.ErrorBox
 import com.kodastream.app.ui.components.ExpressivePullToRefresh
@@ -329,19 +331,22 @@ private fun MangaResultGrid(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            items(state.items, key = { it.url }) { manga ->
+            items(state.items, key = { it.urlOrNull().orEmpty() }) { manga ->
                 MangaPosterCard(
                     sourceId = sourceId,
                     manga = manga,
                     inLibrary = libraryKeys.contains(
-                        com.kodastream.app.manga.mangaKey(sourceId, manga.url)
+                        com.kodastream.app.manga.mangaKey(
+                            sourceId,
+                            manga.urlOrNull().orEmpty(),
+                        )
                     ),
                     onClick = {
                         onOpenDetails(
                             MangaRef(
                                 sourceId = sourceId,
-                                url = manga.url,
-                                title = manga.title,
+                                url = manga.urlOrNull().orEmpty(),
+                                title = manga.titleOrEmpty(),
                                 thumbnailUrl = manga.thumbnail_url,
                             )
                         )

@@ -1645,6 +1645,11 @@ private fun MangaSourceTestDialog(
                         step = state.image,
                         onCopy = onCopy,
                     )
+                    TestStepRow(
+                        title = stringResource(R.string.manga_test_step_pipeline),
+                        step = state.pipeline,
+                        onCopy = onCopy,
+                    )
                 }
             }
         },

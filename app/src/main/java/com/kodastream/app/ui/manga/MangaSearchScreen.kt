@@ -47,6 +47,8 @@ import com.kodastream.app.manga.MangaPrefs
 import com.kodastream.app.manga.MangaRef
 import com.kodastream.app.manga.key
 import com.kodastream.app.manga.mangaKey
+import com.kodastream.app.manga.titleOrEmpty
+import com.kodastream.app.manga.urlOrNull
 import com.kodastream.app.manga.MangaLibraryStore
 import com.kodastream.app.ui.components.EmptyBox
 import com.kodastream.app.ui.components.SearchField
@@ -212,19 +214,22 @@ fun MangaSearchScreen(
                                     contentPadding = PaddingValues(horizontal = 16.dp),
                                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                                 ) {
-                                    items(shelf.items, key = { it.url }) { manga ->
+                                    items(shelf.items, key = { it.urlOrNull().orEmpty() }) { manga ->
                                         MangaPosterCard(
                                             sourceId = shelf.sourceId,
                                             manga = manga,
                                             inLibrary = libraryKeys.contains(
-                                                mangaKey(shelf.sourceId, manga.url)
+                                                mangaKey(
+                                                    shelf.sourceId,
+                                                    manga.urlOrNull().orEmpty(),
+                                                )
                                             ),
                                             onClick = {
                                                 onOpenDetails(
                                                     MangaRef(
                                                         sourceId = shelf.sourceId,
-                                                        url = manga.url,
-                                                        title = manga.title,
+                                                        url = manga.urlOrNull().orEmpty(),
+                                                        title = manga.titleOrEmpty(),
                                                         thumbnailUrl = manga.thumbnail_url,
                                                     )
                                                 )

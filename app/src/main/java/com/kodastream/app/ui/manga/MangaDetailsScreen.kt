@@ -817,7 +817,7 @@ private fun ChapterHeader(
         if (state.loading) {
             LinearProgressIndicator(Modifier.fillMaxWidth())
         }
-        if (state.chapters.isEmpty() && !state.loading) {
+        if (state.chapters.isEmpty() && !state.loading && state.error == null) {
             Text(
                 text = stringResource(R.string.manga_no_chapters),
                 style = MaterialTheme.typography.bodyMedium,

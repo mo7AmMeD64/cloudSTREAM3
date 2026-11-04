@@ -40,7 +40,7 @@ class MangaExtensionsViewModel(application: Application) : AndroidViewModel(appl
     val refreshing: StateFlow<Boolean> = storeRepository.refreshing
     val storeError: StateFlow<String?> = storeRepository.error
     val lastRefresh: StateFlow<Long> = storeRepository.lastRefresh
-    private val tester by lazy { MangaSourceTester(MangaEngine.get(context)) }
+    private val tester by lazy { MangaSourceTester(MangaEngine.get(context), context) }
 
     /** Per package: the install step shown on its row until the extension reloads. */
     private val _installing = MutableStateFlow<Map<String, InstallStep>>(emptyMap())

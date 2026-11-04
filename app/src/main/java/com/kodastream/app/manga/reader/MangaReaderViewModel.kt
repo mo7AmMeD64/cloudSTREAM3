@@ -126,7 +126,7 @@ class MangaReaderViewModel(
         val update = withContext(Dispatchers.IO) {
             http.getMangaUpdate(manga, emptyList(), fetchDetails = false, fetchChapters = true)
         }
-        val chapters = update.chapters.mapIndexed { index, chapter -> chapter.toModel(index) }
+        val chapters = update.chapters.mapIndexedNotNull { index, chapter -> chapter.toModel(index) }
         if (chapters.isNotEmpty()) {
             MangaChapterStore.saveChapters(app, ref.sourceId, ref.url, chapters)
         }

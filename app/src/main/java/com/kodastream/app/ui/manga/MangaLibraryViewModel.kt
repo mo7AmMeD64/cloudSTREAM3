@@ -190,7 +190,7 @@ class MangaLibraryViewModel(application: Application) : AndroidViewModel(applica
                 fetchChapters = true,
             )
         }
-        val fetched = update.chapters.mapIndexed { index, chapter ->
+        val fetched = update.chapters.mapIndexedNotNull { index, chapter ->
             chapter.toModel(index)
         }
         val sync = syncChapters(cached, fetched)

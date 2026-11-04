@@ -12,6 +12,7 @@ import com.kodastream.app.manga.mergeUnique
 import com.kodastream.app.manga.restoreFilters
 import com.kodastream.app.manga.rootMessage
 import com.kodastream.app.manga.selectSource
+import com.kodastream.app.manga.urlOrNull
 import com.kodastream.app.manga.store.ContentWarning
 import com.kodastream.app.manga.SourceChoice
 import eu.kanade.tachiyomi.source.CatalogueSource
@@ -168,11 +169,14 @@ class MangaBrowseViewModel(application: Application) : AndroidViewModel(applicat
                     }
                 }
                 _state.update { current ->
+                    val incoming = result.mangas.filter {
+                        !it.urlOrNull().isNullOrBlank()
+                    }
                     current.copy(
                         items = if (append) {
-                            mergeUnique(current.items, result.mangas) { it.url }
+                            mergeUnique(current.items, incoming) { it.urlOrNull().orEmpty() }
                         } else {
-                            result.mangas.distinctBy { it.url }
+                            incoming.distinctBy { it.urlOrNull() }
                         },
                         page = page,
                         endReached = !result.hasNextPage,

@@ -573,6 +573,7 @@
     <string name="manga_test_step_details">Details and chapters</string>
     <string name="manga_test_step_pages">Page list</string>
     <string name="manga_test_step_image">Image</string>
+    <string name="manga_test_step_pipeline">Reader pipeline</string>
     <string name="manga_test_running">Running…</string>
     <string name="manga_test_passed">Passed</string>
     <string name="manga_test_failed">Failed</string>

@@ -17,8 +17,11 @@ import com.kodastream.app.manga.extension.LoadedSource
 import com.kodastream.app.manga.extension.MangaSourceManager
 import com.kodastream.app.manga.key
 import com.kodastream.app.manga.mangaKey
+import com.kodastream.app.manga.nameOrNull
 import com.kodastream.app.manga.rootMessage
 import com.kodastream.app.manga.syncChapters
+import com.kodastream.app.manga.urlOrNull
+import com.kodastream.app.manga.withRemoteDetails
 import eu.kanade.tachiyomi.source.CatalogueSource
 import eu.kanade.tachiyomi.source.model.SChapter
 import eu.kanade.tachiyomi.source.model.SManga
@@ -104,41 +107,14 @@ class MangaDetailsViewModel(
             )
         }
         val before = _state.value
-        try {
+        val update = try {
             val cached = before.chapters.map { it.toSChapter() }
-            val update = withContext(Dispatchers.IO) {
+            withContext(Dispatchers.IO) {
                 catalogue.getMangaUpdate(
                     manga = before.entry.toSManga(),
                     chapters = cached,
                     fetchDetails = true,
                     fetchChapters = true,
-                )
-            }
-            val fetched = update.chapters.mapIndexed { index, chapter ->
-                chapter.toModel(index)
-            }
-            val sync: ChapterSyncResult = syncChapters(before.chapters, fetched)
-            MangaChapterStore.saveChapters(app, ref.sourceId, ref.url, sync.chapters)
-            MangaChapterStore.applyAliases(app, ref.sourceId, ref.url, sync.aliases)
-            val entry = update.manga.toEntry()
-                .copy(
-                    addedAt = before.entry.addedAt,
-                    lastReadAt = before.entry.lastReadAt,
-                    lastChecked = System.currentTimeMillis(),
-                )
-            MangaDetailsCache.put(ref.key(), entry)
-            if (MangaLibraryStore.isFavorite(app, ref.sourceId, ref.url)) {
-                MangaLibraryStore.mergeDetails(app, entry)
-            }
-            _state.update {
-                it.copy(
-                    entry = entry,
-                    chapters = sync.chapters,
-                    progress = MangaChapterStore.progress(app, ref.sourceId, ref.url),
-                    favorite = MangaLibraryStore.isFavorite(app, ref.sourceId, ref.url),
-                    loading = false,
-                    refreshing = false,
-                    error = null,
                 )
             }
         } catch (e: CancellationException) {
@@ -147,7 +123,54 @@ class MangaDetailsViewModel(
             _state.update {
                 it.copy(loading = false, refreshing = false, error = rootMessage(e))
             }
+            return
         }
+
+        // Fetched chapters are shown before the details are mapped: a bad
+        // remote object can then never hide the list the owner waited for.
+        try {
+            val fetched = update.chapters.mapIndexedNotNull { index, chapter ->
+                chapter.toModel(index)
+            }
+            val sync: ChapterSyncResult = syncChapters(before.chapters, fetched)
+            MangaChapterStore.saveChapters(app, ref.sourceId, ref.url, sync.chapters)
+            MangaChapterStore.applyAliases(app, ref.sourceId, ref.url, sync.aliases)
+            _state.update {
+                it.copy(
+                    chapters = sync.chapters,
+                    progress = MangaChapterStore.progress(app, ref.sourceId, ref.url),
+                    loading = false,
+                    error = null,
+                )
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Throwable) {
+            _state.update { it.copy(error = rootMessage(e)) }
+        }
+
+        try {
+            val favorite = MangaLibraryStore.isFavorite(app, ref.sourceId, ref.url)
+            val entry = before.entry.withRemoteDetails(update.manga, favorite)
+                .copy(
+                    addedAt = before.entry.addedAt,
+                    lastReadAt = before.entry.lastReadAt,
+                    lastChecked = System.currentTimeMillis(),
+                )
+            MangaDetailsCache.put(ref.key(), entry)
+            if (favorite) {
+                MangaLibraryStore.mergeDetails(app, entry)
+            }
+            _state.update {
+                it.copy(entry = entry, favorite = favorite)
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Throwable) {
+            _state.update { it.copy(error = it.error ?: rootMessage(e)) }
+        }
+
+        _state.update { it.copy(loading = false, refreshing = false) }
     }
 
     fun toggleFavorite() {
@@ -265,30 +288,27 @@ internal fun MangaEntry.toSManga(): SManga = SManga.create().also { manga ->
     manga.initialized = true
 }
 
-internal fun SManga.toEntry(sourceName: String = "", language: String = ""): MangaEntry = MangaEntry(
-    title = title,
-    url = url,
-    thumbnailUrl = thumbnail_url,
-    author = author,
-    artist = artist,
-    description = description,
-    genres = getGenres().orEmpty(),
-    status = status,
-    updateStrategy = runCatching { update_strategy.name }.getOrDefault("ALWAYS_UPDATE"),
-    memo = memo.toString(),
-    sourceName = sourceName,
-    language = language,
-)
+internal fun SChapter.toModel(sourceOrder: Int): MangaChapter? {
+    val chapterUrl = urlOrNull()?.takeIf { it.isNotBlank() } ?: return null
+    val chapterName = nameOrNull()?.takeIf { it.isNotBlank() }
+        ?: chapterFallbackName(chapter_number, chapterUrl)
+    return MangaChapter(
+        url = chapterUrl,
+        name = chapterName,
+        number = chapter_number,
+        scanlator = scanlator,
+        dateUpload = date_upload,
+        sourceOrder = sourceOrder,
+        memo = memo.toString(),
+    )
+}
 
-internal fun SChapter.toModel(sourceOrder: Int): MangaChapter = MangaChapter(
-    url = url,
-    name = name,
-    number = chapter_number,
-    scanlator = scanlator,
-    dateUpload = date_upload,
-    sourceOrder = sourceOrder,
-    memo = memo.toString(),
-)
+private fun chapterFallbackName(number: Float, url: String): String {
+    if (number >= 0f) {
+        return if (number % 1f == 0f) number.toInt().toString() else number.toString()
+    }
+    return url.trimEnd('/').substringAfterLast('/').takeIf { it.isNotBlank() } ?: url
+}
 
 internal fun MangaChapter.toSChapter(): SChapter = SChapter.create().also { chapter ->
     chapter.url = url

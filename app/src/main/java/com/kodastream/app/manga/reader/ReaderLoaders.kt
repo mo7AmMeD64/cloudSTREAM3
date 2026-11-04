@@ -173,7 +173,7 @@ class HttpPageLoader(
                 existing
             } else {
                 page.status = Page.State.DownloadImage
-                MangaPageCache.file(context, source, page) { page.progress = it }
+                MangaPageCache.file(context, source, page, onProgress = { page.progress = it })
             }
             page.file = file
             page.stream = { file.inputStream() }

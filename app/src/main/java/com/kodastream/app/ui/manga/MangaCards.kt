@@ -37,6 +37,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.kodastream.app.R
+import com.kodastream.app.manga.titleOrEmpty
 import com.kodastream.app.ui.components.PosterTitle
 import com.kodastream.app.ui.components.bouncySpring
 import eu.kanade.tachiyomi.source.model.SManga
@@ -90,7 +91,7 @@ fun MangaPosterCard(
                 MangaCoverImage(
                     sourceId = sourceId,
                     url = manga.thumbnail_url,
-                    contentDescription = manga.title,
+                    contentDescription = manga.titleOrEmpty(),
                     modifier = Modifier
                         .fillMaxWidth()
                         .aspectRatio(2f / 3f),
@@ -190,12 +191,12 @@ fun MangaPosterCard(
             }
             Box(Modifier.padding(horizontal = 10.dp, vertical = 8.dp)) {
                 Text(
-                    text = manga.title,
+                    text = manga.titleOrEmpty(),
                     style = MaterialTheme.typography.bodyMedium,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.semantics {
-                        contentDescription = manga.title
+                        contentDescription = manga.titleOrEmpty()
                     },
                 )
             }

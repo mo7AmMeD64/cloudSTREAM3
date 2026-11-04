@@ -11,6 +11,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import java.io.File
 import java.security.MessageDigest
 import java.util.concurrent.ConcurrentHashMap
@@ -77,6 +78,13 @@ fun pageCacheEvictions(files: List<CachedFile>, maxBytes: Long): List<String> {
     return evicted
 }
 
+/** What one page download actually did, for the source tester's diagnostics. */
+data class PageFetchInfo(
+    /** Null when the file was already on disk and no request was made. */
+    val httpCode: Int?,
+    val cloudflareSolved: Boolean,
+)
+
 /**
  * Fetched page bytes on disk, capped at the size chosen in reader settings.
  * The reader draws from these files through SubsamplingScaleImageView, so a
@@ -108,6 +116,7 @@ object MangaPageCache {
         page: Page,
         now: Long = System.currentTimeMillis(),
         onProgress: ((Int) -> Unit)? = null,
+        onFetched: ((PageFetchInfo) -> Unit)? = null,
     ): File = withContext(Dispatchers.IO) {
         val imageUrl = page.imageUrl?.takeIf { it.isNotBlank() }
             ?: source.getImageUrl(page).also { page.imageUrl = it }
@@ -115,11 +124,16 @@ object MangaPageCache {
         if (target.isFile && target.length() > 0L) {
             target.setLastModified(now)
             onProgress?.invoke(100)
+            onFetched?.invoke(PageFetchInfo(httpCode = null, cloudflareSolved = false))
             return@withContext target
         }
         val lock = locks.getOrPut(target.path) { Mutex() }
         lock.withLock {
-            if (target.isFile && target.length() > 0L) return@withLock target
+            if (target.isFile && target.length() > 0L) {
+                onFetched?.invoke(PageFetchInfo(httpCode = null, cloudflareSolved = false))
+                return@withLock target
+            }
+            val clearanceBefore = clearance(source, imageUrl)
             val temp = File(target.path + ".tmp")
             source.getImage(page).use { response ->
                 if (!response.isSuccessful) {
@@ -140,6 +154,12 @@ object MangaPageCache {
                         }
                     }
                 }
+                onFetched?.invoke(
+                    PageFetchInfo(
+                        httpCode = response.code,
+                        cloudflareSolved = clearanceAfterSolve(source, imageUrl, clearanceBefore),
+                    ),
+                )
             }
             if (!temp.renameTo(target)) {
                 temp.copyTo(target, overwrite = true)
@@ -148,6 +168,18 @@ object MangaPageCache {
             evict(context)
             target
         }
+    }
+
+    private fun clearance(source: HttpSource, url: String): String? = runCatching {
+        val httpUrl = url.toHttpUrlOrNull() ?: return@runCatching null
+        source.client.cookieJar.loadForRequest(httpUrl)
+            .firstOrNull { it.name == "cf_clearance" }
+            ?.value
+    }.getOrNull()
+
+    private fun clearanceAfterSolve(source: HttpSource, url: String, before: String?): Boolean {
+        val after = clearance(source, url) ?: return false
+        return after != before
     }
 
     /** Reuses a cached page when the URL is known without asking the source. */
