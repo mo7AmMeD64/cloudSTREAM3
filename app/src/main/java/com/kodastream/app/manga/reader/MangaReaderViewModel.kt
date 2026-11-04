@@ -216,11 +216,24 @@ class MangaReaderViewModel(
             preloadChapter(chapter)
             withContext(Dispatchers.Main) {
                 val viewer = viewerChapters ?: return@withContext
-                if (viewer.prevChapter === chapter || viewer.nextChapter === chapter) {
+                if (viewer.prevChapter === chapter ||
+                    viewer.nextChapter === chapter ||
+                    viewer.currChapter === chapter
+                ) {
                     _viewer.value = ReaderViewerState(viewer, _viewer.value.version + 1)
                 }
             }
         }
+    }
+
+    /** Rebuilds a chapter whose displayed pages lost their loader. */
+    fun reloadChapter(chapter: ReaderChapter) {
+        if (chapter.state == ReaderChapter.State.Loading) return
+        if (chapter === currentChapter) chapter.requestedPage = _overlay.value.page
+        chapter.pageLoader?.recycle()
+        chapter.pageLoader = null
+        chapter.state = ReaderChapter.State.Wait
+        requestPreloadChapter(chapter)
     }
 
     private suspend fun preloadChapter(chapter: ReaderChapter) {

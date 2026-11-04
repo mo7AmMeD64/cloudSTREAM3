@@ -130,6 +130,7 @@ object MangaPageCache {
         val lock = locks.getOrPut(target.path) { Mutex() }
         lock.withLock {
             if (target.isFile && target.length() > 0L) {
+                onProgress?.invoke(100)
                 onFetched?.invoke(PageFetchInfo(httpCode = null, cloudflareSolved = false))
                 return@withLock target
             }
@@ -141,6 +142,9 @@ object MangaPageCache {
                 }
                 val body = response.body ?: throw IllegalStateException("Empty page response")
                 val total = body.contentLength()
+                // -1 means the length is unknown, so the reader shows an
+                // indeterminate ring instead of a bar stuck at zero.
+                onProgress?.invoke(if (total > 0) 0 else -1)
                 var copied = 0L
                 body.byteStream().use { input ->
                     temp.outputStream().use { output ->

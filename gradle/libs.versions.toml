@@ -216,6 +216,7 @@ ax-okhttp = { group = "com.squareup.okhttp3", name = "okhttp", version.ref = "ax
 ax-okhttp-brotli = { group = "com.squareup.okhttp3", name = "okhttp-brotli", version.ref = "axOkhttpCompression" }
 ax-okhttp-zstd = { group = "com.squareup.okhttp3", name = "okhttp-zstd", version.ref = "axOkhttpCompression" }
 ax-okhttp-mockwebserver = { group = "com.squareup.okhttp3", name = "mockwebserver", version.ref = "axOkhttpCompression" }
+ax-okhttp-mockwebserver4 = { group = "com.squareup.okhttp3", name = "mockwebserver", version.ref = "axOkhttp" }
 # The ported CloudStream player UI is RecyclerView-heavy; the transitive
 # version lacks absoluteAdapterPosition and pool sharing fixes.
 ax-recyclerview = { group = "androidx.recyclerview", name = "recyclerview", version = "1.3.2" }

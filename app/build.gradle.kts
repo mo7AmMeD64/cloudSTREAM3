@@ -112,8 +112,15 @@ tasks.withType<KotlinJvmCompile> {
     }
 }
 
+// MockWebServer 4.12 has to run against OkHttp 4.12; NiceHttp drags 5.x onto
+// this classpath, where okhttp3.internal.Util no longer exists.
+configurations.matching { it.name.contains("UnitTestRuntimeClasspath") }.configureEach {
+    resolutionStrategy.force("com.squareup.okhttp3:okhttp:4.12.0")
+}
+
 dependencies {
     testImplementation(libs.junit)
+    testImplementation(libs.ax.okhttp.mockwebserver4)
 
     coreLibraryDesugaring(libs.desugar.jdk.libs.nio) // NIO flavour needed by NewPipeExtractor
 

@@ -669,7 +669,9 @@
     <string name="manga_reader_no_pages_title">لم تُرجع أي صفحات</string>
     <string name="manga_reader_no_pages_hint">أرجع المصدر فصلًا فارغًا. قد يكون محميًا بفحص Cloudflare: افتحه في متصفح التطبيق، وأكمل الفحص، ثم أعد المحاولة.</string>
     <string name="manga_reader_chapter_failed">تعذّر تحميل هذا الفصل</string>
-    <string name="manga_reader_page_failed">تعذّر تحميل هذه الصفحة. اضغط لإعادة المحاولة.</string>
+    <string name="manga_reader_page_failed">تعذّر تحميل هذه الصفحة.</string>
+    <string name="manga_reader_diagnostics">تشخيصات القارئ</string>
+    <string name="manga_reader_diagnostics_copied">تم نسخ تشخيصات القارئ</string>
     <string name="manga_reader_loading_chapter">جارٍ تحميل الفصل…</string>
     <string name="manga_reader_page_counter">%1$d / %2$d</string>
     <string name="manga_reader_settings">إعدادات القارئ</string>

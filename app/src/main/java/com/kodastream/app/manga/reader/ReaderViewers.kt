@@ -36,10 +36,12 @@ import androidx.viewpager.widget.PagerAdapter
 import androidx.viewpager.widget.ViewPager
 import com.kodastream.app.R
 import com.kodastream.app.manga.MangaReaderSettings
+import eu.kanade.tachiyomi.network.HttpException
 import eu.kanade.tachiyomi.source.model.Page
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.supervisorScope
@@ -55,6 +57,8 @@ interface ReaderViewerHost {
     fun onTap(xFraction: Float, yFraction: Float)
     fun onLongTap(page: ReaderPage)
     fun requestPreloadChapter(chapter: ReaderChapter)
+    fun reloadChapter(chapter: ReaderChapter)
+    fun openInWebView()
     fun onNoNextChapter()
 }
 
@@ -235,78 +239,201 @@ class PagerViewer(
     }
 }
 
-/** Pager page holder, ported from `PagerPageHolder.kt`. */
-private class PagerPageHolder(
-    context: Context,
+/** Shared page progress, error panel and watchdog for both viewers. */
+private class ReaderPageState(
+    container: FrameLayout,
     private val host: ReaderViewerHost,
-    private val page: ReaderPage,
-) : ReaderPageImageView(context) {
-
-    private val progress = ProgressBar(context).apply {
+    private val onReady: (ReaderPage) -> Unit,
+) {
+    private val progress = ProgressBar(container.context).apply {
         layoutParams = FrameLayout.LayoutParams(dp(32), dp(32), Gravity.CENTER)
     }
-    private val error = TextView(context).apply {
-        gravity = Gravity.CENTER
-        setTextColor(Color.WHITE)
-        textSize = 15f
-        setPadding(dp(24), dp(24), dp(24), dp(24))
-        isVisible = false
-        setOnClickListener {
-            page.status = Page.State.Queue
-            page.chapter.pageLoader?.retryPage(page)
-        }
+    private val error = PageErrorPanel(container.context).apply {
+        layoutParams = FrameLayout.LayoutParams(
+            FrameLayout.LayoutParams.MATCH_PARENT,
+            FrameLayout.LayoutParams.WRAP_CONTENT,
+            Gravity.CENTER,
+        )
     }
     private var job: Job? = null
+    private var page: ReaderPage? = null
 
     init {
-        addView(progress)
-        addView(error)
-        onImageLoaded = { progress.isVisible = false }
-        onImageLoadError = { e -> showError(e) }
+        container.addView(progress)
+        container.addView(error)
+    }
+
+    fun bind(page: ReaderPage) {
+        this.page = page
+        job?.cancel()
+        progress.isVisible = true
+        progress.isIndeterminate = true
+        error.hide()
         job = host.readerScope.launch {
             supervisorScope {
-                launch(Dispatchers.IO) { page.chapter.pageLoader?.loadPage(page) }
-                page.statusFlow.collectLatest { state ->
-                    when (state) {
-                        Page.State.Queue, Page.State.LoadPage -> showLoading()
-                        Page.State.DownloadImage -> {
-                            showLoading()
-                            progress.isIndeterminate = false
-                            progress.progress = page.progress
+                launch(Dispatchers.IO) { attemptLoad(page) }
+                launch { page.statusFlow.collectLatest { state -> render(page, state) } }
+                launch {
+                    page.progressFlow.collect { value ->
+                        if (page === this@ReaderPageState.page &&
+                            page.status is Page.State.DownloadImage
+                        ) {
+                            progress.isVisible = true
+                            error.hide()
+                            progress.isIndeterminate = value < 0
+                            if (value >= 0) progress.progress = value
                         }
-                        Page.State.Ready -> {
-                            progress.isVisible = false
-                            error.isVisible = false
-                            setPage(page, host.settings, host.sourceId)
-                        }
-                        is Page.State.Error -> showError(state.error)
                     }
                 }
+                launch { ReaderPageWatchdog().run(page) { host.reloadChapter(page.chapter) } }
             }
         }
     }
 
-    override fun onDetachedFromWindow() {
-        job?.cancel()
-        job = null
-        super.onDetachedFromWindow()
+    fun onImageLoaded() {
+        progress.isVisible = false
     }
 
-    override fun recycle() {
+    fun onImageError(e: Throwable?) {
+        progress.isVisible = false
+        error.show(
+            e,
+            onRetry = { retry() },
+            onOpenWebView = host::openInWebView,
+        )
+    }
+
+    fun recycle() {
         job?.cancel()
-        super.recycle()
+        job = null
+        page = null
+    }
+
+    private suspend fun attemptLoad(page: ReaderPage) {
+        val loader = page.chapter.pageLoader
+        if (loader == null) {
+            host.reloadChapter(page.chapter)
+        } else {
+            runCatching { loader.loadPage(page) }
+        }
+    }
+
+    private fun render(page: ReaderPage, state: Page.State) {
+        if (page !== this.page) return
+        when (state) {
+            Page.State.Queue, Page.State.LoadPage -> showLoading()
+            Page.State.DownloadImage -> {
+                showLoading()
+                progress.isIndeterminate = page.progress < 0
+                if (page.progress >= 0) progress.progress = page.progress
+            }
+            Page.State.Ready -> {
+                progress.isVisible = false
+                error.hide()
+                onReady(page)
+            }
+            is Page.State.Error -> {
+                progress.isVisible = false
+                error.show(
+                    state.error,
+                    onRetry = { retry() },
+                    onOpenWebView = host::openInWebView,
+                )
+            }
+        }
+    }
+
+    private fun retry() {
+        val page = this.page ?: return
+        page.status = Page.State.Queue
+        val loader = page.chapter.pageLoader
+        if (loader == null) host.reloadChapter(page.chapter) else loader.retryPage(page)
     }
 
     private fun showLoading() {
         progress.isVisible = true
         progress.isIndeterminate = true
-        error.isVisible = false
+        error.hide()
+    }
+}
+
+/** Message plus Retry and, for a Cloudflare-style block, Open in WebView. */
+private class PageErrorPanel(context: Context) : LinearLayout(context) {
+    private val message = TextView(context).apply {
+        gravity = Gravity.CENTER
+        setTextColor(Color.WHITE)
+        textSize = 15f
+    }
+    private val retry = android.widget.Button(context).apply {
+        setText(R.string.manga_reader_retry)
+        layoutParams = LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT).apply {
+            topMargin = dp(12)
+        }
+    }
+    private val webView = android.widget.Button(context).apply {
+        setText(R.string.manga_reader_open_webview)
+        isVisible = false
     }
 
-    private fun showError(e: Throwable?) {
-        progress.isVisible = false
-        error.isVisible = true
-        error.text = e?.message ?: getContext().getString(R.string.manga_reader_page_failed)
+    init {
+        orientation = VERTICAL
+        gravity = Gravity.CENTER
+        setPadding(dp(24), dp(24), dp(24), dp(24))
+        isVisible = false
+        addView(message)
+        addView(retry)
+        addView(webView)
+    }
+
+    fun show(error: Throwable?, onRetry: () -> Unit, onOpenWebView: () -> Unit) {
+        message.text = error?.message ?: context.getString(R.string.manga_reader_page_failed)
+        retry.setOnClickListener { onRetry() }
+        val code = httpErrorCode(error)
+        webView.isVisible = code == 403 || code == 503
+        webView.setOnClickListener { onOpenWebView() }
+        isVisible = true
+    }
+
+    fun hide() {
+        isVisible = false
+    }
+}
+
+private fun httpErrorCode(error: Throwable?): Int? {
+    var current = error
+    val seen = HashSet<Throwable>()
+    while (current != null && seen.add(current)) {
+        if (current is HttpException) return current.code
+        current = current.cause
+    }
+    return null
+}
+
+/** Pager page holder, ported from `PagerPageHolder.kt`. */
+private class PagerPageHolder(
+    context: Context,
+    host: ReaderViewerHost,
+    page: ReaderPage,
+) : ReaderPageImageView(context) {
+
+    private val state = ReaderPageState(this, host) { ready ->
+        setPage(ready, host.settings, host.sourceId)
+    }
+
+    init {
+        onImageLoaded = { state.onImageLoaded() }
+        onImageLoadError = { e -> state.onImageError(e) }
+        state.bind(page)
+    }
+
+    override fun onDetachedFromWindow() {
+        state.recycle()
+        super.onDetachedFromWindow()
+    }
+
+    override fun recycle() {
+        state.recycle()
+        super.recycle()
     }
 }
 
@@ -489,28 +616,15 @@ private class WebtoonPageHolder(
     private val host: ReaderViewerHost,
 ) : RecyclerView.ViewHolder(frameView) {
 
-    private val progress = ProgressBar(frameView.context).apply {
-        layoutParams = FrameLayout.LayoutParams(dp(32), dp(32), Gravity.CENTER)
+    private val state = ReaderPageState(frameView, host) { ready ->
+        frameView.layoutParams = RecyclerView.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT,
+        )
+        frameView.setPage(ready, host.settings, host.sourceId)
     }
-    private val error = TextView(frameView.context).apply {
-        gravity = Gravity.CENTER
-        setTextColor(Color.WHITE)
-        textSize = 15f
-        setPadding(dp(24), dp(24), dp(24), dp(24))
-        isVisible = false
-        setOnClickListener {
-            page?.let {
-                it.status = Page.State.Queue
-                it.chapter.pageLoader?.retryPage(it)
-            }
-        }
-    }
-    private var page: ReaderPage? = null
-    private var job: Job? = null
 
     init {
-        (frameView as FrameLayout).addView(progress)
-        (frameView as FrameLayout).addView(error)
         val context = frameView.context
         frameView.layoutParams = RecyclerView.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT,
@@ -523,64 +637,22 @@ private class WebtoonPageHolder(
             0
         }
         frameView.setPadding(padding, gap, padding, gap)
+        frameView.onImageLoaded = { state.onImageLoaded() }
+        frameView.onImageLoadError = { e -> state.onImageError(e) }
     }
 
     fun bind(page: ReaderPage) {
-        this.page = page
-        job?.cancel()
-        progress.isVisible = true
-        progress.isIndeterminate = true
-        error.isVisible = false
-        frameView.onImageLoaded = { progress.isVisible = false }
-        frameView.onImageLoadError = { e -> showError(e) }
         val context = frameView.context
         frameView.layoutParams = RecyclerView.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT,
             (context.resources.displayMetrics.widthPixels * 1.45f).toInt(),
         )
-        job = host.readerScope.launch {
-            supervisorScope {
-                launch(Dispatchers.IO) { page.chapter.pageLoader?.loadPage(page) }
-                page.statusFlow.collectLatest { state ->
-                    when (state) {
-                        Page.State.Queue, Page.State.LoadPage -> showLoading()
-                        Page.State.DownloadImage -> {
-                            showLoading()
-                            progress.isIndeterminate = false
-                            progress.progress = page.progress
-                        }
-                        Page.State.Ready -> {
-                            progress.isVisible = false
-                            error.isVisible = false
-                            frameView.layoutParams = RecyclerView.LayoutParams(
-                                ViewGroup.LayoutParams.MATCH_PARENT,
-                                ViewGroup.LayoutParams.WRAP_CONTENT,
-                            )
-                            frameView.setPage(page, host.settings, host.sourceId)
-                        }
-                        is Page.State.Error -> showError(state.error)
-                    }
-                }
-            }
-        }
+        state.bind(page)
     }
 
     fun recycle() {
-        job?.cancel()
-        job = null
+        state.recycle()
         frameView.recycle()
-    }
-
-    private fun showLoading() {
-        progress.isVisible = true
-        progress.isIndeterminate = true
-        error.isVisible = false
-    }
-
-    private fun showError(e: Throwable?) {
-        progress.isVisible = false
-        error.isVisible = true
-        error.text = e?.message ?: frameView.context.getString(R.string.manga_reader_page_failed)
     }
 }
 

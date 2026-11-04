@@ -30,6 +30,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Bookmark
 import androidx.compose.material.icons.rounded.BookmarkBorder
+import androidx.compose.material.icons.rounded.BugReport
 import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.OpenInBrowser
@@ -109,6 +110,7 @@ fun MangaReaderOverlay(
     onSavePage: () -> Unit,
     onRetry: () -> Unit,
     onOpenWebView: () -> Unit,
+    onShowDiagnostics: () -> Unit,
 ) {
     Box(Modifier.fillMaxSize()) {
         ReaderError(state, onRetry, onOpenWebView)
@@ -149,6 +151,7 @@ fun MangaReaderOverlay(
                 onOpenBrowser = onOpenBrowser,
                 onSharePage = onSharePage,
                 onSavePage = onSavePage,
+                onShowDiagnostics = onShowDiagnostics,
             )
         }
 
@@ -210,6 +213,7 @@ private fun ReaderTopBar(
     onOpenBrowser: () -> Unit,
     onSharePage: () -> Unit,
     onSavePage: () -> Unit,
+    onShowDiagnostics: () -> Unit,
 ) {
     var menu by remember { mutableStateOf(false) }
     Surface(color = MaterialTheme.colorScheme.surface.copy(alpha = 0.94f)) {
@@ -288,6 +292,14 @@ private fun ReaderTopBar(
                         onClick = {
                             menu = false
                             onSavePage()
+                        },
+                    )
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.manga_reader_diagnostics)) },
+                        leadingIcon = { Icon(Icons.Rounded.BugReport, contentDescription = null) },
+                        onClick = {
+                            menu = false
+                            onShowDiagnostics()
                         },
                     )
                 }

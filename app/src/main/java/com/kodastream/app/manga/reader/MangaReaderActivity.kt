@@ -20,7 +20,10 @@ import androidx.activity.SystemBarStyle
 import androidx.activity.addCallback
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.core.content.FileProvider
@@ -43,6 +46,7 @@ import com.kodastream.app.manga.MangaRef
 import com.kodastream.app.manga.TapAction
 import com.kodastream.app.manga.tapAction
 import com.kodastream.app.ui.theme.KodaStreamTheme
+import eu.kanade.tachiyomi.source.model.Page
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -143,6 +147,7 @@ class MangaReaderActivity : AppCompatActivity(), ReaderViewerHost {
                     setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
                     setContent {
                         val state = overlayState.value
+                        var diagnosticsText by remember { mutableStateOf<String?>(null) }
                         KodaStreamTheme(
                             darkTheme = when (state.settings.theme) {
                                 MangaReaderTheme.WHITE -> false
@@ -167,7 +172,16 @@ class MangaReaderActivity : AppCompatActivity(), ReaderViewerHost {
                                 onSavePage = { sharePage(share = false) },
                                 onRetry = readerModel::retry,
                                 onOpenWebView = ::openInWebView,
+                                onShowDiagnostics = {
+                                    diagnosticsText = buildDiagnosticsText()
+                                },
                             )
+                            diagnosticsText?.let { text ->
+                                ReaderDiagnosticsDialog(
+                                    text = text,
+                                    onDismiss = { diagnosticsText = null },
+                                )
+                            }
                         }
                     }
                 },
@@ -275,6 +289,15 @@ class MangaReaderActivity : AppCompatActivity(), ReaderViewerHost {
         readerModel.requestPreloadChapter(chapter)
     }
 
+    override fun reloadChapter(chapter: ReaderChapter) {
+        readerModel.reloadChapter(chapter)
+    }
+
+    override fun openInWebView() {
+        val url = readerModel.chapterWebUrl() ?: readerModel.mangaWebUrl() ?: return
+        startActivity(MangaWebViewActivity.intent(this, url))
+    }
+
     override fun onNoNextChapter() {
         readerModel.setMenuVisible(true)
     }
@@ -379,9 +402,23 @@ class MangaReaderActivity : AppCompatActivity(), ReaderViewerHost {
         }
     }
 
-    private fun openInWebView() {
-        val url = readerModel.chapterWebUrl() ?: readerModel.mangaWebUrl() ?: return
-        startActivity(MangaWebViewActivity.intent(this, url))
+    private fun buildDiagnosticsText(): String {
+        val chapter = currentChapters?.currChapter
+        val pages = chapter?.pages.orEmpty().map { page ->
+            ReaderDiagnosticPage(
+                index = page.index,
+                state = pageStateLabel(page.status),
+                progress = page.progress,
+                host = page.imageUrl?.let { url -> runCatching { Uri.parse(url).host }.getOrNull() },
+                error = (page.status as? Page.State.Error)?.error?.message,
+            )
+        }
+        return readerDiagnosticsText(
+            mangaTitle = ref.title,
+            chapterName = chapter?.chapter?.name.orEmpty(),
+            pages = pages,
+            events = ReaderDiagnostics.recent(80).map { it.asLine() },
+        )
     }
 
     private fun sharePage(share: Boolean) {

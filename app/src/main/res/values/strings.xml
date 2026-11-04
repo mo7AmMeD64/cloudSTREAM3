@@ -772,7 +772,9 @@
     <string name="manga_reader_no_pages_title">No pages returned</string>
     <string name="manga_reader_no_pages_hint">The source returned an empty chapter. It may be behind a Cloudflare check: open it in the in-app browser, finish the check, then retry.</string>
     <string name="manga_reader_chapter_failed">Could not load this chapter</string>
-    <string name="manga_reader_page_failed">Could not load this page. Tap to retry.</string>
+    <string name="manga_reader_page_failed">Could not load this page.</string>
+    <string name="manga_reader_diagnostics">Reader diagnostics</string>
+    <string name="manga_reader_diagnostics_copied">Reader diagnostics copied</string>
     <string name="manga_reader_loading_chapter">Loading chapter…</string>
     <string name="manga_reader_page_counter">%1$d / %2$d</string>
     <string name="manga_reader_settings">Reader settings</string>
