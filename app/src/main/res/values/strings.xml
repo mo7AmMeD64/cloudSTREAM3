@@ -850,4 +850,14 @@
     <string name="manga_reader_orientation_free">Free</string>
     <string name="manga_reader_orientation_portrait">Portrait</string>
     <string name="manga_reader_orientation_landscape">Landscape</string>
+    <string name="crash_dialog_title">The app closed unexpectedly</string>
+    <string name="crash_dialog_body">KodaStream closed unexpectedly last time. Nothing is sent anywhere: copy or share these details yourself.</string>
+    <string name="crash_copy">Copy details</string>
+    <string name="crash_share">Share</string>
+    <string name="crash_dismiss">Dismiss</string>
+    <string name="crash_delete">Delete</string>
+    <string name="crash_copied">Crash details copied</string>
+    <string name="crash_deleted">Crash report deleted</string>
+    <string name="settings_last_crash_title">Last crash report</string>
+    <string name="settings_last_crash_summary">Open the last crash details to copy or delete them</string>
 </resources>

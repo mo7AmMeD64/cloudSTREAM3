@@ -24,11 +24,13 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import com.kodastream.app.data.AppEvents
 import com.kodastream.app.data.AppPrefs
+import com.kodastream.app.crash.CrashRecorder
 import com.kodastream.app.data.DownloadStore
 import com.kodastream.app.downloads.DownloadMigration
 import com.kodastream.app.downloads.DownloadService
 import com.kodastream.app.engine.AppBootstrap
 import com.kodastream.app.ui.AppRoot
+import com.kodastream.app.ui.crash.CrashReportDialog
 import com.kodastream.app.ui.setup.SetupWizard
 import com.kodastream.app.ui.theme.KodaStreamTheme
 import com.kodastream.app.ui.theme.ThemeMode
@@ -89,6 +91,16 @@ class MainActivity : AppCompatActivity() {
                 amoledDark = themeViewModel.amoled,
                 paletteStyle = themeViewModel.style,
             ) {
+                val crashReport = remember { CrashRecorder.takePendingReport(this@MainActivity) }
+                var showCrash by remember { mutableStateOf(crashReport != null) }
+                if (crashReport != null && showCrash) {
+                    CrashReportDialog(
+                        text = crashReport,
+                        onDismiss = { showCrash = false },
+                        allowShare = true,
+                        allowDelete = false,
+                    )
+                }
                 if (setupDone) {
                     AppRoot(themeViewModel)
                     update?.let { available ->

@@ -24,6 +24,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.Send
 import androidx.compose.material.icons.rounded.AutoStories
+import androidx.compose.material.icons.rounded.BugReport
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Code
 import androidx.compose.material.icons.rounded.Contrast
@@ -79,6 +80,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.kodastream.app.BuildConfig
 import com.kodastream.app.R
+import com.kodastream.app.crash.CrashRecorder
 import com.kodastream.app.data.AppPrefs
 import com.kodastream.app.data.DownloadLocations
 import com.kodastream.app.data.SearchHistoryStore
@@ -90,6 +92,7 @@ import com.kodastream.app.manga.TapInvert
 import com.kodastream.app.manga.TapZoneLayout
 import com.kodastream.app.manga.store.MangaStoreRepository
 import com.kodastream.app.ui.home.hero.HeroStyle
+import com.kodastream.app.ui.crash.CrashReportDialog
 import com.kodastream.app.ui.manga.MangaLanguageDialog
 import com.kodastream.app.ui.manga.mangaLanguageSortKey
 import com.kodastream.app.ui.manga.mangaSourceLanguages
@@ -179,6 +182,8 @@ fun SettingsScreen(
     var mangaLanguageDialog by remember { mutableStateOf(false) }
     var mangaSection by remember { mutableStateOf(MangaPrefs.mangaSectionEnabled(context)) }
     var cachedMangaLanguages by remember { mutableStateOf<List<String>>(emptyList()) }
+    var hasCrashReport by remember { mutableStateOf(CrashRecorder.hasReport(context)) }
+    var crashText by remember { mutableStateOf<String?>(null) }
     val settingsScope = rememberCoroutineScope()
     val appLocale = LocalConfiguration.current.locales[0]
 
@@ -719,7 +724,7 @@ fun SettingsScreen(
 
             item(key = "about") {
                 SettingsGroup(stringResource(R.string.settings_about)) {
-                    val count = 5
+                    val count = if (hasCrashReport) 6 else 5
                     InfoRow(
                         index = 0,
                         count = count,
@@ -752,6 +757,19 @@ fun SettingsScreen(
                         supporting = stringResource(R.string.settings_telegram_summary),
                         onClick = { openLink(TELEGRAM_URL) },
                     )
+                    if (hasCrashReport) {
+                        NavigationRow(
+                            index = 5,
+                            count = count,
+                            icon = Icons.Rounded.BugReport,
+                            title = stringResource(R.string.settings_last_crash_title),
+                            supporting = stringResource(R.string.settings_last_crash_summary),
+                            onClick = {
+                                val report = CrashRecorder.readReport(context)
+                                if (report != null) crashText = report else hasCrashReport = false
+                            },
+                        )
+                    }
                 }
             }
         }
@@ -818,6 +836,16 @@ fun SettingsScreen(
                 heroDialog = false
             },
             onDismiss = { heroDialog = false },
+        )
+    }
+
+    crashText?.let { text ->
+        CrashReportDialog(
+            text = text,
+            onDismiss = { crashText = null },
+            allowShare = false,
+            allowDelete = true,
+            onDeleted = { hasCrashReport = false },
         )
     }
 }

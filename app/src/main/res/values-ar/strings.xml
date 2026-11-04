@@ -751,4 +751,14 @@
     <string name="manga_reader_orientation_free">حر</string>
     <string name="manga_reader_orientation_portrait">عمودي</string>
     <string name="manga_reader_orientation_landscape">أفقي</string>
+    <string name="crash_dialog_title">أُغلق التطبيق بشكل غير متوقع</string>
+    <string name="crash_dialog_body">أُغلق KodaStream بشكل غير متوقع في المرة السابقة. لا يُرسل أي شيء إلى أي جهة؛ انسخ هذه التفاصيل أو شاركها بنفسك.</string>
+    <string name="crash_copy">نسخ التفاصيل</string>
+    <string name="crash_share">مشاركة</string>
+    <string name="crash_dismiss">إغلاق</string>
+    <string name="crash_delete">حذف</string>
+    <string name="crash_copied">تم نسخ تفاصيل العطل</string>
+    <string name="crash_deleted">تم حذف تقرير العطل</string>
+    <string name="settings_last_crash_title">آخر تقرير عطل</string>
+    <string name="settings_last_crash_summary">افتح تفاصيل آخر عطل لنسخها أو حذفها</string>
 </resources>
