@@ -290,6 +290,14 @@ class MangaReaderActivity : AppCompatActivity(), ReaderViewerHost {
 
     override fun onTransitionSelected(transition: ChapterTransition) = Unit
 
+    override fun showMenu() {
+        if (!overlayState.value.menuVisible) readerModel.setMenuVisible(true)
+    }
+
+    override fun hideMenu() {
+        if (overlayState.value.menuVisible) readerModel.setMenuVisible(false)
+    }
+
     override fun onTap(xFraction: Float, yFraction: Float) {
         val action = tapAction(
             x = xFraction,

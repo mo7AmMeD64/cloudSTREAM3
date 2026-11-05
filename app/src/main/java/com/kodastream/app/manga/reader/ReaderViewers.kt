@@ -60,6 +60,10 @@ interface ReaderViewerHost {
     fun requestPreloadChapter(chapter: ReaderChapter)
     fun reloadChapter(chapter: ReaderChapter)
     fun openInWebView()
+
+    /** Mihon's ReaderActivity.showMenu; the webtoon tracker uses both of these. */
+    fun showMenu()
+    fun hideMenu()
 }
 
 interface ReaderViewer {
@@ -112,19 +116,27 @@ class PagerViewer(
     }
     private val items = PagerItems(isReversed = readingRtl)
     private val adapter = ReaderPagerAdapter()
-    private var currentItem: Any? = null
+
+    /** Until the first layout, the pager must move to the chapter's requested page. */
+    private var firstLayout = true
+
+    private val pagerListener = object : ViewPager.SimpleOnPageChangeListener() {
+        override fun onPageSelected(position: Int) {
+            tracker.onPageChange(position)
+        }
+
+        override fun onPageScrollStateChanged(state: Int) {
+            tracker.isIdle = state == ViewPager.SCROLL_STATE_IDLE
+        }
+    }
+
+    private val tracker = PagerPageTracker(host, items, ::setChaptersNow)
 
     override val view: View get() = pager
 
     init {
         pager.adapter = adapter
-        pager.addOnPageChangeListener(
-            object : ViewPager.SimpleOnPageChangeListener() {
-                override fun onPageSelected(position: Int) {
-                    tracker(position)
-                }
-            },
-        )
+        pager.addOnPageChangeListener(pagerListener)
         pager.tapListener = { event ->
             host.onTap(event.x / pager.width.coerceAtLeast(1), event.y / pager.height.coerceAtLeast(1))
         }
@@ -140,22 +152,43 @@ class PagerViewer(
     }
 
     override fun setChapters(chapters: ViewerChapters) {
-        val position = items.setChapters(chapters, forceTransition = false, pager.currentItem)
+        tracker.setChapters(chapters)
+    }
+
+    /**
+     * Mihon's `setChaptersInternal`: the listener is removed while the items
+     * change so the views don't report positions from an old list, and the new
+     * list is followed by the item that is still on screen. The first chapter
+     * moves to the chapter's requested page; after that the pager stays on
+     * the item the user is looking at, including across a chapter boundary.
+     */
+    private fun setChaptersNow(chapters: ViewerChapters) {
+        pager.removeOnPageChangeListener(pagerListener)
+        val position = items.setChapters(
+            chapters = chapters,
+            forceTransition = adapter.items.getOrNull(pager.currentItem) is ChapterTransition,
+            currentPosition = pager.currentItem,
+        )
         adapter.notifyDataSetChanged()
         val pages = chapters.currChapter.pages
         when {
             position >= 0 && position != pager.currentItem -> pager.setCurrentItem(position, false)
-            position < 0 && pages != null && pages.isNotEmpty() ->
-                moveToPage(pages[chapters.currChapter.requestedPage.coerceIn(0, pages.lastIndex)])
+            firstLayout && pages != null && pages.isNotEmpty() -> {
+                val target = pages[chapters.currChapter.requestedPage.coerceIn(0, pages.lastIndex)]
+                moveToPage(target)
+                firstLayout = false
+            }
         }
-        tracker(pager.currentItem)
+        pager.addOnPageChangeListener(pagerListener)
+        // Set the active page manually because settingCurrentItem doesn't trigger the listener.
+        tracker.onPageChange(pager.currentItem)
     }
 
     override fun moveToPage(page: ReaderPage) {
         val position = adapter.items.indexOf(page)
         if (position >= 0) {
             pager.setCurrentItem(position, false)
-            tracker(position)
+            tracker.onPageChange(position)
         }
     }
 
@@ -166,7 +199,7 @@ class PagerViewer(
     private fun move(delta: Int) {
         // Mihon gives a zoomed page the tap before turning it: panning to the
         // edge and then tapping again turns the page.
-        val page = currentItem as? ReaderPage
+        val page = tracker.currentPage as? ReaderPage
         val holder = pager.children
             .filterIsInstance<PagerPageHolder>()
             .firstOrNull { it.tag === page }
@@ -183,31 +216,6 @@ class PagerViewer(
         val next = (pager.currentItem + delta).coerceIn(0, adapter.count - 1)
         if (next != pager.currentItem) {
             pager.setCurrentItem(next, host.settings.pageTransitions)
-        }
-    }
-
-    private fun tracker(position: Int) {
-        val item = adapter.items.getOrNull(position) ?: return
-        if (item === currentItem) return
-        val previous = currentItem
-        currentItem = item
-        when (item) {
-            is ReaderPage -> {
-                host.onPageSelected(item)
-                val pages = item.chapter.pages.orEmpty()
-                val inPreloadRange = pages.size - item.number < 5
-                if (inPreloadRange && item.chapter === items.currentChapter) {
-                    items.nextTransition?.to?.let(host::requestPreloadChapter)
-                }
-            }
-            is ChapterTransition -> {
-                host.onTransitionSelected(item)
-                item.to?.let(host::requestPreloadChapter)
-            }
-        }
-        if (previous is ReaderPage && item is ReaderPage && previous.chapter !== item.chapter) {
-            // A viewer that crossed a chapter boundary keeps the new chapter active.
-            host.requestPreloadChapter(item.chapter)
         }
     }
 
@@ -479,10 +487,11 @@ class WebtoonViewer(
     private val frame = WebtoonFrame(context)
     private val scrollDistance = context.resources.displayMetrics.heightPixels * 3 / 4
     private val layoutManager = androidx.recyclerview.widget.WebtoonLayoutManager(context, scrollDistance)
+    private val webtoonItems = WebtoonItems()
     private val adapter = WebtoonAdapter()
-    private var items: List<Any> = emptyList()
-    private var currentItem: Any? = null
-    private var chapterUrl: String? = null
+    private val tracker = WebtoonPageTracker(host, webtoonItems, HIDE_MENU_DISTANCE)
+    /** Until the first layout, the recycler must scroll to the requested page. */
+    private var firstLayout = true
 
     override val view: View get() = frame
 
@@ -506,8 +515,12 @@ class WebtoonViewer(
         recycler.addOnScrollListener(
             object : RecyclerView.OnScrollListener() {
                 override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
-                    val position = layoutManager.findLastEndVisibleItemPosition()
-                    tracker(position)
+                    tracker.onScrolled(layoutManager.findLastEndVisibleItemPosition())
+                    tracker.onScrolledBy(
+                        dy = dy.toFloat(),
+                        firstVisible = layoutManager.findFirstVisibleItemPosition(),
+                        lastEndVisible = layoutManager.findLastEndVisibleItemPosition(),
+                    )
                 }
             },
         )
@@ -519,7 +532,7 @@ class WebtoonViewer(
         }
         recycler.longTapListener = { event ->
             val child = recycler.findChildViewUnder(event.x, event.y)
-            val page = child?.let { items.getOrNull(recycler.getChildAdapterPosition(it)) } as? ReaderPage
+            val page = child?.let { webtoonItems.items.getOrNull(recycler.getChildAdapterPosition(it)) } as? ReaderPage
             if (page != null) {
                 host.onLongTap(page)
                 true
@@ -531,30 +544,38 @@ class WebtoonViewer(
     }
 
     override fun setChapters(chapters: ViewerChapters) {
-        val old = items
-        items = viewerItems(chapters, forceTransition = false)
+        val old = webtoonItems.items
+        // Keep the transition while the user is on it, or it would disappear
+        // from under their finger the moment the chapter finishes loading.
+        val forceTransition = tracker.currentPage is ChapterTransition
+        webtoonItems.setChapters(chapters, forceTransition)
+        val items = webtoonItems.items
         DiffUtil.calculateDiff(object : DiffUtil.Callback() {
             override fun getOldListSize() = old.size
             override fun getNewListSize() = items.size
             override fun areItemsTheSame(oldPos: Int, newPos: Int) = old[oldPos] === items[newPos]
             override fun areContentsTheSame(oldPos: Int, newPos: Int) = true
         }).dispatchUpdatesTo(adapter)
-        val chapterChanged = chapterUrl != chapters.currChapter.chapter.url
-        chapterUrl = chapters.currChapter.chapter.url
-        if (chapterChanged) {
-            currentItem = null
+
+        // The chapter menu navigates through pages, so the first layout goes
+        // to the chapter's requested page; after that the list keeps the
+        // position of the page the user is on.
+        if (firstLayout) {
             val pages = chapters.currChapter.pages
             if (pages != null && pages.isNotEmpty()) {
                 moveToPage(pages[chapters.currChapter.requestedPage.coerceIn(0, pages.lastIndex)])
+                firstLayout = false
             }
         }
     }
 
     override fun moveToPage(page: ReaderPage) {
-        val position = items.indexOf(page)
+        val position = webtoonItems.items.indexOf(page)
         if (position >= 0) {
             layoutManager.scrollToPositionWithOffset(position, 0)
-            tracker(position)
+            if (layoutManager.findLastEndVisibleItemPosition() == -1) {
+                tracker.onScrolled(position)
+            }
         }
     }
 
@@ -568,37 +589,16 @@ class WebtoonViewer(
         else recycler.scrollBy(0, -scrollDistance)
     }
 
-    private fun tracker(position: Int) {
-        val item = items.getOrNull(position) ?: return
-        if (item === currentItem) return
-        currentItem = item
-        when (item) {
-            is ReaderPage -> {
-                host.onPageSelected(item)
-                val pages = item.chapter.pages.orEmpty()
-                if (pages.size - item.number < 5) {
-                    items.lastOrNull { it is ChapterTransition.Next }
-                        ?.let { (it as ChapterTransition).to }
-                        ?.let(host::requestPreloadChapter)
-                }
-            }
-            is ChapterTransition -> {
-                host.onTransitionSelected(item)
-                item.to?.let(host::requestPreloadChapter)
-            }
-        }
-    }
-
     override fun destroy() {
         recycler.adapter = null
         frame.removeAllViews()
     }
 
     private inner class WebtoonAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
-        override fun getItemCount(): Int = items.size
+        override fun getItemCount(): Int = webtoonItems.items.size
 
         override fun getItemViewType(position: Int): Int =
-            if (items[position] is ReaderPage) PAGE_VIEW else TRANSITION_VIEW
+            if (webtoonItems.items[position] is ReaderPage) PAGE_VIEW else TRANSITION_VIEW
 
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder =
             if (viewType == PAGE_VIEW) {
@@ -609,8 +609,8 @@ class WebtoonViewer(
 
         override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
             when (holder) {
-                is WebtoonPageHolder -> holder.bind(items[position] as ReaderPage)
-                is WebtoonTransitionHolder -> holder.bind(items[position] as ChapterTransition)
+                is WebtoonPageHolder -> holder.bind(webtoonItems.items[position] as ReaderPage)
+                is WebtoonTransitionHolder -> holder.bind(webtoonItems.items[position] as ChapterTransition)
             }
         }
 
@@ -619,6 +619,9 @@ class WebtoonViewer(
         }
     }
 }
+
+// Mihon's LOW hide threshold; scrolling more than this hides the bars.
+private const val HIDE_MENU_DISTANCE = 31
 
 private const val PAGE_VIEW = 0
 private const val TRANSITION_VIEW = 1
