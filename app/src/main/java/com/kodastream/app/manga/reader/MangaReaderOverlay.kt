@@ -10,6 +10,7 @@ import androidx.compose.animation.shrinkVertically
 import android.os.SystemClock
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -62,6 +63,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.surfaceColorAtElevation
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -241,7 +243,7 @@ private fun ReaderTopBar(
     onShowDiagnostics: () -> Unit,
 ) {
     var menu by remember { mutableStateOf(false) }
-    Surface(color = MaterialTheme.colorScheme.surface.copy(alpha = 0.94f)) {
+    Surface(color = readerBarColor()) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -371,7 +373,7 @@ private fun ReaderBottomBar(
         }
     }
 
-    Surface(color = MaterialTheme.colorScheme.surface.copy(alpha = 0.94f)) {
+    Surface(color = readerBarColor()) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -607,6 +609,12 @@ private fun ReaderChapterSheet(
 
 private fun formatChapterNumber(value: Float): String =
     if (value % 1f == 0f) value.toInt().toString() else value.toString()
+
+/** Matches Mihon's reader bars: an elevated surface at ~90-95% opacity so the image shows through. */
+@Composable
+private fun readerBarColor() = MaterialTheme.colorScheme.surfaceColorAtElevation(3.dp).copy(
+    alpha = if (isSystemInDarkTheme()) 0.90f else 0.95f,
+)
 
 @Composable
 private fun ReaderError(
