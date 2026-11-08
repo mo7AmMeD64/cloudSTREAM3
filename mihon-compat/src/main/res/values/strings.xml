@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="mihon_compat_webview_required">WebView is required to open this site</string>
+    <string name="mihon_compat_webview_outdated">Update Android System WebView to load this site</string>
+    <string name="mihon_compat_cloudflare_failed">Could not pass the Cloudflare check</string>
+</resources>

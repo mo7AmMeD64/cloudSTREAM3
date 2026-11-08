@@ -257,7 +257,8 @@ class PlayerGeneratorViewModel : ViewModel() {
     fun loadLinksPrev() {
         Log.i(TAG, "loadLinksPrev")
         if (generator?.hasPrev(episodeIndex) == true) {
-            episodeIndex += 1
+            // hasPrev means index > 0, so the previous episode is index - 1.
+            episodeIndex = previousQueueIndex(episodeIndex) ?: return
             loadLinks()
         }
     }
@@ -384,7 +385,11 @@ class PlayerGeneratorViewModel : ViewModel() {
     fun loadLinks(sourceTypes: Set<ExtractorLinkType> = LOADTYPE_INAPP) {
         Log.i(TAG, "loadLinks with generator=$generator and index=$episodeIndex")
         currentJob?.cancel()
-        val index = episodeIndex
+        // A source switch or a refreshed episode list can shrink the queue while an
+        // index from the previous list is still held. Clamp it so generateLinks is
+        // never asked for an offset the generator cannot serve.
+        val index = clampQueueIndex(episodeIndex, generator?.videos?.size ?: 0)
+        episodeIndex = index
 
         // Clear old data and reset the state
         modifyState {

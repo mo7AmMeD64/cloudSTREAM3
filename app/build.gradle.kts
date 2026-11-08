@@ -5,6 +5,7 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinJvmCompile
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.compose.compiler)
+    alias(libs.plugins.kotlin.serialization)
 }
 
 val javaTarget = JvmTarget.fromTarget(libs.versions.jvmTarget.get())
@@ -20,8 +21,8 @@ android {
         // desugaring enabled below on anything older than API 33.
         minSdk = 26
         targetSdk = libs.versions.targetSdk.get().toInt()
-        versionCode = 9
-        versionName = "0.9.0"
+        versionCode = 17
+        versionName = "0.12.0"
     }
 
     // CI decodes the stable release keystore from secrets; without it (local
@@ -111,13 +112,25 @@ tasks.withType<KotlinJvmCompile> {
     }
 }
 
+// MockWebServer 4.12 has to run against OkHttp 4.12; NiceHttp drags 5.x onto
+// this classpath, where okhttp3.internal.Util no longer exists.
+configurations.matching { it.name.contains("UnitTestRuntimeClasspath") }.configureEach {
+    resolutionStrategy.force("com.squareup.okhttp3:okhttp:4.12.0")
+}
+
 dependencies {
     testImplementation(libs.junit)
+    testImplementation(libs.ax.okhttp.mockwebserver4)
 
     coreLibraryDesugaring(libs.desugar.jdk.libs.nio) // NIO flavour needed by NewPipeExtractor
 
     // ---- The CloudStream engine (MainAPI, extractors, networking) ----
     implementation(project(":library"))
+
+    // Mihon-compatible manga extension runtime (source-api + network, private copy).
+    implementation(project(":mihon-compat"))
+    // Parsing the Mihon extension store index (protobuf).
+    implementation(libs.kotlinx.serialization.protobuf)
 
     // The engine declares these as `implementation`, so they are on the runtime
     // classpath but NOT visible at compile time. This module (and the extensions
@@ -162,6 +175,13 @@ dependencies {
     // HCT colour generation used by Koda's palette system
     implementation(libs.ax.material.colors)
     implementation(libs.ax.coil.compose)
+    implementation(libs.ax.coil.gif)
+    // Manga reader viewers: Mihon's directional pager and tiled image view.
+    implementation(libs.ax.directional.viewpager)
+    implementation(libs.ax.subsampling) {
+        exclude(group = "ca.mpreg", module = "imagedecoder")
+    }
+    implementation(libs.image.decoder)
 
     // ---- Player ----
     implementation(libs.ax.media3.exoplayer)

@@ -16,9 +16,19 @@ object AppPrefs {
     private const val KEY_PROVIDER = "selected_provider"
     private const val KEY_AUTO_UPDATE = "auto_update_extensions"
     private const val KEY_NAV_POSITION = "nav_position"
+    private const val KEY_APP_MODE = "app_mode"
     private const val KEY_HOME_HERO_STYLE = "home_hero_style"
     private const val KEY_SPEED = "playback_speed"
     private const val KEY_PAUSE_HISTORY = "pause_history"
+    private const val KEY_WATCH_STATISTICS_ENABLED = "watch_statistics_enabled"
+    private const val KEY_PLAYER_PROGRESS_STYLE = "player_progress_style"
+    private const val KEY_PLAYER_SHOW_SOURCE = "player_show_source_control"
+    private const val KEY_PLAYER_SHOW_LOCK = "player_show_lock_control"
+    private const val KEY_PLAYER_SHOW_ROTATE = "player_show_rotate_control"
+    private const val KEY_PLAYER_SHOW_RESIZE = "player_show_resize_control"
+    private const val KEY_PLAYER_SHOW_SUBTITLE_OFFSET = "player_show_subtitle_offset_control"
+    private const val KEY_PLAYER_SHOW_SEEK_BUTTONS = "player_show_seek_buttons"
+    private const val KEY_PLAYER_COMPACT_CONTROLS = "player_compact_controls"
     private const val KEY_DL_TREE = "download_tree_uri"
     private const val KEY_DL_WIFI = "download_wifi_only"
     private const val KEY_DL_MAX = "download_max_concurrent"
@@ -94,6 +104,138 @@ object AppPrefs {
     private fun playerPrefs(context: Context) =
         PreferenceManager.getDefaultSharedPreferences(context)
 
+    // ---- Player gestures and controls ----
+    //
+    // These live in the ported player's own preference file, so the gesture helper and
+    // the player view read the very same values on the next playback. Every default
+    // here equals the default the player itself falls back to, so a user who never
+    // opens the Player settings page sees no change in behavior.
+
+    /** Vertical swipe: brightness on the left half, volume on the right half. */
+    fun playerVerticalSwipeEnabled(context: Context): Boolean =
+        playerPrefs(context).getBoolean(context.getString(R.string.swipe_vertical_enabled_key), true)
+
+    fun setPlayerVerticalSwipeEnabled(context: Context, value: Boolean) {
+        playerPrefs(context).edit { putBoolean(context.getString(R.string.swipe_vertical_enabled_key), value) }
+    }
+
+    /** Horizontal swipe: seek through the video. */
+    fun playerHorizontalSwipeEnabled(context: Context): Boolean =
+        playerPrefs(context).getBoolean(context.getString(R.string.swipe_enabled_key), true)
+
+    fun setPlayerHorizontalSwipeEnabled(context: Context, value: Boolean) {
+        playerPrefs(context).edit { putBoolean(context.getString(R.string.swipe_enabled_key), value) }
+    }
+
+    /** Double-tap the left or right side to seek back or forward. */
+    fun playerDoubleTapEnabled(context: Context): Boolean =
+        playerPrefs(context).getBoolean(context.getString(R.string.double_tap_enabled_key), false)
+
+    fun setPlayerDoubleTapEnabled(context: Context, value: Boolean) {
+        playerPrefs(context).edit { putBoolean(context.getString(R.string.double_tap_enabled_key), value) }
+    }
+
+    /** Double-tap the middle to pause or resume. */
+    fun playerDoubleTapPauseEnabled(context: Context): Boolean =
+        playerPrefs(context).getBoolean(context.getString(R.string.double_tap_pause_enabled_key), false)
+
+    fun setPlayerDoubleTapPauseEnabled(context: Context, value: Boolean) {
+        playerPrefs(context).edit { putBoolean(context.getString(R.string.double_tap_pause_enabled_key), value) }
+    }
+
+    /** Seconds one double-tap seek moves; one of [PLAYER_SEEK_SECONDS_OPTIONS]. */
+    fun playerSeekSeconds(context: Context): Int =
+        playerPrefs(context).getInt(context.getString(R.string.double_tap_seek_time_key), 10)
+            .coerceIn(PLAYER_SEEK_SECONDS_MIN, PLAYER_SEEK_SECONDS_MAX)
+
+    fun setPlayerSeekSeconds(context: Context, seconds: Int) {
+        playerPrefs(context).edit {
+            putInt(
+                context.getString(R.string.double_tap_seek_time_key),
+                seconds.coerceIn(PLAYER_SEEK_SECONDS_MIN, PLAYER_SEEK_SECONDS_MAX),
+            )
+        }
+    }
+
+    const val PLAYER_SEEK_SECONDS_MIN = 5
+    const val PLAYER_SEEK_SECONDS_MAX = 20
+    val PLAYER_SEEK_SECONDS_OPTIONS = listOf(5, 10, 15, 20)
+
+    const val PLAYER_PROGRESS_SLIM = "slim"
+    const val PLAYER_PROGRESS_STANDARD = "standard"
+    const val PLAYER_PROGRESS_BOLD = "bold"
+
+    /** Thickness of the progress bar: slim, standard (default) or bold. */
+    fun playerProgressStyle(context: Context): String =
+        playerPrefs(context).getString(KEY_PLAYER_PROGRESS_STYLE, PLAYER_PROGRESS_STANDARD)
+            ?.takeIf { it == PLAYER_PROGRESS_SLIM || it == PLAYER_PROGRESS_BOLD }
+            ?: PLAYER_PROGRESS_STANDARD
+
+    fun setPlayerProgressStyle(context: Context, value: String) {
+        playerPrefs(context).edit { putString(KEY_PLAYER_PROGRESS_STYLE, value) }
+    }
+
+    // Control visibility. All are on by default and are read when a playback screen opens.
+    fun playerShowSourceControl(context: Context): Boolean =
+        playerPrefs(context).getBoolean(KEY_PLAYER_SHOW_SOURCE, true)
+
+    fun setPlayerShowSourceControl(context: Context, value: Boolean) {
+        playerPrefs(context).edit { putBoolean(KEY_PLAYER_SHOW_SOURCE, value) }
+    }
+
+    fun playerShowLockControl(context: Context): Boolean =
+        playerPrefs(context).getBoolean(KEY_PLAYER_SHOW_LOCK, true)
+
+    fun setPlayerShowLockControl(context: Context, value: Boolean) {
+        playerPrefs(context).edit { putBoolean(KEY_PLAYER_SHOW_LOCK, value) }
+    }
+
+    fun playerShowRotateControl(context: Context): Boolean =
+        playerPrefs(context).getBoolean(KEY_PLAYER_SHOW_ROTATE, true)
+
+    fun setPlayerShowRotateControl(context: Context, value: Boolean) {
+        playerPrefs(context).edit { putBoolean(KEY_PLAYER_SHOW_ROTATE, value) }
+    }
+
+    fun playerShowResizeControl(context: Context): Boolean =
+        playerPrefs(context).getBoolean(KEY_PLAYER_SHOW_RESIZE, true)
+
+    fun setPlayerShowResizeControl(context: Context, value: Boolean) {
+        playerPrefs(context).edit { putBoolean(KEY_PLAYER_SHOW_RESIZE, value) }
+    }
+
+    fun playerShowSubtitleOffsetControl(context: Context): Boolean =
+        playerPrefs(context).getBoolean(KEY_PLAYER_SHOW_SUBTITLE_OFFSET, true)
+
+    fun setPlayerShowSubtitleOffsetControl(context: Context, value: Boolean) {
+        playerPrefs(context).edit { putBoolean(KEY_PLAYER_SHOW_SUBTITLE_OFFSET, value) }
+    }
+
+    fun playerShowSeekButtons(context: Context): Boolean =
+        playerPrefs(context).getBoolean(KEY_PLAYER_SHOW_SEEK_BUTTONS, true)
+
+    fun setPlayerShowSeekButtons(context: Context, value: Boolean) {
+        playerPrefs(context).edit { putBoolean(KEY_PLAYER_SHOW_SEEK_BUTTONS, value) }
+    }
+
+    /** Smaller control icons with the same touch targets. On by default. */
+    fun playerCompactControls(context: Context): Boolean =
+        playerPrefs(context).getBoolean(KEY_PLAYER_COMPACT_CONTROLS, true)
+
+    fun setPlayerCompactControls(context: Context, value: Boolean) {
+        playerPrefs(context).edit { putBoolean(KEY_PLAYER_COMPACT_CONTROLS, value) }
+    }
+
+    // ---- Watch statistics ----
+
+    /** Counting viewing time. Turning it off stops counting; stored numbers stay. */
+    fun watchStatisticsEnabled(context: Context): Boolean =
+        prefs(context).getBoolean(KEY_WATCH_STATISTICS_ENABLED, true)
+
+    fun setWatchStatisticsEnabled(context: Context, value: Boolean) {
+        prefs(context).edit { putBoolean(KEY_WATCH_STATISTICS_ENABLED, value) }
+    }
+
     /** True when nothing new should be written to the watch history. Existing entries stay. */
     fun pauseHistory(context: Context): Boolean = prefs(context).getBoolean(KEY_PAUSE_HISTORY, false)
 
@@ -163,6 +305,18 @@ object AppPrefs {
     private fun prefs(context: Context) = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
     fun selectedProvider(context: Context): String? = prefs(context).getString(KEY_PROVIDER, null)
+
+    const val MODE_WATCH = "watch"
+    const val MODE_MANGA = "manga"
+
+    /** Watch or manga; the navigation remembers which one was open. */
+    fun appMode(context: Context): String =
+        prefs(context).getString(KEY_APP_MODE, MODE_WATCH)
+            .takeIf { it == MODE_MANGA } ?: MODE_WATCH
+
+    fun setAppMode(context: Context, mode: String) {
+        prefs(context).edit { putString(KEY_APP_MODE, mode) }
+    }
 
     fun setSelectedProvider(context: Context, name: String?) {
         prefs(context).edit { if (name == null) remove(KEY_PROVIDER) else putString(KEY_PROVIDER, name) }
