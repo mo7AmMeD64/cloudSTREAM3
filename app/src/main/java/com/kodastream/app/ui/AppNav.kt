@@ -136,6 +136,8 @@ import com.kodastream.app.ui.manga.MangaStoresScreen
 import com.kodastream.app.ui.manga.SourcePreferencesScreen
 import com.kodastream.app.ui.player.PlayerActivity
 import com.kodastream.app.ui.search.SearchScreen
+import com.kodastream.app.ui.settings.SettingsCategory
+import com.kodastream.app.ui.settings.SettingsCategoryScreen
 import com.kodastream.app.ui.settings.SettingsScreen
 import com.kodastream.app.ui.sources.SourceSheet
 import com.kodastream.app.ui.sources.SourceViewModel
@@ -549,12 +551,16 @@ private fun AppNavGraph(
         composable(Routes.SETTINGS) {
             SettingsScreen(
                 contentPadding = contentPadding,
-                themeViewModel = themeViewModel,
-                onOpenMangaExtensions = { navController.navigate(MangaRoutes.EXTENSIONS) },
-                onOpenMangaStores = { navController.navigate(MangaRoutes.STORES) },
-                onMangaSectionChanged = onMangaSectionChanged,
+                onOpenCategory = { navController.navigate(SettingsCategory.route(it)) },
             )
         }
+        settingsCategoryRoute(
+            navController = navController,
+            themeViewModel = themeViewModel,
+            onOpenMangaExtensions = { navController.navigate(MangaRoutes.EXTENSIONS) },
+            onOpenMangaStores = { navController.navigate(MangaRoutes.STORES) },
+            onMangaSectionChanged = onMangaSectionChanged,
+        )
         composable(MangaRoutes.EXTENSIONS) {
             MangaExtensionsScreen(
                 contentPadding = contentPadding,
@@ -660,14 +666,51 @@ private fun MangaNavGraph(
         composable(MangaRoutes.SETTINGS) {
             SettingsScreen(
                 contentPadding = contentPadding,
+                onOpenCategory = { navController.navigate(SettingsCategory.route(it)) },
+            )
+        }
+        settingsCategoryRoute(
+            navController = navController,
+            themeViewModel = themeViewModel,
+            onOpenMangaExtensions = { navController.navigateTopLevel(MangaRoutes.EXTENSIONS) },
+            onOpenMangaStores = { navController.navigate(MangaRoutes.STORES) },
+            onMangaSectionChanged = onMangaSectionChanged,
+        )
+        mangaPushedRoutes(navController, contentPadding)
+        mangaDetailsRoute(navController, contentPadding)
+    }
+}
+
+/**
+ * One Settings category page, pushed on top of the Settings tab. Both graphs
+ * register it; Back returns to the category list.
+ */
+private fun NavGraphBuilder.settingsCategoryRoute(
+    navController: NavHostController,
+    themeViewModel: ThemeViewModel,
+    onOpenMangaExtensions: () -> Unit,
+    onOpenMangaStores: () -> Unit,
+    onMangaSectionChanged: (Boolean) -> Unit,
+) {
+    composable(
+        route = SettingsCategory.ROUTE,
+        arguments = listOf(
+            navArgument(SettingsCategory.ARG_ID) { type = NavType.StringType },
+        ),
+    ) { entry ->
+        val category = SettingsCategory.fromId(entry.arguments?.getString(SettingsCategory.ARG_ID))
+        if (category == null) {
+            LaunchedEffect(Unit) { navController.popBackStack() }
+        } else {
+            SettingsCategoryScreen(
+                category = category,
                 themeViewModel = themeViewModel,
-                onOpenMangaExtensions = { navController.navigateTopLevel(MangaRoutes.EXTENSIONS) },
-                onOpenMangaStores = { navController.navigate(MangaRoutes.STORES) },
+                onBack = { navController.popBackStack() },
+                onOpenMangaExtensions = onOpenMangaExtensions,
+                onOpenMangaStores = onOpenMangaStores,
                 onMangaSectionChanged = onMangaSectionChanged,
             )
         }
-        mangaPushedRoutes(navController, contentPadding)
-        mangaDetailsRoute(navController, contentPadding)
     }
 }
 

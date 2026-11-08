@@ -194,5 +194,13 @@ Wide-page splitting (InsertPage) and the dual-page viewer are skipped. Chapter
 transitions are Compose views; the reader overlay, settings sheet and error
 states are new Compose code written for KodaStream.
 
+KodaStream 0.12.0 includes code adapted from an earlier community fork of this
+project (the "Levm / MAVRE 0.2" fork), licensed under the GNU General Public
+License v3.0. Adapted from it: the player fixes and control settings, the
+player's refreshed look, watch statistics, the "More" rail on the title page
+(same-franchise releases and genre-verified suggestions) and the source stamping
+of provider results. The code was re-integrated into this project's current
+structure and is covered by the same licence.
+
 The KodaStream project as a whole is licensed under the GNU General Public
 License v3.0 (see LICENSE).
