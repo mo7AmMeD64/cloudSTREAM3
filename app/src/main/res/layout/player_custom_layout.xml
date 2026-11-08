@@ -790,7 +790,7 @@
                         app:bar_height="4dp"
                         app:layout_constraintBottom_toBottomOf="@id/exo_position"
                         app:layout_constraintEnd_toStartOf="@id/exo_duration"
-                        app:layout_constraintStart_toEndOf="@id/exo_position"
+                        app:layout_constraintStart_toEndOf="@+id/exo_position"
                         app:layout_goneMarginEnd="24dp"
                         app:layout_constraintTop_toTopOf="@id/exo_position"
                         app:played_color="@android:color/white"
