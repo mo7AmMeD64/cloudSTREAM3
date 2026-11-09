@@ -19,6 +19,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 import kotlin.math.max
+import kotlin.math.min
 import kotlin.math.roundToInt
 
 /**
@@ -164,14 +165,16 @@ class WebtoonStripImageView(context: Context) : View(context) {
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
         val width = MeasureSpec.getSize(widthMeasureSpec)
-        val height = if (imageWidth > 0) (width.toLong() * imageHeight / imageWidth).toInt() else 0
+        val height = if (imageWidth > 0) (imageHeight * renderScale(width)).roundToInt() else 0
         setMeasuredDimension(width, height)
     }
 
     override fun onDraw(canvas: Canvas) {
         if (imageWidth <= 0 || sourceRowsPerStrip <= 0) return
         canvas.getClipBounds(clipRect)
-        val scale = width.toFloat() / imageWidth
+        val scale = renderScale(width)
+        val drawnWidth = (imageWidth * scale).roundToInt()
+        val left = (width - drawnWidth) / 2
         strips.forEachIndexed { index, strip ->
             if (strip == null) return@forEachIndexed
             val srcTop = index * sourceRowsPerStrip
@@ -179,10 +182,19 @@ class WebtoonStripImageView(context: Context) : View(context) {
             val bottom = ((srcTop + sourceRowsPerStrip).toLong() * scale).toInt()
             if (bottom <= clipRect.top) return@forEachIndexed
             if (top >= clipRect.bottom) return@forEachIndexed
-            dstRect.set(0, top, width, bottom)
+            dstRect.set(left, top, left + drawnWidth, bottom)
             canvas.drawBitmap(strip, null, dstRect, paint)
         }
     }
+
+    /**
+     * Never enlarge past the page's own pixels: filling the width upscaled
+     * small pages, which is what made webtoon pages look soft. Wider pages
+     * still scale down to the view, now centred instead of stretched.
+     */
+    private fun renderScale(viewWidth: Int): Float =
+        if (imageWidth <= 0 || viewWidth <= 0) 1f
+        else min(1f, viewWidth.toFloat() / imageWidth)
 
     override fun onTouchEvent(event: MotionEvent): Boolean = false
 
@@ -214,7 +226,7 @@ class WebtoonStripImageView(context: Context) : View(context) {
 
     private fun stripNearest(): Int {
         if (strips.isEmpty() || sourceRowsPerStrip <= 0 || imageWidth <= 0) return 0
-        val scale = width.toFloat() / imageWidth
+        val scale = renderScale(width)
         val center = (clipRect.top + clipRect.bottom) / 2f
         if (scale <= 0f) return 0
         val sourceRow = (center / scale).toInt()

@@ -29,9 +29,20 @@ object Engine {
     /** One home page: its lists and whether the provider has another page. */
     data class MainPageResult(val lists: List<HomePageList>, val hasNext: Boolean)
 
-    /** Every provider that loaded successfully, in registration order. */
+    /**
+     * Every provider that loaded successfully, in registration order.
+     *
+     * Two extension repos can ship different plugins that register the same
+     * provider name. Everything above this layer addresses sources by name
+     * (prefs, search scope, the source sheet), so the duplicates were both
+     * listed and the sheet's name-keyed list crashed with a duplicate LazyColumn
+     * key. Keep the last registration, which is the one [provider] resolves.
+     */
     fun providers(): List<MainAPI> =
         APIHolder.allProviders.withLock { APIHolder.allProviders.toList() }
+            .asReversed()
+            .distinctBy { it.name }
+            .asReversed()
 
     fun provider(name: String?): MainAPI? = APIHolder.getApiFromNameNull(name)
 

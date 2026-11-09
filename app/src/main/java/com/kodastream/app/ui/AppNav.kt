@@ -15,6 +15,7 @@ import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -370,7 +371,7 @@ fun AppRoot(themeViewModel: ThemeViewModel) {
         sideMode -> PaddingValues(top = topInset, bottom = navInset)
         else -> PaddingValues(
             top = topInset,
-            bottom = 84.dp + navInset + if (sourceVisible) 60.dp else 0.dp,
+            bottom = 84.dp + navInset + if (sourceVisible || mangaSection) 60.dp else 0.dp,
         )
     }
 
@@ -438,30 +439,38 @@ fun AppRoot(themeViewModel: ThemeViewModel) {
                         .padding(bottom = 20.dp),
                     horizontalAlignment = Alignment.End,
                 ) {
-                    // A separate button above the pill: attaching it to the
-                    // toolbar would squeeze the six tabs on narrow screens.
-                    AnimatedVisibility(
-                        visible = sourceVisible,
-                        enter = scaleIn(tween(220)) + fadeIn(tween(220)),
-                        exit = scaleOut(tween(180)) + fadeOut(tween(180)),
+                    // App-level controls live above the pill: inside it they
+                    // squeezed the sixth destination off narrow screens.
+                    Row(
+                        modifier = Modifier.padding(end = 16.dp, bottom = 12.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        SmallFloatingActionButton(
-                            onClick = { sourceSheetOpen = true },
-                            modifier = Modifier.padding(end = 16.dp, bottom = 12.dp),
-                        ) {
-                            Icon(
-                                Icons.Rounded.Dns,
-                                contentDescription = stringResource(R.string.cd_choose_source),
+                        if (mangaSection) {
+                            ModeSwitchButton(
+                                inMangaMode = mangaActive,
+                                onToggle = switchMode,
                             )
+                        }
+                        AnimatedVisibility(
+                            visible = sourceVisible,
+                            enter = scaleIn(tween(220)) + fadeIn(tween(220)),
+                            exit = scaleOut(tween(180)) + fadeOut(tween(180)),
+                        ) {
+                            SmallFloatingActionButton(
+                                onClick = { sourceSheetOpen = true },
+                            ) {
+                                Icon(
+                                    Icons.Rounded.Dns,
+                                    contentDescription = stringResource(R.string.cd_choose_source),
+                                )
+                            }
                         }
                     }
                     FloatingNavPill(
                         destinations = destinations,
                         selectedRoute = route,
                         onSelect = { navController.navigateTopLevel(it) },
-                        showModeSwitch = mangaSection,
-                        inMangaMode = mangaActive,
-                        onToggleMode = switchMode,
                     )
                 }
             }
@@ -993,69 +1002,67 @@ private fun FloatingNavPill(
     destinations: List<TopLevel>,
     selectedRoute: String?,
     onSelect: (String) -> Unit,
-    showModeSwitch: Boolean,
-    inMangaMode: Boolean,
-    onToggleMode: () -> Unit,
 ) {
     HorizontalFloatingToolbar(
         expanded = true,
         content = {
-            if (showModeSwitch) {
-                ModeSwitchButton(
-                    inMangaMode = inMangaMode,
-                    onToggle = onToggleMode,
-                )
-            }
-            destinations.forEach { destination ->
-                val selected = selectedRoute == destination.route
+            // Scrollable instead of clipped: with the open tab's label the
+            // six destinations do not fit on every width or font scale.
+            Row(
+                modifier = Modifier.horizontalScroll(rememberScrollState()),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                destinations.forEach { destination ->
+                    val selected = selectedRoute == destination.route
 
-                val animatedPadding = navItemPadding(selected)
-                val animatedContainerColor = navContainerColor(
-                    selected = selected,
-                    activeContainer = MaterialTheme.colorScheme.primaryContainer,
-                )
-                val animatedContentColor = navContentColor(
-                    selected = selected,
-                    activeContent = MaterialTheme.colorScheme.onPrimaryContainer,
-                )
+                    val animatedPadding = navItemPadding(selected)
+                    val animatedContainerColor = navContainerColor(
+                        selected = selected,
+                        activeContainer = MaterialTheme.colorScheme.primaryContainer,
+                    )
+                    val animatedContentColor = navContentColor(
+                        selected = selected,
+                        activeContent = MaterialTheme.colorScheme.onPrimaryContainer,
+                    )
 
-                Surface(
-                    onClick = { onSelect(destination.route) },
-                    shape = CircleShape,
-                    color = animatedContainerColor,
-                    contentColor = animatedContentColor,
-                    modifier = Modifier.height(48.dp),
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .padding(horizontal = animatedPadding)
-                            .animateContentSize(
-                                animationSpec = MaterialTheme.motionScheme.fastSpatialSpec()
-                            ),
-                        horizontalArrangement = Arrangement.Center,
-                        verticalAlignment = Alignment.CenterVertically,
+                    Surface(
+                        onClick = { onSelect(destination.route) },
+                        shape = CircleShape,
+                        color = animatedContainerColor,
+                        contentColor = animatedContentColor,
+                        modifier = Modifier.height(48.dp),
                     ) {
-                        Icon(
-                            imageVector = if (selected) destination.filledIcon else destination.outlinedIcon,
-                            contentDescription = stringResource(destination.labelRes),
-                            modifier = Modifier.size(NavIconSize)
-                        )
-                        // The pill names only the open tab.
-                        AnimatedVisibility(
-                            visible = selected,
-                            enter = fadeIn() + expandHorizontally(
-                                animationSpec = MaterialTheme.motionScheme.fastSpatialSpec()
-                            ),
-                            exit = fadeOut() + shrinkHorizontally(
-                                animationSpec = MaterialTheme.motionScheme.fastSpatialSpec()
-                            ),
+                        Row(
+                            modifier = Modifier
+                                .padding(horizontal = animatedPadding)
+                                .animateContentSize(
+                                    animationSpec = MaterialTheme.motionScheme.fastSpatialSpec()
+                                ),
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Spacer(modifier = Modifier.width(NavLabelGap))
-                                Text(
-                                    text = stringResource(destination.labelRes),
-                                    style = MaterialTheme.typography.labelLarge,
-                                )
+                            Icon(
+                                imageVector = if (selected) destination.filledIcon else destination.outlinedIcon,
+                                contentDescription = stringResource(destination.labelRes),
+                                modifier = Modifier.size(NavIconSize)
+                            )
+                            // The pill names only the open tab.
+                            AnimatedVisibility(
+                                visible = selected,
+                                enter = fadeIn() + expandHorizontally(
+                                    animationSpec = MaterialTheme.motionScheme.fastSpatialSpec()
+                                ),
+                                exit = fadeOut() + shrinkHorizontally(
+                                    animationSpec = MaterialTheme.motionScheme.fastSpatialSpec()
+                                ),
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Spacer(modifier = Modifier.width(NavLabelGap))
+                                    Text(
+                                        text = stringResource(destination.labelRes),
+                                        style = MaterialTheme.typography.labelLarge,
+                                    )
+                                }
                             }
                         }
                     }
