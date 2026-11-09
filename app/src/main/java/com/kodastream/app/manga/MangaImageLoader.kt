@@ -15,6 +15,8 @@ import coil.memory.MemoryCache
 import coil.request.Options
 import com.kodastream.app.manga.extension.MangaSourceManager
 import eu.kanade.tachiyomi.compat.MangaEngine
+import eu.kanade.tachiyomi.network.HttpException
+import eu.kanade.tachiyomi.network.await
 import eu.kanade.tachiyomi.source.online.HttpSource
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -46,7 +48,7 @@ object MangaImageLoader {
         return ImageLoader.Builder(context)
             .memoryCache {
                 MemoryCache.Builder(context)
-                    .maxSizePercent(0.15)
+                    .maxSizePercent(0.25)
                     .build()
             }
             .diskCache {
@@ -61,7 +63,7 @@ object MangaImageLoader {
                 add(GifDecoder.Factory())
                 add(ImageDecoderDecoder.Factory())
                 add(MangaCoverKeyer())
-                add(MangaCoverFetcher.Factory(manager, context))
+                add(MangaCoverFetcher.Factory(manager))
                 add(MangaPageKeyer())
                 add(MangaPageFetcher.Factory(manager, context))
                 add(ExtensionIconKeyer())
@@ -71,28 +73,17 @@ object MangaImageLoader {
     }
 }
 
-/** Concurrent identical cover requests share one network call. */
-private object CoverRequests {
-    private val inFlight = HashMap<String, kotlinx.coroutines.CompletableDeferred<ByteArray>>()
-    private val lock = Mutex()
+/**
+ * One download per cover at a time. The lock is held across the cache check and
+ * the download, so identical requests wait here and then read the finished file
+ * from the disk cache instead of downloading it again. Waiting is cancellable,
+ * so a card scrolled off screen drops out of the queue.
+ */
+private object CoverLocks {
+    private val stripes = Array(32) { Mutex() }
 
-    suspend fun load(key: String, block: suspend () -> ByteArray): ByteArray {
-        val mine = kotlinx.coroutines.CompletableDeferred<ByteArray>()
-        val existing = lock.withLock {
-            val current = inFlight[key]
-            if (current == null) inFlight[key] = mine
-            current
-        }
-        if (existing != null) return existing.await()
-        return try {
-            block().also { mine.complete(it) }
-        } catch (e: Throwable) {
-            mine.completeExceptionally(e)
-            throw e
-        } finally {
-            lock.withLock { inFlight.remove(key) }
-        }
-    }
+    suspend fun <T> withLock(key: String, block: suspend () -> T): T =
+        stripes[(key.hashCode() and Int.MAX_VALUE) % stripes.size].withLock { block() }
 }
 
 class MangaCoverKeyer : Keyer<MangaCover> {
@@ -100,36 +91,87 @@ class MangaCoverKeyer : Keyer<MangaCover> {
         "manga-cover:${data.sourceId}:${data.url}"
 }
 
+/**
+ * Covers go through the source's own client, like Mihon's. Unlike a plain
+ * Coil fetcher, the bytes are kept in Coil's disk cache, so a cover is
+ * downloaded once and a later visit (or a new app start) shows it at once.
+ * The call is cancellable: leaving the screen cancels covers still in flight
+ * instead of leaving them to block the source's rate limiter.
+ */
 class MangaCoverFetcher(
-    private val context: Context,
     private val data: MangaCover,
     private val source: HttpSource,
+    private val options: Options,
+    private val diskCache: DiskCache?,
 ) : Fetcher {
+    private val cacheKey = "manga-cover:${data.sourceId}:${data.url}"
+
     override suspend fun fetch(): FetchResult {
-        val bytes = CoverRequests.load("${data.sourceId}:${data.url}") {
-            val request = Request.Builder()
-                .url(data.url)
-                .headers(source.headers)
-                .build()
-            source.client.newCall(request).execute().use { response ->
-                if (!response.isSuccessful) throw IOException("HTTP ${response.code}")
-                response.body?.bytes() ?: throw IOException("Empty cover response")
-            }
+        val policy = options.diskCachePolicy
+        val cache = diskCache
+        if (cache != null && policy.readEnabled) {
+            cache.openSnapshot(cacheKey)?.let { return fromSnapshot(cache, it) }
         }
-        return SourceResult(
-            source = ImageSource(Buffer().write(bytes), context),
-            mimeType = null,
-            dataSource = DataSource.NETWORK,
-        )
+        return CoverLocks.withLock(cacheKey) {
+            if (cache != null && policy.readEnabled) {
+                cache.openSnapshot(cacheKey)?.let { return@withLock fromSnapshot(cache, it) }
+            }
+            download(cache, policy.writeEnabled)
+        }
     }
+
+    private suspend fun download(cache: DiskCache?, write: Boolean): FetchResult {
+        val request = Request.Builder()
+            .url(data.url)
+            .headers(source.headers)
+            .build()
+        return source.client.newCall(request).await().use { response ->
+            if (!response.isSuccessful) throw HttpException(response.code)
+            val body = response.body ?: throw IOException("Empty cover response")
+            if (cache != null && write) {
+                val editor = cache.openEditor(cacheKey)
+                if (editor != null) {
+                    try {
+                        cache.fileSystem.write(editor.data) { writeAll(body.source()) }
+                        // The body is spent once it is written, so the cache entry is
+                        // the only copy left to return.
+                        val snapshot = editor.commitAndOpenSnapshot()
+                            ?: cache.openSnapshot(cacheKey)
+                            ?: throw IOException("Cover cache write failed")
+                        return@use fromSnapshot(cache, snapshot)
+                    } catch (e: Throwable) {
+                        runCatching { editor.abort() }
+                        throw e
+                    }
+                }
+            }
+            // No usable disk cache: hand the bytes over from memory.
+            SourceResult(
+                source = ImageSource(Buffer().write(body.bytes()), options.context),
+                mimeType = null,
+                dataSource = DataSource.NETWORK,
+            )
+        }
+    }
+
+    private fun fromSnapshot(cache: DiskCache, snapshot: DiskCache.Snapshot): FetchResult =
+        SourceResult(
+            source = ImageSource(
+                file = snapshot.data,
+                fileSystem = cache.fileSystem,
+                diskCacheKey = cacheKey,
+                closeable = snapshot,
+            ),
+            mimeType = null,
+            dataSource = DataSource.DISK,
+        )
 
     class Factory(
         private val manager: MangaSourceManager,
-        private val context: Context,
     ) : Fetcher.Factory<MangaCover> {
         override fun create(data: MangaCover, options: Options, imageLoader: ImageLoader): Fetcher? {
             val source = manager.sourceById(data.sourceId) as? HttpSource ?: return null
-            return MangaCoverFetcher(context, data, source)
+            return MangaCoverFetcher(data, source, options, imageLoader.diskCache)
         }
     }
 }

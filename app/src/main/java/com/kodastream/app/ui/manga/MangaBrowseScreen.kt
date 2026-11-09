@@ -1,5 +1,11 @@
 package com.kodastream.app.ui.manga
 
+import eu.kanade.tachiyomi.source.online.HttpSource
+import com.kodastream.app.manga.reader.MangaWebViewActivity
+import androidx.compose.material3.IconButton
+import androidx.compose.material.icons.rounded.Public
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -97,6 +103,16 @@ fun MangaBrowseScreen(
     val query by viewModel.query.collectAsState()
     val filterCount by viewModel.activeFilterCount.collectAsState()
 
+    // The in-app browser for a Cloudflare check; coming back reloads the list
+    // with the cookie the check just earned.
+    val webViewLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult(),
+    ) { viewModel.reload() }
+    val httpSource = selected?.source as? HttpSource
+    val openWebView: (() -> Unit)? = httpSource?.let { http ->
+        { webViewLauncher.launch(MangaWebViewActivity.intent(context, http.baseUrl, http.id)) }
+    }
+
     var posterStep by rememberSaveable { mutableStateOf(MangaPrefs.browsePosterStep(context)) }
     var showSources by rememberSaveable { mutableStateOf(false) }
     var showFilters by rememberSaveable { mutableStateOf(false) }
@@ -137,6 +153,14 @@ fun MangaBrowseScreen(
                 style = MaterialTheme.typography.headlineSmall,
                 modifier = Modifier.weight(1f),
             )
+            if (openWebView != null) {
+                IconButton(onClick = openWebView) {
+                    Icon(
+                        Icons.Rounded.Public,
+                        contentDescription = stringResource(R.string.manga_reader_open_webview),
+                    )
+                }
+            }
             PosterSizeButton(
                 step = posterStep,
                 onStepChange = {
@@ -231,8 +255,18 @@ fun MangaBrowseScreen(
 
                 state.initialLoading -> MangaGridSkeleton(posterStep)
                 state.error != null && state.items.isEmpty() -> ErrorBox(
-                    message = state.error ?: "",
+                    message = if (state.blocked) {
+                        stringResource(R.string.manga_cloudflare_blocked)
+                    } else {
+                        state.error ?: ""
+                    },
                     onRetry = viewModel::retry,
+                    secondaryLabel = if (state.blocked && openWebView != null) {
+                        stringResource(R.string.manga_reader_open_webview)
+                    } else {
+                        null
+                    },
+                    onSecondary = if (state.blocked) openWebView else null,
                 )
 
                 state.items.isEmpty() && !state.loading -> EmptyBox(

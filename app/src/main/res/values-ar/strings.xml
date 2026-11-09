@@ -664,6 +664,9 @@
     <string name="manga_reader_bookmark_remove">إزالة الفصل من العلامات</string>
     <string name="manga_reader_retry">إعادة المحاولة</string>
     <string name="manga_reader_open_webview">فتح في متصفح التطبيق</string>
+    <string name="manga_cloudflare_blocked">يطلب هذا الموقع فحص Cloudflare. افتحه في متصفح التطبيق وأكمل الفحص ثم ارجع.</string>
+    <string name="manga_webview_done">تم</string>
+    <string name="manga_webview_solved">تم اجتياز الفحص. اضغط «تم» للرجوع.</string>
     <string name="manga_reader_no_pages_title">لم تُرجع أي صفحات</string>
     <string name="manga_reader_no_pages_hint">أرجع المصدر فصلًا فارغًا. قد يكون محميًا بفحص Cloudflare: افتحه في متصفح التطبيق، وأكمل الفحص، ثم أعد المحاولة.</string>
     <string name="manga_reader_chapter_failed">تعذّر تحميل هذا الفصل</string>

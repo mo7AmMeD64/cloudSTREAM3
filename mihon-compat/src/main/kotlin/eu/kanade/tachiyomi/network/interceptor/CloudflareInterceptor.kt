@@ -2,6 +2,7 @@ package eu.kanade.tachiyomi.network.interceptor
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.os.SystemClock
 import android.util.Log
 import android.webkit.JavascriptInterface
 import android.webkit.RenderProcessGoneDetail
@@ -40,6 +41,11 @@ class CloudflareInterceptor(
     // one WebView instead of each opening their own
     private val hostLocks = ConcurrentHashMap<String, ReentrantReadWriteLock>()
 
+    // A host whose challenge could not be solved fails fast for a while instead of making every queued request
+    // (covers, pages, searches) wait its own turn at the WebView. Solving the check by hand in the in-app browser
+    // sets a new clearance, which is checked before this, so it ends the window at once.
+    private val failedUntil = ConcurrentHashMap<String, Long>()
+
     private val listenerScript = """
         addEventListener("message", ({data}) => {
             if (data?.source === "cloudflare-challenge") {
@@ -72,8 +78,16 @@ class CloudflareInterceptor(
             if (isCleared(request.url, clearance)) {
                 response.close()
             } else {
+                val blockedUntil = failedUntil[request.url.host]
+                if (blockedUntil != null && SystemClock.elapsedRealtime() < blockedUntil) return response
                 if (!prepareWebView()) return response
-                solve(request, response, clearance)
+                try {
+                    solve(request, response, clearance)
+                } catch (e: IOException) {
+                    failedUntil[request.url.host] = SystemClock.elapsedRealtime() + FAIL_FAST_MS
+                    throw e
+                }
+                failedUntil.remove(request.url.host)
             }
         }
 
@@ -245,4 +259,7 @@ private fun HttpUrl.origin(): String {
 private val SERVER_CHECK = arrayOf("cloudflare-nginx", "cloudflare")
 private val COOKIE_NAMES = listOf("cf_clearance")
 
-private class CloudflareBypassException : Exception()
+private const val FAIL_FAST_MS = 60_000L
+
+/** The check could not be passed without the user; the app offers its in-app browser when it sees this. */
+class CloudflareBypassException : Exception()
