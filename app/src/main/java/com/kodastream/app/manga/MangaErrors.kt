@@ -4,8 +4,8 @@ package com.kodastream.app.manga
 internal fun rootMessage(error: Throwable): String {
     var current = error
     val seen = mutableSetOf<Throwable>()
-    while (current.cause != null && seen.add(current)) {
-        current = current.cause!!
+    while (seen.add(current)) {
+        current = current.cause ?: break
     }
     return current.message?.takeIf { it.isNotBlank() } ?: current.javaClass.simpleName
 }

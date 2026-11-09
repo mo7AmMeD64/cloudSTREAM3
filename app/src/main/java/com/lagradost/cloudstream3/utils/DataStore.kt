@@ -89,6 +89,20 @@ object DataStore {
         setKey(getFolderName(folder, path), value)
     }
 
+    /** Writes many keys in one preferences edit; one disk write instead of one per key. */
+    fun <T> Context.setKeys(folder: String, values: Map<String, T>) {
+        if (values.isEmpty()) return
+        try {
+            getSharedPrefs().edit {
+                values.forEach { (path, value) ->
+                    putString(getFolderName(folder, path), value?.toJsonLiteral())
+                }
+            }
+        } catch (e: Exception) {
+            logError(e)
+        }
+    }
+
     fun <T : Any> Context.getKey(path: String, valueType: Class<T>): T? {
         return try {
             val json: String = getSharedPrefs().getString(path, null) ?: return null

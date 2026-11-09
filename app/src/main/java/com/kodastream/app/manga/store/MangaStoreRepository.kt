@@ -97,7 +97,9 @@ class MangaStoreRepository private constructor(context: Context) {
                         }
                     }
                     StoreResult.NotModified -> {
-                        cache[store.indexUrl] = entry!!.copy(fetchedAt = System.currentTimeMillis())
+                        entry?.let {
+                            cache[store.indexUrl] = it.copy(fetchedAt = System.currentTimeMillis())
+                        }
                     }
                     is StoreResult.NetworkError -> lastError = result.message
                     is StoreResult.InvalidFormat -> lastError = result.message

@@ -69,6 +69,7 @@ fun MangaStoresScreen(
     val refreshing by viewModel.refreshing.collectAsState()
     val error by viewModel.storeError.collectAsState()
     val lastRefresh by viewModel.lastRefresh.collectAsState()
+    val errorMessage = error
 
     var showAdd by rememberSaveable { mutableStateOf(false) }
     var removeTarget by remember { mutableStateOf<ExtensionStore?>(null) }
@@ -155,8 +156,8 @@ fun MangaStoresScreen(
 
         Box(Modifier.weight(1f)) {
             when {
-                stores.isEmpty() && error != null -> ErrorBox(
-                    message = error!!,
+                stores.isEmpty() && errorMessage != null -> ErrorBox(
+                    message = errorMessage,
                     onRetry = viewModel::refreshStores,
                 )
                 stores.isEmpty() -> EmptyBox(
@@ -184,9 +185,9 @@ fun MangaStoresScreen(
                         ),
                         verticalArrangement = Arrangement.spacedBy(10.dp),
                     ) {
-                        if (error != null) {
+                        if (errorMessage != null) {
                             item(key = "error") {
-                                StoreBanner(message = error!!, onRetry = viewModel::refreshStores)
+                                StoreBanner(message = errorMessage, onRetry = viewModel::refreshStores)
                             }
                         }
                         items(stores, key = { it.indexUrl }) { store ->

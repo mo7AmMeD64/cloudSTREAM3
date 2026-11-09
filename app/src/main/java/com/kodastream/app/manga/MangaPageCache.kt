@@ -47,6 +47,7 @@ object MangaPageListStore {
             ?: return null
         if (cached.pages.isEmpty() || now - cached.fetchedAt > EXPIRY_MS) {
             memo.remove(cacheKey)
+            context.removeKey(FOLDER, cacheKey)
             return null
         }
         return cached.pages
@@ -113,7 +114,8 @@ data class PageFetchInfo(
  * every page like the old implementation did.
  */
 object MangaPageCache {
-    private val locks = ConcurrentHashMap<String, Mutex>()
+    // Striped locks: a fixed set cannot leak entries like a per-file map did.
+    private val locks = Array(64) { Mutex() }
     private val known = ConcurrentHashMap<String, Long>()
     private val bytes = AtomicLong(0L)
 
@@ -164,7 +166,7 @@ object MangaPageCache {
             onFetched?.invoke(PageFetchInfo(httpCode = null, cloudflareSolved = false))
             return@withContext target
         }
-        val lock = locks.getOrPut(target.path) { Mutex() }
+        val lock = locks[(target.path.hashCode() and Int.MAX_VALUE) % locks.size]
         lock.withLock {
             if (target.isFile && target.length() > 0L) {
                 onProgress?.invoke(100)
