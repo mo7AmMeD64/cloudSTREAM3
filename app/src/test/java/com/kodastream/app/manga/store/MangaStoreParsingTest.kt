@@ -187,7 +187,7 @@ class MangaStoreParsingTest {
         val languages = MangaFilters.filterLanguages(all, setOf("en"), allLanguages = false)
         assertEquals(listOf("en", "all", "en"), languages.map { it.lang })
 
-        val safe = MangaFilters.filterContentWarning(all, showNsfw = false)
+        val safe = MangaFilters.filterContentWarning(all)
         assertTrue(safe.none { it.contentWarning == ContentWarning.NSFW })
         assertTrue(safe.any { it.contentWarning == ContentWarning.MIXED })
         assertEquals(all, MangaFilters.filterLanguages(all, emptySet(), allLanguages = false))

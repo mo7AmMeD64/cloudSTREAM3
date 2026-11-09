@@ -519,8 +519,6 @@
     <string name="manga_multi_language">Multi-language</string>
     <string name="manga_extension_languages">Extension languages</string>
     <string name="manga_language_selected_n">%1$d selected</string>
-    <string name="manga_show_nsfw">Show 18+ extensions</string>
-    <string name="manga_show_nsfw_hint">Adult extensions are hidden when this is off.</string>
     <string name="manga_update_all_n">Update all (%1$d)</string>
     <string name="manga_no_installed_title">No extensions installed</string>
     <string name="manga_no_installed_hint">Open Available to install extensions from your stores.</string>

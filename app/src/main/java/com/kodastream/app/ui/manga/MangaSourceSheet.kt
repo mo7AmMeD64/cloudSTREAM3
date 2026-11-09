@@ -53,7 +53,6 @@ fun MangaSourceSheet(
     sources: List<SourceChoice>,
     selectedId: Long?,
     pinnedIds: Set<Long>,
-    showNsfw: Boolean,
     iconUrlFor: (Long) -> String?,
     onSelect: (SourceChoice) -> Unit,
     onTogglePin: (SourceChoice, Boolean) -> Unit,
@@ -62,12 +61,11 @@ fun MangaSourceSheet(
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val appLanguage = remember { Locale.getDefault().language.ifBlank { "en" } }
     val otherLabel = stringResource(R.string.manga_sources_other)
-    val groups = remember(sources, pinnedIds, appLanguage, showNsfw) {
+    val groups = remember(sources, pinnedIds, appLanguage) {
         groupSources(
             sources = sources,
             appLanguage = appLanguage,
             pinnedIds = pinnedIds,
-            showNsfw = showNsfw,
             otherLabel = otherLabel.lowercase(),
         )
     }

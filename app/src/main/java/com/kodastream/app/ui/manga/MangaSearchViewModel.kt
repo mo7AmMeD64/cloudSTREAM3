@@ -78,7 +78,6 @@ class MangaSearchViewModel(application: Application) : AndroidViewModel(applicat
         val selected = selectSource(
             visible.map { com.kodastream.app.manga.SourceChoice(it.source.id, it.source.name, it.language) },
             MangaPrefs.selectedSourceId(app),
-            showNsfw = true,
         )
         return visible.filter { it.source.id == selected?.id }
     }

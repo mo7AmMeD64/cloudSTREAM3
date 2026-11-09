@@ -85,7 +85,6 @@ internal fun MangaSettingsPage(
     val settingsScope = rememberCoroutineScope()
     val appLocale = LocalConfiguration.current.locales[0]
 
-    var showNsfwExtensions by remember { mutableStateOf(MangaPrefs.showNsfw(context)) }
     var mangaAllLanguages by remember { mutableStateOf(MangaPrefs.allLanguages(context)) }
     var mangaLanguages by remember { mutableStateOf(MangaPrefs.languages(context)) }
     var mangaLanguageDialog by remember { mutableStateOf(false) }
@@ -130,7 +129,7 @@ internal fun MangaSettingsPage(
         onBack = onBack,
     ) {
         item(key = "manga_section") {
-            val count = 5
+            val count = 4
             var row = -1
             SettingsGroup(stringResource(R.string.settings_manga_group_sources)) {
                 SwitchRow(
@@ -161,18 +160,6 @@ internal fun MangaSettingsPage(
                     title = stringResource(R.string.manga_stores_title),
                     supporting = stringResource(R.string.settings_manga_stores_summary),
                     onClick = onOpenMangaStores,
-                )
-                SwitchRow(
-                    index = ++row,
-                    count = count,
-                    icon = Icons.Rounded.Visibility,
-                    title = stringResource(R.string.manga_show_nsfw),
-                    supporting = stringResource(R.string.manga_show_nsfw_hint),
-                    checked = showNsfwExtensions,
-                    onCheckedChange = { value ->
-                        MangaPrefs.setShowNsfw(context, value)
-                        showNsfwExtensions = value
-                    },
                 )
                 NavigationRow(
                     index = ++row,

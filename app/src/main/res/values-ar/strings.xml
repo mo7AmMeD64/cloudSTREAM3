@@ -404,8 +404,6 @@
     <string name="manga_multi_language">متعددة اللغات</string>
     <string name="manga_extension_languages">لغات الإضافات</string>
     <string name="manga_language_selected_n">%1$d محددة</string>
-    <string name="manga_show_nsfw">إظهار إضافات +18</string>
-    <string name="manga_show_nsfw_hint">تُخفى الإضافات الإباحية عند إيقاف هذا الخيار.</string>
     <string name="manga_update_all_n">تحديث الكل (%1$d)</string>
     <string name="manga_no_installed_title">لا توجد إضافات مثبّتة</string>
     <string name="manga_no_installed_hint">افتح «المتاحة» لتثبيت إضافات من متاجرك.</string>

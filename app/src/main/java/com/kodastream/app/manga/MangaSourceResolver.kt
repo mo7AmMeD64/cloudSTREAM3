@@ -19,9 +19,8 @@ data class SourceGroupModel(
 fun selectSource(
     sources: List<SourceChoice>,
     savedId: Long?,
-    showNsfw: Boolean,
 ): SourceChoice? {
-    val visible = sources.filter { showNsfw || !it.nsfw }
+    val visible = sources.filterNot { it.nsfw }
     return visible.firstOrNull { it.id == savedId } ?: visible.firstOrNull()
 }
 
@@ -33,11 +32,10 @@ fun groupSources(
     sources: List<SourceChoice>,
     appLanguage: String,
     pinnedIds: Set<Long>,
-    showNsfw: Boolean,
     otherLabel: String = "other",
 ): List<SourceGroupModel> {
     val visible = sources
-        .filter { showNsfw || !it.nsfw }
+        .filterNot { it.nsfw }
         .distinctBy { it.id }
 
     val pinned = visible

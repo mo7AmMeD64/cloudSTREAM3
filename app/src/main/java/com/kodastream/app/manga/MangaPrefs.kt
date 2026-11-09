@@ -9,7 +9,6 @@ import androidx.core.content.edit
  */
 object MangaPrefs {
     private const val PREFS = "manga_prefs"
-    private const val KEY_NSFW = "show_nsfw"
     private const val KEY_NSFW_GLOBAL = "show_nsfw_global"
     private const val KEY_ALL_LANGUAGES = "all_languages"
     private const val KEY_LANGUAGES = "languages"
@@ -52,12 +51,6 @@ object MangaPrefs {
 
     private fun prefs(context: Context) =
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-
-    fun showNsfw(context: Context): Boolean = prefs(context).getBoolean(KEY_NSFW, false)
-
-    fun setShowNsfw(context: Context, value: Boolean) {
-        prefs(context).edit { putBoolean(KEY_NSFW, value) }
-    }
 
     fun showNsfwGlobalSearch(context: Context): Boolean =
         prefs(context).getBoolean(KEY_NSFW_GLOBAL, false)

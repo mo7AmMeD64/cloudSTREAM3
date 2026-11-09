@@ -258,7 +258,6 @@ fun MangaBrowseScreen(
             sources = sources.map { it.toChoice() },
             selectedId = selected?.source?.id,
             pinnedIds = pinned,
-            showNsfw = MangaPrefs.showNsfw(context),
             iconUrlFor = { id ->
                 sources.firstOrNull { it.source.id == id }
                     ?.let { iconByPackage[it.extension.pkgName] }

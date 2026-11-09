@@ -15,11 +15,8 @@ object MangaFilters {
         return extensions.filter { it.lang == "all" || it.lang in languages }
     }
 
-    fun filterContentWarning(
-        extensions: List<AvailableExtension>,
-        showNsfw: Boolean,
-    ): List<AvailableExtension> {
-        return if (showNsfw) extensions else extensions.filter { it.contentWarning != ContentWarning.NSFW }
+    fun filterContentWarning(extensions: List<AvailableExtension>): List<AvailableExtension> {
+        return extensions.filter { it.contentWarning != ContentWarning.NSFW }
     }
 
     fun search(extensions: List<AvailableExtension>, query: String): List<AvailableExtension> {
@@ -36,12 +33,10 @@ object MangaFilters {
         extensions: List<AvailableExtension>,
         languages: Set<String>,
         allLanguages: Boolean,
-        showNsfw: Boolean,
         query: String,
     ): List<AvailableExtension> = search(
         filterContentWarning(
             filterLanguages(extensions, languages, allLanguages),
-            showNsfw,
         ),
         query,
     )

@@ -57,13 +57,12 @@ class MangaBrowseViewModel(application: Application) : AndroidViewModel(applicat
     private val manager = MangaSourceManager.get(app)
 
     private val savedId = MutableStateFlow(MangaPrefs.selectedSourceId(app))
-    private val showNsfw = MutableStateFlow(MangaPrefs.showNsfw(app))
 
     val sources: StateFlow<List<LoadedSource>> = manager.sources
     val loadingSources: StateFlow<Boolean> = manager.loading
 
-    val selected: StateFlow<LoadedSource?> = combine(sources, savedId, showNsfw) { list, saved, nsfw ->
-        val choice = selectSource(list.map { it.toChoice() }, saved, nsfw)
+    val selected: StateFlow<LoadedSource?> = combine(sources, savedId) { list, saved ->
+        val choice = selectSource(list.map { it.toChoice() }, saved)
         list.firstOrNull { it.source.id == choice?.id }
     }.stateIn(viewModelScope, SharingStarted.Eagerly, null)
 

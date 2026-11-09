@@ -61,7 +61,6 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -134,7 +133,6 @@ fun MangaExtensionsScreen(
     val context = LocalContext.current
     val locale = LocalConfiguration.current.locales[0]
 
-    var showNsfw by remember { mutableStateOf(MangaPrefs.showNsfw(context)) }
     var allLanguages by remember { mutableStateOf(MangaPrefs.allLanguages(context)) }
     var languages by remember { mutableStateOf(MangaPrefs.languages(context)) }
     var tab by rememberSaveable { mutableStateOf(0) }
@@ -150,10 +148,6 @@ fun MangaExtensionsScreen(
     var testSourceName by remember { mutableStateOf("") }
     var testLinkFailure by remember { mutableStateOf<MangaExtension.Loaded.LinkFailure?>(null) }
 
-    val changeNsfw: (Boolean) -> Unit = {
-        showNsfw = it
-        MangaPrefs.setShowNsfw(context, it)
-    }
     val changeLanguages: (Set<String>, Boolean) -> Unit = { selected, all ->
         allLanguages = all
         languages = selected
@@ -176,11 +170,11 @@ fun MangaExtensionsScreen(
         mangaSourceLanguages(available.map { it.lang })
             .sortedBy { mangaLanguageSortKey(it, locale) }
     }
-    val shownInstalled = remember(installed, languages, allLanguages, showNsfw, query) {
+    val shownInstalled = remember(installed, languages, allLanguages, query) {
         installed.filter { extension ->
             val inLanguage = allLanguages || extension.lang == null ||
                 extension.lang == "all" || extension.lang in languages
-            val inWarning = showNsfw || extension.contentWarning != ContentWarning.NSFW
+            val inWarning = extension.contentWarning != ContentWarning.NSFW
             val needle = query.trim()
             val inQuery = needle.isEmpty() ||
                 extension.name.contains(needle, ignoreCase = true) ||
@@ -189,9 +183,9 @@ fun MangaExtensionsScreen(
         }
     }
     val shownAvailable = remember(
-        newestListings, languages, allLanguages, showNsfw, query,
+        newestListings, languages, allLanguages, query,
     ) {
-        MangaFilters.filter(newestListings, languages, allLanguages, showNsfw, query)
+        MangaFilters.filter(newestListings, languages, allLanguages, query)
     }
     val updateCount = remember(installed, available) {
         installed.count { extension ->
@@ -360,7 +354,7 @@ fun MangaExtensionsScreen(
                 )
 
                 else -> AvailableTab(
-                    filtersActive = !allLanguages || languages.isNotEmpty() || showNsfw || query.isNotBlank(),
+                    filtersActive = !allLanguages || languages.isNotEmpty() || query.isNotBlank(),
                     available = shownAvailable,
                     hasAvailable = newestListings.isNotEmpty(),
                     installed = installed,
@@ -383,8 +377,6 @@ fun MangaExtensionsScreen(
 
     if (showFilters) {
         MangaFiltersSheet(
-            showNsfw = showNsfw,
-            onNsfwChange = changeNsfw,
             allLanguages = allLanguages,
             languages = languages,
             onOpenLanguages = {
@@ -1189,8 +1181,6 @@ private fun StoreErrorBanner(message: String, onRetry: () -> Unit) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun MangaFiltersSheet(
-    showNsfw: Boolean,
-    onNsfwChange: (Boolean) -> Unit,
     allLanguages: Boolean,
     languages: Set<String>,
     onOpenLanguages: () -> Unit,
@@ -1211,26 +1201,6 @@ private fun MangaFiltersSheet(
                 style = MaterialTheme.typography.headlineSmall,
                 modifier = Modifier.padding(vertical = 8.dp),
             )
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(min = 56.dp)
-                    .clickable { onNsfwChange(!showNsfw) },
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Column(Modifier.weight(1f)) {
-                    Text(
-                        text = stringResource(R.string.manga_show_nsfw),
-                        style = MaterialTheme.typography.bodyLarge,
-                    )
-                    Text(
-                        text = stringResource(R.string.manga_show_nsfw_hint),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                Switch(checked = showNsfw, onCheckedChange = onNsfwChange)
-            }
             HorizontalDivider()
             Row(
                 modifier = Modifier
