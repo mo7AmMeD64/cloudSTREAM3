@@ -60,4 +60,13 @@ data class MangaReaderSettings(
     val webtoonPadding: Int = 0,
     val doubleTapZoom: Boolean = true,
     val orientation: MangaReaderOrientation = MangaReaderOrientation.FREE,
+    // Mihon defaults for behaviour the app has no controls for yet.
+    val landscapeZoom: Boolean = true,
+    val navigateToPan: Boolean = true,
+    val alwaysShowChapterTransition: Boolean = true,
+    val longTapEnabled: Boolean = true,
+    val dualPageSplit: Boolean = false,
+    val dualPageInvert: Boolean = false,
+    val dualPageRotateToFit: Boolean = false,
+    val dualPageRotateToFitInvert: Boolean = false,
 )

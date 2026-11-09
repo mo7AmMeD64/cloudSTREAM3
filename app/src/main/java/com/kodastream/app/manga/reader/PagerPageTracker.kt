@@ -64,7 +64,12 @@ class PagerPageTracker(
             val allowPreload = checkAllowPreload(page as? ReaderPage)
             val forward = when {
                 currentPage is ReaderPage && page is ReaderPage ->
-                    page.number > (currentPage as ReaderPage).number
+                    // Same number means a split page; the InsertPage is the second half.
+                    if (page.number == (currentPage as ReaderPage).number) {
+                        page is InsertPage
+                    } else {
+                        page.number > (currentPage as ReaderPage).number
+                    }
                 currentPage is ChapterTransition.Prev && page is ReaderPage ->
                     false
                 else -> true
@@ -97,6 +102,9 @@ class PagerPageTracker(
         host.onPageSelected(page)
 
         onPageHolderSelected(page, forward)
+
+        // A split half must not trigger a preload; it would jump the pager.
+        if (page is InsertPage) return
 
         // Preload next chapter once we're within the last 5 pages of the current chapter.
         val inPreloadRange = pages.size - page.number < 5

@@ -3,7 +3,6 @@ package com.kodastream.app.manga.reader
 import android.content.Context
 import android.graphics.Color
 import android.view.Gravity
-import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
@@ -35,10 +34,15 @@ import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
 import androidx.viewpager.widget.PagerAdapter
 import androidx.viewpager.widget.ViewPager
+import com.davemorrissey.labs.subscaleview.SubsamplingScaleImageView
 import com.kodastream.app.R
 import com.kodastream.app.manga.MangaReaderSettings
+import com.kodastream.app.manga.MangaReadingMode
+import com.kodastream.app.manga.MangaScaleType
+import com.kodastream.app.manga.MangaZoomStart
 import eu.kanade.tachiyomi.network.HttpException
 import eu.kanade.tachiyomi.source.model.Page
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -46,6 +50,9 @@ import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.supervisorScope
+import kotlinx.coroutines.withContext
+import okio.Buffer
+import okio.BufferedSource
 
 /** Everything a viewer needs from the activity/view model. */
 interface ReaderViewerHost {
@@ -75,34 +82,119 @@ interface ReaderViewer {
     fun destroy()
 }
 
-/** Ported from Mihon's `viewer/pager/PagerItems.kt`, without page splitting. */
+/**
+ * Ported from Mihon's `viewer/pager/PagerItems.kt`: the pager's items, flipped
+ * for right-to-left reading, with [InsertPage] support for split wide pages.
+ */
 class PagerItems(private val isReversed: Boolean) {
+
     var items: List<Any> = emptyList()
         private set
-    var currentChapter: ReaderChapter? = null
-        private set
+
+    /** Pages split while their chapter was only an adjacent one. */
+    private var preprocessed: List<InsertPage> = emptyList()
+
     var nextTransition: ChapterTransition.Next? = null
         private set
 
-    fun setChapters(chapters: ViewerChapters, forceTransition: Boolean, currentPosition: Int): Int {
-        val currentItem = items.getOrNull(currentPosition)
+    var currentChapter: ReaderChapter? = null
+        private set
+
+    fun setChapters(
+        chapters: ViewerChapters,
+        forceTransition: Boolean,
+        currentPosition: Int,
+    ): Update {
+        var insertPageLastPage: InsertPage? = null
+
+        val currPages = chapters.currChapter.pages?.toMutableList()?.also { pages ->
+            val lastPage = pages.lastOrNull() ?: return@also
+            preprocessed
+                .filter { it.chapter.chapter.url == chapters.currChapter.chapter.url }
+                .sortedByDescending { it.index }
+                .forEach { page ->
+                    if (lastPage.index == page.index) {
+                        insertPageLastPage = page
+                    }
+                    pages.add((page.index + 1).coerceIn(0, pages.size), page)
+                }
+        }
+
+        val newItems = viewerItems(chapters, forceTransition, currPages)
         currentChapter = chapters.currChapter
         nextTransition = ChapterTransition.Next(chapters.currChapter, chapters.nextChapter)
-        val newItems = viewerItems(chapters, forceTransition).toMutableList()
-        if (isReversed) newItems.reverse()
+
+        val currentItem = items.getOrNull(currentPosition)
+
+        if (isReversed) {
+            newItems.reverse()
+        }
+
+        val adjacentChapterUrls = setOfNotNull(
+            chapters.prevChapter?.chapter?.url,
+            chapters.nextChapter?.chapter?.url,
+        )
+        preprocessed = preprocessed.filter { it.chapter.chapter.url in adjacentChapterUrls }
         items = newItems
-        // Same item still in the list: follow it. Otherwise the pager goes to
-        // the chapter's requested page.
-        return newItems.indexOf(currentItem)
+
+        // Before the pager has laid anything out it would keep its position
+        // while pages are added in front, landing in another chapter.
+        val position = items.indexOf(currentItem).takeIf { it != -1 && it != currentPosition }
+        return Update(position, insertPageLastPage)
     }
+
+    fun onPageSplit(currentPage: Any?, newPage: InsertPage): Boolean {
+        if (currentPage !is ReaderPage) return false
+
+        val currentIndex = items.indexOf(currentPage)
+        if (currentIndex == -1) return false
+
+        // Keep pages of an adjacent chapter for when it becomes current.
+        if (currentPage.chapter.chapter.url != currentChapter?.chapter?.url) {
+            val url = newPage.chapter.chapter.url
+            if (preprocessed.none { it.chapter.chapter.url == url && it.index == newPage.index }) {
+                preprocessed = preprocessed + newPage
+            }
+            return false
+        }
+
+        val placeAtIndex = if (isReversed) currentIndex else currentIndex + 1
+        if (placeAtIndex !in 0..items.size) return false
+
+        if (isReversed &&
+            placeAtIndex - 1 >= 0 &&
+            items[placeAtIndex - 1] is InsertPage
+        ) {
+            return false
+        }
+        if (placeAtIndex < items.size && items[placeAtIndex] is InsertPage) {
+            return false
+        }
+
+        items = items.toMutableList().apply { add(placeAtIndex, newPage) }
+        return true
+    }
+
+    fun cleanupPageSplit() {
+        items = items.filterNot { it is InsertPage }
+    }
+
+    /**
+     * Where the pager goes after the items change: [position] keeps the same
+     * item, [insertPage] is the split second half at the chapter's end.
+     */
+    class Update(val position: Int?, val insertPage: InsertPage?)
 }
 
-/** Ported from Mihon's pager viewers; R2L reverses the item list. */
+/**
+ * Ported from Mihon's pager viewers. Right-to-left reading reverses the item
+ * list; forward always means the next item, exactly as Mihon does it.
+ */
 class PagerViewer(
     private val context: Context,
     private val host: ReaderViewerHost,
     private val readingRtl: Boolean,
-    isHorizontal: Boolean,
+    private val isHorizontal: Boolean,
 ) : ReaderViewer {
 
     private val pager = Pager(context, isHorizontal).apply {
@@ -113,12 +205,15 @@ class PagerViewer(
         isFocusable = false
         descendantFocusability = ViewGroup.FOCUS_BLOCK_DESCENDANTS
         offscreenPageLimit = 1
+        // Don't lay the pager out before the first chapters arrive.
+        visibility = View.GONE
     }
     private val items = PagerItems(isReversed = readingRtl)
     private val adapter = ReaderPagerAdapter()
-
-    /** Until the first layout, the pager must move to the chapter's requested page. */
-    private var firstLayout = true
+    private val dualPage = host.settings.asDualPageSettings()
+    private val tracker = PagerPageTracker(host, items, ::setChaptersNow) { page, forward ->
+        getPageHolder(page)?.onPageSelected(forward)
+    }
 
     private val pagerListener = object : ViewPager.SimpleOnPageChangeListener() {
         override fun onPageSelected(position: Int) {
@@ -130,23 +225,28 @@ class PagerViewer(
         }
     }
 
-    private val tracker = PagerPageTracker(host, items, ::setChaptersNow)
-
     override val view: View get() = pager
 
     init {
         pager.adapter = adapter
         pager.addOnPageChangeListener(pagerListener)
         pager.tapListener = { event ->
-            host.onTap(event.x / pager.width.coerceAtLeast(1), event.y / pager.height.coerceAtLeast(1))
+            host.onTap(
+                event.x / pager.width.coerceAtLeast(1),
+                event.y / pager.height.coerceAtLeast(1),
+            )
         }
         pager.longTapListener = {
-            val page = adapter.items.getOrNull(pager.currentItem) as? ReaderPage
-            if (page != null) {
-                host.onLongTap(page)
-                true
-            } else {
+            if (!host.settings.longTapEnabled) {
                 false
+            } else {
+                val page = adapter.items.getOrNull(pager.currentItem) as? ReaderPage
+                if (page != null) {
+                    host.onLongTap(page)
+                    true
+                } else {
+                    false
+                }
             }
         }
     }
@@ -156,72 +256,112 @@ class PagerViewer(
     }
 
     /**
-     * Mihon's `setChaptersInternal`: the listener is removed while the items
-     * change so the views don't report positions from an old list, and the new
-     * list is followed by the item that is still on screen. The first chapter
-     * moves to the chapter's requested page; after that the pager stays on
-     * the item the user is looking at, including across a chapter boundary.
+     * Ported from Mihon's `setChaptersInternal`: the listener is removed while
+     * the items change, the pager follows the item still on screen, and the
+     * first layout lands on the chapter's requested page.
      */
     private fun setChaptersNow(chapters: ViewerChapters) {
         pager.removeOnPageChangeListener(pagerListener)
-        val position = items.setChapters(
-            chapters = chapters,
-            forceTransition = adapter.items.getOrNull(pager.currentItem) is ChapterTransition,
-            currentPosition = pager.currentItem,
-        )
-        adapter.notifyDataSetChanged()
-        val pages = chapters.currChapter.pages
-        when {
-            position >= 0 && position != pager.currentItem -> pager.setCurrentItem(position, false)
-            firstLayout && pages != null && pages.isNotEmpty() -> {
-                val target = pages[chapters.currChapter.requestedPage.coerceIn(0, pages.lastIndex)]
-                moveToPage(target)
-                firstLayout = false
+        try {
+            val forceTransition = host.settings.alwaysShowChapterTransition ||
+                adapter.items.getOrNull(pager.currentItem) is ChapterTransition
+            val update = items.setChapters(chapters, forceTransition, pager.currentItem)
+            adapter.notifyDataSetChanged()
+
+            update.position?.let { pager.setCurrentItem(it, false) }
+            update.insertPage?.let(::moveToPage)
+
+            if (pager.visibility != View.VISIBLE) {
+                val pages = chapters.currChapter.pages
+                if (!pages.isNullOrEmpty()) {
+                    moveToPage(pages[chapters.currChapter.requestedPage.coerceIn(0, pages.lastIndex)])
+                }
+                pager.visibility = View.VISIBLE
             }
+        } finally {
+            pager.addOnPageChangeListener(pagerListener)
         }
-        pager.addOnPageChangeListener(pagerListener)
-        // Set the active page manually because settingCurrentItem doesn't trigger the listener.
+        // Setting currentItem doesn't trigger the listener in every case.
         tracker.onPageChange(pager.currentItem)
     }
 
     override fun moveToPage(page: ReaderPage) {
         val position = adapter.items.indexOf(page)
-        if (position >= 0) {
-            pager.setCurrentItem(position, false)
+        if (position == -1) return
+        val current = pager.currentItem
+        pager.setCurrentItem(position, true)
+        if (current == position) {
             tracker.onPageChange(position)
         }
     }
 
-    override fun moveForward() = move(if (readingRtl) -1 else 1)
+    override fun moveForward() = if (readingRtl) moveLeft() else moveRight()
 
-    override fun moveBackward() = move(if (readingRtl) 1 else -1)
+    override fun moveBackward() = if (readingRtl) moveRight() else moveLeft()
 
-    private fun move(delta: Int) {
-        // Mihon gives a zoomed page the tap before turning it: panning to the
-        // edge and then tapping again turns the page.
-        val page = tracker.currentPage as? ReaderPage
-        val holder = pager.children
-            .filterIsInstance<PagerPageHolder>()
-            .firstOrNull { it.tag === page }
-        if (holder != null) {
-            if (delta > 0 && holder.canPanRight()) {
-                holder.panRight()
-                return
-            }
-            if (delta < 0 && holder.canPanLeft()) {
-                holder.panLeft()
-                return
-            }
+    private fun moveRight() {
+        if (pager.currentItem == adapter.count - 1) return
+        val holder = (tracker.currentPage as? ReaderPage)?.let(::getPageHolder)
+        if (holder != null && host.settings.navigateToPan && holder.canPanRight()) {
+            holder.panRight()
+        } else {
+            pager.setCurrentItem(pager.currentItem + 1, host.settings.pageTransitions)
         }
-        val next = (pager.currentItem + delta).coerceIn(0, adapter.count - 1)
-        if (next != pager.currentItem) {
-            pager.setCurrentItem(next, host.settings.pageTransitions)
+    }
+
+    private fun moveLeft() {
+        if (pager.currentItem == 0) return
+        val holder = (tracker.currentPage as? ReaderPage)?.let(::getPageHolder)
+        if (holder != null && host.settings.navigateToPan && holder.canPanLeft()) {
+            holder.panLeft()
+        } else {
+            pager.setCurrentItem(pager.currentItem - 1, host.settings.pageTransitions)
         }
     }
 
     override fun destroy() {
+        pager.removeOnPageChangeListener(pagerListener)
         pager.adapter = null
     }
+
+    internal fun processPagedImage(page: ReaderPage, source: BufferedSource): BufferedSource =
+        dualPage.processPagedImage(
+            page = page,
+            imageSource = source,
+            isLeftToRight = !readingRtl,
+            onPageSplit = { onPageSplit(page, it) },
+        )
+
+    internal fun configForPage(): ReaderPageImageView.Config {
+        val settings = host.settings
+        return ReaderPageImageView.Config(
+            zoomDuration = if (settings.pageTransitions) 200 else 0,
+            minimumScaleType = settings.scaleType.minimumScaleType(),
+            cropBorders = settings.cropBorders,
+            zoomStartPosition = zoomStartPosition(),
+            landscapeZoom = settings.landscapeZoom,
+        )
+    }
+
+    private fun zoomStartPosition(): ReaderPageImageView.ZoomStartPosition =
+        when (host.settings.zoomStart) {
+            MangaZoomStart.LEFT -> ReaderPageImageView.ZoomStartPosition.LEFT
+            MangaZoomStart.CENTER -> ReaderPageImageView.ZoomStartPosition.CENTER
+            MangaZoomStart.RIGHT -> ReaderPageImageView.ZoomStartPosition.RIGHT
+            MangaZoomStart.AUTOMATIC -> when {
+                readingRtl -> ReaderPageImageView.ZoomStartPosition.RIGHT
+                !isHorizontal -> ReaderPageImageView.ZoomStartPosition.CENTER
+                else -> ReaderPageImageView.ZoomStartPosition.LEFT
+            }
+        }
+
+    internal fun onPageSplit(currentPage: ReaderPage, newPage: InsertPage) {
+        // Insert on the UI thread or the images go blank.
+        pager.post { adapter.onPageSplit(currentPage, newPage) }
+    }
+
+    private fun getPageHolder(page: ReaderPage): PagerPageHolder? =
+        pager.children.filterIsInstance<PagerPageHolder>().firstOrNull { it.page === page }
 
     private inner class ReaderPagerAdapter : PagerAdapter() {
         val items: List<Any> get() = this@PagerViewer.items.items
@@ -233,7 +373,7 @@ class PagerViewer(
         override fun instantiateItem(container: ViewGroup, position: Int): Any {
             val item = items[position]
             val view: View = when (item) {
-                is ReaderPage -> PagerPageHolder(context, host, item)
+                is ReaderPage -> PagerPageHolder(context, this@PagerViewer, host, item)
                 is ChapterTransition -> PagerTransitionHolder(context, item, host)
                 else -> error("Unknown reader item")
             }
@@ -243,26 +383,31 @@ class PagerViewer(
         }
 
         override fun destroyItem(container: ViewGroup, position: Int, obj: Any) {
-            (obj as? View)?.let {
-                if (it is PagerPageHolder) it.recycle()
-                container.removeView(it)
-            }
+            val view = obj as? View ?: return
+            if (view is PagerPageHolder) view.recycle()
+            container.removeView(view)
         }
 
         override fun getItemPosition(obj: Any): Int {
             val item = (obj as? View)?.tag
-            return if (items.any { it === item || it == item }) {
-                androidx.viewpager.widget.PagerAdapter.POSITION_UNCHANGED
-            } else {
-                androidx.viewpager.widget.PagerAdapter.POSITION_NONE
-            }
+            return item?.let { items.indexOf(it) }?.takeIf { it != -1 }
+                ?: PagerAdapter.POSITION_NONE
         }
 
         override fun getPageTitle(position: Int): CharSequence? = null
+
+        fun onPageSplit(currentPage: ReaderPage, newPage: InsertPage) {
+            if (this@PagerViewer.items.onPageSplit(currentPage, newPage)) {
+                notifyDataSetChanged()
+            }
+        }
     }
 }
 
-/** Shared page progress, error panel and watchdog for both viewers. */
+/**
+ * Shared page progress, error panel and watchdog. It owns the loader retry path
+ * Mihon keeps in each holder, so the two viewers cannot drift apart.
+ */
 private class ReaderPageState(
     container: FrameLayout,
     private val host: ReaderViewerHost,
@@ -315,6 +460,7 @@ private class ReaderPageState(
 
     fun onImageLoaded() {
         progress.isVisible = false
+        error.hide()
     }
 
     fun onImageError(e: Throwable?) {
@@ -333,6 +479,7 @@ private class ReaderPageState(
     }
 
     private suspend fun attemptLoad(page: ReaderPage) {
+        if (page.status is Page.State.Ready) return
         val loader = page.chapter.pageLoader
         if (loader == null) {
             host.reloadChapter(page.chapter)
@@ -376,6 +523,7 @@ private class ReaderPageState(
     private fun showLoading() {
         progress.isVisible = true
         progress.isIndeterminate = true
+        progress.bringToFront()
         error.hide()
     }
 }
@@ -414,6 +562,7 @@ private class PageErrorPanel(context: Context) : LinearLayout(context) {
         val code = httpErrorCode(error)
         webView.isVisible = code == 403 || code == 503
         webView.setOnClickListener { onOpenWebView() }
+        bringToFront()
         isVisible = true
     }
 
@@ -432,29 +581,50 @@ private fun httpErrorCode(error: Throwable?): Int? {
     return null
 }
 
-/** Pager page holder, ported from `PagerPageHolder.kt`. */
+/**
+ * Pager page holder, ported from `PagerPageHolder.kt`. The buffer is split or
+ * rotated off the main thread exactly where Mihon does it.
+ */
 private class PagerPageHolder(
     context: Context,
-    host: ReaderViewerHost,
-    page: ReaderPage,
+    private val viewer: PagerViewer,
+    private val host: ReaderViewerHost,
+    val page: ReaderPage,
 ) : ReaderPageImageView(context) {
 
-    private val state = ReaderPageState(this, host) { ready ->
-        setPage(ready, host.settings, host.sourceId)
-    }
+    private val state = ReaderPageState(this, host) { ready -> loadImage(ready) }
+    private var loadJob: Job? = null
 
     init {
         onImageLoaded = { state.onImageLoaded() }
         onImageLoadError = { e -> state.onImageError(e) }
+        onScaleChanged = { host.hideMenu() }
         state.bind(page)
     }
 
-    override fun onDetachedFromWindow() {
-        state.recycle()
-        super.onDetachedFromWindow()
+    private fun loadImage(page: ReaderPage) {
+        val streamFn = page.stream ?: return
+        loadJob?.cancel()
+        loadJob = host.readerScope.launch {
+            try {
+                val buffer = withContext(Dispatchers.IO) {
+                    streamFn().use { Buffer().readFrom(it) }
+                }
+                val (source, isAnimated) = withContext(Dispatchers.Default) {
+                    val source = viewer.processPagedImage(page, buffer)
+                    source to ReaderImageUtil.isAnimatedAndSupported(source)
+                }
+                setImage(page, source, isAnimated, viewer.configForPage())
+            } catch (e: Throwable) {
+                if (e is CancellationException) throw e
+                state.onImageError(e)
+            }
+        }
     }
 
     override fun recycle() {
+        loadJob?.cancel()
+        loadJob = null
         state.recycle()
         super.recycle()
     }
@@ -463,8 +633,8 @@ private class PagerPageHolder(
 /** Pager chapter transition holder, ported from `PagerTransitionHolder.kt`. */
 private class PagerTransitionHolder(
     context: Context,
-    private val transition: ChapterTransition,
-    private val host: ReaderViewerHost,
+    transition: ChapterTransition,
+    host: ReaderViewerHost,
 ) : FrameLayout(context) {
     init {
         setPadding(dp(32), 0, dp(32), 0)
@@ -477,11 +647,19 @@ private class PagerTransitionHolder(
     }
 }
 
-/** Webtoon viewer, ported from `WebtoonViewer.kt` and `WebtoonAdapter.kt`. */
+/**
+ * Webtoon viewer, ported from `WebtoonViewer.kt` and `WebtoonAdapter.kt`.
+ * Pages are added with margins and a placeholder height so the list cannot
+ * recycle a page before its first strip is decoded.
+ */
 class WebtoonViewer(
     context: Context,
     private val host: ReaderViewerHost,
 ) : ReaderViewer {
+
+    val isContinuous: Boolean = host.settings.mode != MangaReadingMode.WEBTOON_GAPS
+
+    val sidePaddingPixels: Int get() = recycler.sidePaddingPixels
 
     private val recycler = WebtoonRecyclerView(context)
     private val frame = WebtoonFrame(context)
@@ -490,8 +668,6 @@ class WebtoonViewer(
     private val webtoonItems = WebtoonItems()
     private val adapter = WebtoonAdapter()
     private val tracker = WebtoonPageTracker(host, webtoonItems, HIDE_MENU_DISTANCE)
-    /** Until the first layout, the recycler must scroll to the requested page. */
-    private var firstLayout = true
 
     override val view: View get() = frame
 
@@ -511,7 +687,7 @@ class WebtoonViewer(
         recycler.adapter = adapter
         recycler.setItemViewCacheSize(4)
         recycler.sidePaddingPercent = host.settings.webtoonPadding
-        recycler.doubleTapZoom = host.settings.doubleTapZoom
+        recycler.visibility = View.GONE
         recycler.addOnScrollListener(
             object : RecyclerView.OnScrollListener() {
                 override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
@@ -531,51 +707,56 @@ class WebtoonViewer(
             )
         }
         recycler.longTapListener = { event ->
-            val child = recycler.findChildViewUnder(event.x, event.y)
-            val page = child?.let { webtoonItems.items.getOrNull(recycler.getChildAdapterPosition(it)) } as? ReaderPage
-            if (page != null) {
-                host.onLongTap(page)
-                true
-            } else {
+            if (!host.settings.longTapEnabled) {
                 false
+            } else {
+                val child = recycler.findChildViewUnder(event.x, event.y)
+                val page = child?.let {
+                    webtoonItems.items.getOrNull(recycler.getChildAdapterPosition(it))
+                } as? ReaderPage
+                if (page != null) {
+                    host.onLongTap(page)
+                    true
+                } else {
+                    false
+                }
             }
         }
         frame.addView(recycler)
+        // After the recycler is a child, so the frame's setter reaches it.
+        frame.doubleTapZoom = host.settings.doubleTapZoom
     }
 
     override fun setChapters(chapters: ViewerChapters) {
         val old = webtoonItems.items
         // Keep the transition while the user is on it, or it would disappear
         // from under their finger the moment the chapter finishes loading.
-        val forceTransition = tracker.currentPage is ChapterTransition
+        val forceTransition = host.settings.alwaysShowChapterTransition ||
+            tracker.currentPage is ChapterTransition
         webtoonItems.setChapters(chapters, forceTransition)
         val items = webtoonItems.items
         DiffUtil.calculateDiff(object : DiffUtil.Callback() {
             override fun getOldListSize() = old.size
             override fun getNewListSize() = items.size
-            override fun areItemsTheSame(oldPos: Int, newPos: Int) = old[oldPos] === items[newPos]
+            override fun areItemsTheSame(oldPos: Int, newPos: Int) = old[oldPos] == items[newPos]
             override fun areContentsTheSame(oldPos: Int, newPos: Int) = true
         }).dispatchUpdatesTo(adapter)
 
-        // The chapter menu navigates through pages, so the first layout goes
-        // to the chapter's requested page; after that the list keeps the
-        // position of the page the user is on.
-        if (firstLayout) {
+        if (recycler.visibility != View.VISIBLE) {
             val pages = chapters.currChapter.pages
-            if (pages != null && pages.isNotEmpty()) {
+            if (!pages.isNullOrEmpty()) {
                 moveToPage(pages[chapters.currChapter.requestedPage.coerceIn(0, pages.lastIndex)])
-                firstLayout = false
             }
+            recycler.visibility = View.VISIBLE
         }
     }
 
     override fun moveToPage(page: ReaderPage) {
         val position = webtoonItems.items.indexOf(page)
-        if (position >= 0) {
-            layoutManager.scrollToPositionWithOffset(position, 0)
-            if (layoutManager.findLastEndVisibleItemPosition() == -1) {
-                tracker.onScrolled(position)
-            }
+        if (position < 0) return
+        layoutManager.scrollToPositionWithOffset(position, 0)
+        if (layoutManager.findLastEndVisibleItemPosition() == -1) {
+            tracker.onScrolled(position)
         }
     }
 
@@ -594,6 +775,9 @@ class WebtoonViewer(
         frame.removeAllViews()
     }
 
+    @Suppress("UNUSED_PARAMETER")
+    internal fun onPageViewCreated(view: ReaderPageImageView) = Unit
+
     private inner class WebtoonAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         override fun getItemCount(): Int = webtoonItems.items.size
 
@@ -602,7 +786,11 @@ class WebtoonViewer(
 
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder =
             if (viewType == PAGE_VIEW) {
-                WebtoonPageHolder(ReaderPageImageView(parent.context, isWebtoon = true), host)
+                WebtoonPageHolder(
+                    ReaderPageImageView(parent.context, isWebtoon = true),
+                    this@WebtoonViewer,
+                    host,
+                )
             } else {
                 WebtoonTransitionHolder(parent.context, host)
             }
@@ -626,77 +814,73 @@ private const val HIDE_MENU_DISTANCE = 31
 private const val PAGE_VIEW = 0
 private const val TRANSITION_VIEW = 1
 
-/** Webtoon page holder, ported from `WebtoonPageHolder.kt`. */
+/**
+ * Webtoon page holder, ported from `WebtoonPageHolder.kt`. The frame's minimum
+ * height keeps the item measured while the first strip decodes, which is what
+ * stops a long chapter from showing blank rows.
+ */
 private class WebtoonPageHolder(
-    private val frameView: ReaderPageImageView,
+    private val frame: ReaderPageImageView,
+    private val viewer: WebtoonViewer,
     private val host: ReaderViewerHost,
-) : RecyclerView.ViewHolder(frameView) {
+) : RecyclerView.ViewHolder(frame) {
 
-    private val state = ReaderPageState(frameView, host) { ready ->
-        frameView.setPage(ready, host.settings, host.sourceId)
-    }
+    private val state = ReaderPageState(frame, host) { page -> setImage(page) }
 
     init {
-        val context = frameView.context
-        frameView.layoutParams = RecyclerView.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT,
-            placeholderHeight(),
-        )
-        val padding = (host.settings.webtoonPadding / 100f * context.resources.displayMetrics.widthPixels).toInt()
-        val gap = if (host.settings.mode == com.kodastream.app.manga.MangaReadingMode.WEBTOON_GAPS) {
-            (context.resources.displayMetrics.density * 8).toInt()
-        } else {
-            0
-        }
-        frameView.setPadding(padding, gap, padding, gap)
-        frameView.onImageLoaded = { onPageDecoded() }
-        frameView.onImageLoadError = { e -> state.onImageError(e) }
+        frame.onImageLoaded = { onImageDecoded() }
+        frame.onImageLoadError = { e -> state.onImageError(e) }
+        frame.onScaleChanged = { host.hideMenu() }
+        refreshLayoutParams()
     }
 
     fun bind(page: ReaderPage) {
-        // ReaderPageImageView.recycle clears the bound image, so the holder
-        // restores its listeners every time the view comes back from the pool.
-        frameView.onImageLoaded = { onPageDecoded() }
-        frameView.onImageLoadError = { e -> state.onImageError(e) }
-        setFrameHeight(placeholderHeight())
+        frame.onImageLoaded = { onImageDecoded() }
+        frame.onImageLoadError = { e -> state.onImageError(e) }
+        refreshLayoutParams()
+        frame.minimumHeight = parentHeight()
         state.bind(page)
     }
 
-    /**
-     * The placeholder keeps the list from jumping while the header decodes;
-     * the real aspect ratio takes over as soon as the page can be drawn.
-     */
-    private fun onPageDecoded() {
+    private fun setImage(page: ReaderPage) {
+        val file = page.file ?: return
+        frame.setImage(
+            file,
+            page.animated,
+            ReaderPageImageView.Config(
+                zoomDuration = if (host.settings.pageTransitions) 200 else 0,
+                minimumScaleType = SubsamplingScaleImageView.SCALE_TYPE_FIT_WIDTH,
+                cropBorders = host.settings.cropBorders,
+            ),
+        )
+    }
+
+    private fun onImageDecoded() {
+        frame.minimumHeight = 0
         state.onImageLoaded()
-        setFrameHeight(ViewGroup.LayoutParams.WRAP_CONTENT)
     }
 
-    private fun placeholderHeight(): Int =
-        (frameView.resources.displayMetrics.widthPixels * 1.45f).toInt()
-
-    /**
-     * Never replace an attached item's LayoutParams: a fresh instance has no
-     * ViewHolder, and RecyclerView crashes in layout with a null holder.
-     */
-    private fun setFrameHeight(height: Int) {
-        val params = frameView.layoutParams
-        if (params is RecyclerView.LayoutParams) {
-            if (params.width != ViewGroup.LayoutParams.MATCH_PARENT || params.height != height) {
-                params.width = ViewGroup.LayoutParams.MATCH_PARENT
-                params.height = height
-                frameView.requestLayout()
-            }
-        } else {
-            frameView.layoutParams = RecyclerView.LayoutParams(
+    private fun refreshLayoutParams() {
+        val params = frame.layoutParams as? RecyclerView.LayoutParams
+            ?: RecyclerView.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
-                height,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
             )
-        }
+        params.width = ViewGroup.LayoutParams.MATCH_PARENT
+        params.height = ViewGroup.LayoutParams.WRAP_CONTENT
+        params.marginStart = viewer.sidePaddingPixels
+        params.marginEnd = viewer.sidePaddingPixels
+        params.bottomMargin = if (viewer.isContinuous) 0 else dp(15)
+        frame.layoutParams = params
     }
+
+    private fun parentHeight(): Int =
+        viewer.view.height.takeIf { it > 0 } ?: frame.resources.displayMetrics.heightPixels
 
     fun recycle() {
         state.recycle()
-        frameView.recycle()
+        frame.minimumHeight = 0
+        frame.recycle()
     }
 }
 
@@ -817,6 +1001,21 @@ private fun transitionLabel(transition: ChapterTransition, from: String, to: Str
         to,
     )
     return finished + "\n" + other
+}
+
+private fun MangaReaderSettings.asDualPageSettings(): DualPageSettings = object : DualPageSettings {
+    override val dualPageSplit: Boolean get() = this@asDualPageSettings.dualPageSplit
+    override val dualPageInvert: Boolean get() = this@asDualPageSettings.dualPageInvert
+    override val dualPageRotateToFit: Boolean get() = this@asDualPageSettings.dualPageRotateToFit
+    override val dualPageRotateToFitInvert: Boolean get() = this@asDualPageSettings.dualPageRotateToFitInvert
+}
+
+private fun MangaScaleType.minimumScaleType(): Int = when (this) {
+    MangaScaleType.FIT_SCREEN -> SubsamplingScaleImageView.SCALE_TYPE_CENTER_INSIDE
+    MangaScaleType.FIT_WIDTH -> SubsamplingScaleImageView.SCALE_TYPE_FIT_WIDTH
+    MangaScaleType.FIT_HEIGHT -> SubsamplingScaleImageView.SCALE_TYPE_FIT_HEIGHT
+    MangaScaleType.ORIGINAL -> SubsamplingScaleImageView.SCALE_TYPE_ORIGINAL_SIZE
+    MangaScaleType.SMART_FIT -> SubsamplingScaleImageView.SCALE_TYPE_SMART_FIT
 }
 
 private fun dp(value: Int): Int =

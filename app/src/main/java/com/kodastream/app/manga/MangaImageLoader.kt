@@ -3,6 +3,8 @@ package com.kodastream.app.manga
 import android.content.Context
 import coil.ImageLoader
 import coil.decode.DataSource
+import coil.decode.GifDecoder
+import coil.decode.ImageDecoderDecoder
 import coil.decode.ImageSource
 import coil.disk.DiskCache
 import coil.fetch.FetchResult
@@ -56,6 +58,8 @@ object MangaImageLoader {
             .respectCacheHeaders(false)
             .crossfade(120)
             .components {
+                add(GifDecoder.Factory())
+                add(ImageDecoderDecoder.Factory())
                 add(MangaCoverKeyer())
                 add(MangaCoverFetcher.Factory(manager, context))
                 add(MangaPageKeyer())

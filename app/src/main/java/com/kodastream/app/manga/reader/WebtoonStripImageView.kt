@@ -178,8 +178,9 @@ class WebtoonStripImageView(context: Context) : View(context) {
         strips.forEachIndexed { index, strip ->
             if (strip == null) return@forEachIndexed
             val srcTop = index * sourceRowsPerStrip
+            val srcBottom = minOf(srcTop + sourceRowsPerStrip, imageHeight)
             val top = (srcTop * scale).roundToInt()
-            val bottom = ((srcTop + sourceRowsPerStrip).toLong() * scale).toInt()
+            val bottom = (srcBottom * scale).roundToInt()
             if (bottom <= clipRect.top) return@forEachIndexed
             if (top >= clipRect.bottom) return@forEachIndexed
             dstRect.set(left, top, left + drawnWidth, bottom)
@@ -188,13 +189,12 @@ class WebtoonStripImageView(context: Context) : View(context) {
     }
 
     /**
-     * Never enlarge past the page's own pixels: filling the width upscaled
-     * small pages, which is what made webtoon pages look soft. Wider pages
-     * still scale down to the view, now centred instead of stretched.
+     * Fill the view width, like Mihon's strip decoder. Upscaling a narrow page
+     * is intentional: a webtoon source's page width is not the screen width.
      */
     private fun renderScale(viewWidth: Int): Float =
         if (imageWidth <= 0 || viewWidth <= 0) 1f
-        else min(1f, viewWidth.toFloat() / imageWidth)
+        else viewWidth.toFloat() / imageWidth
 
     override fun onTouchEvent(event: MotionEvent): Boolean = false
 

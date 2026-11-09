@@ -178,6 +178,7 @@ dependencies {
     implementation(libs.ax.coil.gif)
     // Manga reader viewers: Mihon's directional pager and tiled image view.
     implementation(libs.ax.directional.viewpager)
+    implementation(libs.ax.photoview)
     implementation(libs.ax.subsampling) {
         exclude(group = "ca.mpreg", module = "imagedecoder")
     }

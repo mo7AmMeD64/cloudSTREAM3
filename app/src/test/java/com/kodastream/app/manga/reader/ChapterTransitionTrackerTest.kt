@@ -94,4 +94,25 @@ class ChapterTransitionTrackerTest {
         tracker.onPageChange(currPageIndex)
         assertEquals(currChapter, host.selected.firstOrNull()?.chapter)
     }
+
+    @Test
+    fun splitHalfCountsAsForwardAndSkipsPreload() {
+        val host = FakeHost()
+        val nextChapter = ReaderChapter(MangaChapter(url = "C", name = "Chapter C", number = 3f, sourceOrder = 3))
+        val items = PagerItems(isReversed = false).also {
+            it.setChapters(ViewerChapters(currChapter, prevChapter, nextChapter), false, 0)
+        }
+        val page = currChapter.pages!!.single()
+        val insert = InsertPage(page)
+        assertTrue(items.onPageSplit(page, insert))
+
+        val forwards = mutableListOf<Boolean>()
+        val tracker = PagerPageTracker(host, items) { _, forward -> forwards += forward }
+        tracker.onPageChange(items.items.indexOf(page))
+        val preloadsBefore = host.preloaded.size
+        tracker.onPageChange(items.items.indexOf(insert))
+
+        assertEquals(true, forwards.last())
+        assertEquals(preloadsBefore, host.preloaded.size)
+    }
 }

@@ -7,19 +7,20 @@ import eu.kanade.tachiyomi.source.model.Page
 import kotlinx.coroutines.flow.MutableStateFlow
 import java.io.File
 import java.io.InputStream
+import kotlin.math.floor
 import kotlin.math.roundToInt
 
 /**
  * Ported from Mihon's `ui/reader/model/ReaderPage`. The source `Page` keeps
  * its status/progress flows; the reader adds the chapter and the cached file.
  */
-class ReaderPage(
+open class ReaderPage(
     index: Int,
     url: String = "",
     imageUrl: String? = null,
 ) : Page(index, url, imageUrl, null) {
 
-    lateinit var chapter: ReaderChapter
+    open lateinit var chapter: ReaderChapter
 
     @Volatile
     var file: File? = null
@@ -30,6 +31,23 @@ class ReaderPage(
 
     /** Kept for parity with Mihon; the loader points it at [file]. */
     var stream: (() -> InputStream)? = null
+}
+
+/**
+ * Ported from Mihon's `InsertPage`: the second half of a wide page that was
+ * split in two by the pager. It shares the parent's image and is already ready,
+ * so the loader never touches it.
+ */
+class InsertPage(val parent: ReaderPage) : ReaderPage(parent.index, parent.url, parent.imageUrl) {
+
+    override var chapter: ReaderChapter = parent.chapter
+
+    init {
+        file = parent.file
+        animated = parent.animated
+        status = State.Ready
+        stream = parent.stream
+    }
 }
 
 /**
@@ -159,7 +177,7 @@ fun chapterGap(from: ReaderChapter?, to: ReaderChapter?): Int {
     val low = from.chapter
     val high = to.chapter
     if (!low.isRecognizedNumber() || !high.isRecognizedNumber()) return 0
-    return (high.number - low.number).toInt() - 1
+    return floor(high.number).toInt() - floor(low.number).toInt() - 1
 }
 
 private fun MangaChapter.isRecognizedNumber(): Boolean = number >= 0f
