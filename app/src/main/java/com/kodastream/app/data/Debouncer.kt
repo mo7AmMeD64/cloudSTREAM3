@@ -34,33 +34,44 @@ class Debouncer(
      * If a write was already pending and [maxDelayMs] is not exceeded, its countdown is reset.
      */
     fun schedule() {
+        var immediateWriter: (() -> Unit)? = null
         synchronized(this) {
             val now = System.currentTimeMillis()
             if (!isDirty || firstScheduleEpochMs == 0L) {
                 firstScheduleEpochMs = now
             }
             isDirty = true
-            job?.cancel()
 
-            val effectiveDelay = if (maxDelayMs > 0L) {
-                val deadline = firstScheduleEpochMs + maxDelayMs
-                (deadline - now).coerceIn(0L, delayMs)
+            if (maxDelayMs > 0L && now >= firstScheduleEpochMs + maxDelayMs) {
+                job?.cancel()
+                job = null
+                isDirty = false
+                firstScheduleEpochMs = 0L
+                immediateWriter = writer
             } else {
-                delayMs
-            }
+                job?.cancel()
 
-            job = scope.launch {
-                delay(effectiveDelay)
-                synchronized(this@Debouncer) {
-                    if (isDirty) {
-                        isDirty = false
-                        firstScheduleEpochMs = 0L
-                        job = null
-                        writer()
+                val effectiveDelay = if (maxDelayMs > 0L) {
+                    val deadline = firstScheduleEpochMs + maxDelayMs
+                    (deadline - now).coerceIn(0L, delayMs)
+                } else {
+                    delayMs
+                }
+
+                job = scope.launch {
+                    delay(effectiveDelay)
+                    synchronized(this@Debouncer) {
+                        if (isDirty) {
+                            isDirty = false
+                            firstScheduleEpochMs = 0L
+                            job = null
+                            writer()
+                        }
                     }
                 }
             }
         }
+        immediateWriter?.invoke()
     }
 
     /**

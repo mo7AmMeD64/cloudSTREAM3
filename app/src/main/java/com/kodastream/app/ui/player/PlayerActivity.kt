@@ -22,11 +22,15 @@ import com.kodastream.app.data.DownloadStore
 import com.kodastream.app.data.HistoryStore
 import com.kodastream.app.data.NavArgs
 import com.kodastream.app.data.PlayerArgs
+import com.kodastream.app.data.WatchStatsStore
 import com.kodastream.app.data.WatchedStore
+import com.kodastream.app.data.isCountableWatchStatsType
+import com.kodastream.app.data.playbackWatchIdentity
 import com.kodastream.app.engine.AppBootstrap
 import com.lagradost.cloudstream3.CommonActivity
 import com.lagradost.cloudstream3.SubtitleFile
 import com.lagradost.cloudstream3.TvType
+import com.lagradost.cloudstream3.ui.player.CS3IPlayer
 import com.lagradost.cloudstream3.ui.player.GeneratorPlayer
 import com.lagradost.cloudstream3.ui.player.PlayerSubtitleHelper
 import com.lagradost.cloudstream3.ui.player.SubtitleOrigin
@@ -50,6 +54,9 @@ class PlayerActivity : AppCompatActivity() {
     private lateinit var args: PlayerArgs
     private var watchedKey: String? = null
     private var halfWatchedKey: String? = null
+
+    /** The player whose real play/pause state feeds the watch-time counter. */
+    private var watchStatsPlayer: CS3IPlayer? = null
 
     private val handler = Handler(Looper.getMainLooper())
     private val progressTicker = object : Runnable {
@@ -142,6 +149,14 @@ class PlayerActivity : AppCompatActivity() {
         handler.removeCallbacks(progressTicker)
         handler.removeCallbacks(hideBars)
         HistoryStore.flush(this)
+        // Rotation keeps the counter running; leaving the player closes the open interval.
+        if (isFinishing && !isChangingConfigurations) {
+            WatchStatsStore.updatePlaybackState(this, false)
+        } else {
+            WatchStatsStore.flushActive(this)
+        }
+        watchStatsPlayer?.setPlaybackStateObserver(null)
+        watchStatsPlayer = null
         super.onDestroy()
     }
 
@@ -192,9 +207,13 @@ class PlayerActivity : AppCompatActivity() {
     }
 
     /** Mirrors the fragment's position into Koda's history and per-episode prefs. */
-    private fun recordProgress() {        if (!::args.isInitialized) return
+    private fun recordProgress() {
+        if (!::args.isInitialized) return
         val fragment = supportFragmentManager
             .findFragmentById(android.R.id.content) as? GeneratorPlayer ?: return
+        // Viewing time is counted from the player's own play/pause state, so it is
+        // updated before any of the position guards below.
+        syncWatchStatistics(fragment)
         val episode = fragment.currentEpisode ?: return
         val position = fragment.player.getPosition() ?: return
         if (position < 5_000L) return
@@ -202,45 +221,95 @@ class PlayerActivity : AppCompatActivity() {
         val base = args.history ?: return
 
         val resumeKey = episode.resumeKey ?: base.resumeKey
+        // The player hands movies the synthetic coordinates 0/0; the details page keys a
+        // movie as null/null. Normalize before anything is persisted so both agree.
+        val queueEpisode = args.queue?.episodes?.firstOrNull { it.index == episode.index }
+            ?: args.queue?.episodes?.getOrNull(episode.index.coerceAtLeast(0))
+        val identity = playbackWatchIdentity(
+            mediaType = args.queue?.type ?: base.type,
+            currentSeason = episode.season,
+            currentEpisode = episode.episode,
+            queueSeason = queueEpisode?.season,
+            queueEpisodeNumber = queueEpisode?.number,
+            historySeason = base.season,
+            historyEpisode = base.episode,
+            fallbackEpisode = episode.index.coerceAtLeast(0) + 1,
+        )
         val entry = base.copy(
-            season = episode.season,
-            episode = episode.episode,
+            season = identity.season,
+            episode = identity.episode,
             episodeTitle = episode.name,
             data = episode.data,
             resumeKey = resumeKey,
             positionMs = position,
             durationMs = duration,
         )
-        val changedEpisode = HistoryStore.current(this)
-            .firstOrNull { it.key == entry.key }?.resumeKey != resumeKey
-        if (changedEpisode) HistoryStore.upsert(this, entry)
-        else HistoryStore.updateProgress(this, entry.key, position, duration)
-        AppPrefs.setPosition(this, resumeKey, position)
-        if (duration > 0) AppPrefs.setDuration(this, resumeKey, duration)
+        // "Pause history" stops new History entries and resume positions; what is
+        // already saved stays, and watched markers below are still written.
+        if (!AppPrefs.pauseHistory(this)) {
+            val changedEpisode = HistoryStore.current(this)
+                .firstOrNull { it.key == entry.key }?.resumeKey != resumeKey
+            if (changedEpisode) HistoryStore.upsert(this, entry)
+            else HistoryStore.updateProgress(this, entry.key, position, duration)
+            AppPrefs.setPosition(this, resumeKey, position)
+            if (duration > 0) AppPrefs.setDuration(this, resumeKey, duration)
+        }
 
         // Halfway marks the episode itself. History stays untouched on purpose:
-        // marking the whole title complete would hide "Continue watching".
-        if (duration > 0 && position >= duration / 2 && halfWatchedKey != resumeKey) {
+        // marking the whole title complete would hide "Continue watching". A movie is
+        // only marked once it is really finished (below).
+        if (identity.canMarkWatched && !identity.isMovie &&
+            duration > 0 && position >= duration / 2 && halfWatchedKey != resumeKey
+        ) {
             halfWatchedKey = resumeKey
             WatchedStore.setAll(
                 this,
-                listOf(WatchedStore.keyOf(entry.apiName, entry.url, episode.season, episode.episode)),
+                listOf(WatchedStore.keyOf(entry.apiName, entry.url, identity.season, identity.episode)),
                 true,
             )
         }
 
-        if (duration > 0 && position >= duration * 0.9 && watchedKey != resumeKey) {
+        if (identity.canMarkWatched && duration > 0 && position >= duration * 0.9 && watchedKey != resumeKey) {
             watchedKey = resumeKey
             WatchedStore.setWatched(
                 context = this,
                 apiName = entry.apiName,
                 url = entry.url,
-                season = episode.season,
-                episode = episode.episode,
+                season = identity.season,
+                episode = identity.episode,
                 resumeKey = resumeKey,
                 watched = true,
             )
         }
+    }
+
+    /** Binds the real ExoPlayer play/pause state to the wall-clock watch-time counter. */
+    private fun syncWatchStatistics(fragment: GeneratorPlayer) {
+        val mediaType = args.queue?.type ?: args.history?.type.orEmpty()
+        val player = fragment.player as? CS3IPlayer
+        val enabled = AppPrefs.watchStatisticsEnabled(this) && isCountableWatchStatsType(mediaType)
+        if (!enabled || player == null) {
+            watchStatsPlayer?.setPlaybackStateObserver(null)
+            watchStatsPlayer = null
+            WatchStatsStore.updatePlaybackState(this, false)
+            return
+        }
+
+        if (watchStatsPlayer !== player) {
+            watchStatsPlayer?.setPlaybackStateObserver(null)
+            watchStatsPlayer = player
+            player.setPlaybackStateObserver { isPlaying ->
+                val stillEnabled = ::args.isInitialized &&
+                    AppPrefs.watchStatisticsEnabled(this) &&
+                    isCountableWatchStatsType(args.queue?.type ?: args.history?.type.orEmpty())
+                WatchStatsStore.updatePlaybackState(this, stillEnabled && isPlaying)
+            }
+        } else {
+            // Reconcile after an activity recreation or a missed callback.
+            WatchStatsStore.updatePlaybackState(this, player.getIsPlaying())
+        }
+        // Persist the open interval every few seconds without stopping the clock.
+        WatchStatsStore.flushActive(this)
     }
 
     /** Turns Koda's playback arguments into the episode list the original player expects. */
@@ -290,8 +359,9 @@ class PlayerActivity : AppCompatActivity() {
                     name = template?.episodeTitle ?: args.subtitle,
                     poster = template?.posterUrl,
                     episode = template?.episode ?: 0,
-                    seasonIndex = 0,
-                    season = template?.season ?: 0,
+                    // Without a queue the real season is unknown; null is safer than "Season 0".
+                    seasonIndex = null,
+                    season = template?.season,
                     data = args.data,
                     apiName = args.apiName,
                     id = args.resumeKey.hashCode(),

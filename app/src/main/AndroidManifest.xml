@@ -75,6 +75,29 @@
             android:theme="@style/Theme.KodaStream.Player"
             android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|keyboardHidden|keyboard|navigation|uiMode|density" />
 
+        <!-- The ported Mihon reader: plain Views under a Compose overlay. -->
+        <activity
+            android:name=".manga.reader.MangaReaderActivity"
+            android:exported="false"
+            android:theme="@style/Theme.KodaStream.Player"
+            android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|keyboardHidden|keyboard|navigation|uiMode|density" />
+
+        <!-- In-app browser for sources that need a Cloudflare check. -->
+        <activity
+            android:name=".manga.reader.MangaWebViewActivity"
+            android:exported="false"
+            android:configChanges="orientation|screenSize|keyboardHidden|keyboard|uiMode" />
+
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
+
         <!-- Keeps downloads running when the app is closed. -->
         <service
             android:name=".downloads.DownloadService"

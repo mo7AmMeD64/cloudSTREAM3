@@ -105,6 +105,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -158,6 +159,7 @@ import com.kodastream.app.ui.components.RemoteImage
 import com.kodastream.app.ui.components.SkeletonBox
 import com.kodastream.app.ui.components.SkeletonPulseProvider
 import com.kodastream.app.ui.components.bouncySpring
+import com.kodastream.app.ui.home.hero.LocalScreenActive
 import com.kodastream.app.ui.library.MoveToSheet
 import com.kodastream.app.ui.theme.ArtworkStatusBarIcons
 import com.lagradost.cloudstream3.ActorData
@@ -179,6 +181,7 @@ import java.util.Date
 import kotlin.math.roundToInt
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -197,6 +200,11 @@ class DetailsViewModel(val args: DetailsArgs) : ViewModel() {
     private val _state = MutableStateFlow<DetailsState>(DetailsState.Loading)
     val state: StateFlow<DetailsState> = _state.asStateFlow()
 
+    private val relatedWorks = RelatedWorksController(viewModelScope)
+
+    /** The "More" rail's works: same-franchise releases and verified genre matches. */
+    val related: StateFlow<DetailsRelatedState> = relatedWorks.state
+
     private var job: Job? = null
 
     init {
@@ -205,19 +213,40 @@ class DetailsViewModel(val args: DetailsArgs) : ViewModel() {
 
     fun load() {
         job?.cancel()
+        relatedWorks.reset()
         job = viewModelScope.launch {
             _state.value = DetailsState.Loading
-            val api = Engine.provider(args.apiName)
+            // The source is normally known, but a library or download entry saved by an
+            // older build, or a back stack restored after process death, can carry an empty
+            // name. Recover the owner from the page url before giving up.
+            val api = Engine.provider(args.apiName) ?: Engine.providerForUrl(args.url)
             if (api == null) {
                 _state.value = DetailsState.Failed("Provider \"${args.apiName}\" is not loaded")
                 return@launch
             }
             Engine.load(api, args.url).fold(
-                onSuccess = { _state.value = DetailsState.Ready(it) },
-                onFailure = { _state.value = DetailsState.Failed(it.readableMessage()) },
+                onSuccess = {
+                    relatedWorks.attach(api, it)
+                    // The page is published first; the rail is looked up only after the
+                    // screen has settled (see setRelatedEnabled).
+                    _state.value = DetailsState.Ready(it)
+                },
+                onFailure = {
+                    relatedWorks.clear()
+                    _state.value = DetailsState.Failed(it.readableMessage())
+                },
             )
         }
     }
+
+    /** Allow or stop the optional "More" rail lookup (it never runs unseen or while playing). */
+    fun setRelatedEnabled(enabled: Boolean) = relatedWorks.setEnabled(enabled)
+
+    /** Stop the optional lookup now, for example when playback starts. */
+    fun cancelRelated() = relatedWorks.cancel()
+
+    /** Each scrollable surface reports here so the lookup waits until all of them are idle. */
+    fun setScrollActivity(source: String, active: Boolean) = relatedWorks.setScrollActivity(source, active)
 }
 
 /** The episodes of a response, grouped by dub status. Movies and live streams have none. */
@@ -243,7 +272,21 @@ fun DetailsScreen(
     onOpenDownloads: () -> Unit = {},
 ) {
     val state by viewModel.state.collectAsState()
+    val relatedWorks by viewModel.related.collectAsState()
     val args = viewModel.args
+    val screenActive = LocalScreenActive.current
+
+    // The "More" rail is optional decoration: look it up only while this page is the one
+    // on screen and has been visible for a moment, so opening a title never competes with
+    // a burst of provider loads. The view model pauses it whenever anything scrolls.
+    LaunchedEffect(state, screenActive) {
+        if (screenActive && state is DetailsState.Ready) {
+            delay(400L)
+            viewModel.setRelatedEnabled(true)
+        } else {
+            viewModel.setRelatedEnabled(false)
+        }
+    }
 
     when (val current = state) {
         DetailsState.Loading -> Box(Modifier.fillMaxSize()) {
@@ -268,11 +311,14 @@ fun DetailsScreen(
 
         is DetailsState.Ready -> DetailsContent(
             response = current.response,
+            relatedWorks = relatedWorks,
             fallbackTitle = args.title,
             onBack = onBack,
             onOpenItem = onOpenItem,
             onPlay = onPlay,
+            onPauseOptionalProviderWork = viewModel::cancelRelated,
             onOpenDownloads = onOpenDownloads,
+            onScrollActive = viewModel::setScrollActivity,
         )
     }
 }
@@ -336,11 +382,14 @@ private fun TopBar(
 @Composable
 private fun DetailsContent(
     response: LoadResponse,
+    relatedWorks: DetailsRelatedState,
     fallbackTitle: String?,
     onBack: () -> Unit,
     onOpenItem: (SearchResponse) -> Unit,
     onPlay: (PlayerArgs) -> Unit,
+    onPauseOptionalProviderWork: () -> Unit,
     onOpenDownloads: () -> Unit,
+    onScrollActive: (String, Boolean) -> Unit,
 ) {
     val context = LocalContext.current
     val uriHandler = LocalUriHandler.current
@@ -455,6 +504,18 @@ private fun DetailsContent(
     val scope = rememberCoroutineScope()
     var downloadSheet by remember { mutableStateOf<DownloadTarget?>(null) }
     var isDownloadingSeason by remember { mutableStateOf(false) }
+
+    val openWebsite: (() -> Unit)? = remember(response.url) {
+        if (canOpenInBrowser(response.url)) {
+            { runCatching { uriHandler.openUri(response.url) } }
+        } else {
+            null
+        }
+    }
+    // The options sheet runs its own link lookup; stop the decorative "More" lookup first.
+    LaunchedEffect(downloadSheet) {
+        if (downloadSheet != null) onPauseOptionalProviderWork()
+    }
     val notifPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
 
     fun ensureNotifPermission() {
@@ -515,6 +576,7 @@ private fun DetailsContent(
                 createdAt = System.currentTimeMillis(),
             ),
         )
+        if (queued) DownloadService.ensure(context)
     }
 
     /** Moves the title and offers Undo for the previous category. */
@@ -588,7 +650,7 @@ private fun DetailsContent(
                     val links = java.util.Collections.synchronizedList(mutableListOf<ExtractorLink>())
                     val subs = java.util.Collections.synchronizedList(mutableListOf<SubtitleFile>())
                     try {
-                        Engine.guarded(30_000L) {
+                        Engine.guarded(api.loadLinksTimeoutMs ?: 120_000L) {
                             api.loadLinks(
                                 episode.data, false,
                                 { sub -> runCatching { subs.add(sub) } },
@@ -596,17 +658,13 @@ private fun DetailsContent(
                             )
                         }
                     } catch (t: Throwable) {
-                        fallbacks++
                         continue
                     }
                     val usable = synchronized(links) { links.toList() }
                         .filter { it.type == ExtractorLinkType.VIDEO || it.type == ExtractorLinkType.M3U8 }
                     val chosen = usable.firstOrNull { it.name.equals(preferredServer, ignoreCase = true) }
                         ?: usable.maxByOrNull { it.quality }
-                    if (chosen == null) {
-                        fallbacks++
-                        continue
-                    }
+                        ?: continue
                     if (!chosen.name.equals(preferredServer, ignoreCase = true)) fallbacks++
                     val sub = if (preferredSubLang == null) {
                         null
@@ -634,6 +692,8 @@ private fun DetailsContent(
     }
 
     fun play(data: String, subtitle: String?, episode: Episode? = null) {
+        // Playback needs the provider's full attention for link extraction.
+        onPauseOptionalProviderWork()
         val resumeKey = response.apiName + "|" + data
         // Episodes carry the whole series with them so the player can walk
         // between episodes without loading anything again.
@@ -703,14 +763,6 @@ private fun DetailsContent(
         }
     }
 
-    val openWebsite: (() -> Unit)? = remember(response.url) {
-        if (canOpenInBrowser(response.url)) {
-            { runCatching { uriHandler.openUri(response.url) } }
-        } else {
-            null
-        }
-    }
-
     val primaryTrailerUrl = remember(response) {
         response.trailers.firstNotNullOfOrNull(::trailerUrl)
     }
@@ -734,8 +786,20 @@ private fun DetailsContent(
     }
 
     val tags = remember(response) { response.tags.orEmpty().filter { it.isNotBlank() } }
-    val recommendations = remember(response) {
-        response.recommendations.orEmpty().distinctBy { it.apiName to it.url }
+    // Same-franchise releases first (with previous/next/coming-soon labels), then works
+    // whose genres were verified. Pages the season chips already cover are left out.
+    val moreWorksEntries = remember(
+        relatedWorks.franchise, relatedWorks.similarByTags, relatedWorks.franchiseUpcomingKeys,
+        seasons, response.name, response.year,
+    ) {
+        buildMoreWorksEntries(
+            franchise = relatedWorks.franchise,
+            similarByTags = relatedWorks.similarByTags,
+            upcomingKeys = relatedWorks.franchiseUpcomingKeys,
+            realSeasonNumbers = seasons.filter { it > 0 }.toSet(),
+            currentTitle = response.name,
+            currentReleaseYear = response.year,
+        )
     }
     val actors = remember(response) { response.actors.orEmpty() }
 
@@ -864,10 +928,10 @@ private fun DetailsContent(
                     )
                 }
             },
-            isDownloadingSeason = isDownloadingSeason,
             onDownloadSeason = {
                 downloadSheet = DownloadTarget.Season(visibleEpisodes.toList())
             },
+            isDownloadingSeason = isDownloadingSeason,
             onToggleHideWatched = { hideWatched = !hideWatched },
             seasonAction = if (withSeasonAction) {
                 { SeasonWatchedAction(allWatched = allWatched, onClick = toggleSeasonWatched) }
@@ -979,27 +1043,13 @@ private fun DetailsContent(
             }
         }
 
-        if (recommendations.isNotEmpty()) {
-            item(key = "recommendations") {
-                Column {
-                    SectionTitle(stringResource(R.string.recommended))
-                    LazyRow(
-                        contentPadding = PaddingValues(horizontal = 20.dp),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    ) {
-                        itemsIndexed(
-                            items = recommendations,
-                            key = { index, item -> "${item.apiName}|${item.url}:$index" },
-                            contentType = { _, _ -> "poster" },
-                        ) { _, item ->
-                            PosterCard(
-                                item = item,
-                                onClick = { onOpenItem(item) },
-                                cardWidth = 128.dp,
-                            )
-                        }
-                    }
-                }
+        if (moreWorksEntries.isNotEmpty()) {
+            item(key = "more-works") {
+                MoreWorksRail(
+                    entries = moreWorksEntries,
+                    onScrollActive = onScrollActive,
+                    onOpenWork = onOpenItem,
+                )
             }
         }
     }
@@ -1016,6 +1066,16 @@ private fun DetailsContent(
                 val startWidth = (maxWidth * 0.4f).coerceAtMost(440.dp)
                 val startState = rememberLazyListState()
                 val endState = rememberLazyListState()
+                // The "More" lookup waits while either pane is moving.
+                LaunchedEffect(startState, endState) {
+                    try {
+                        snapshotFlow { startState.isScrollInProgress || endState.isScrollInProgress }
+                            .distinctUntilChanged()
+                            .collect { active -> onScrollActive("details-split", active) }
+                    } finally {
+                        onScrollActive("details-split", false)
+                    }
+                }
                 LaunchedEffect(scrollToLatest) {
                     if (scrollToLatest > 0 && visibleEpisodes.isNotEmpty()) {
                         endState.animateScrollToItem(visibleEpisodes.size)
@@ -1081,6 +1141,17 @@ private fun DetailsContent(
                 }
             } else {
                 val listState = rememberLazyListState()
+                // Tell the view model when the list is moving so the "More" lookup can step
+                // aside instead of parsing provider pages under an active scroll.
+                LaunchedEffect(listState) {
+                    try {
+                        snapshotFlow { listState.isScrollInProgress }
+                            .distinctUntilChanged()
+                            .collect { active -> onScrollActive("details-main", active) }
+                    } finally {
+                        onScrollActive("details-main", false)
+                    }
+                }
                 val collapsed by remember { derivedStateOf { listState.firstVisibleItemIndex > 0 } }
                 // hero + summary group + episodes header + the cards themselves.
                 val summaryItemCount =
@@ -1165,7 +1236,6 @@ private fun DetailsContent(
                         sheetTarget.data,
                         subtitle?.let { listOf(it) } ?: emptyList(),
                     )
-                    DownloadService.ensure(context)
                     announceDownload(1, 0)
                 }
                 downloadSheet = null
@@ -1188,6 +1258,81 @@ private fun DetailsContent(
             onMove = { categoryId -> moveFavoriteTo(categoryId) },
             onCreateAndMove = { name -> createCategoryAndMove(name) },
         )
+    }
+}
+
+/**
+ * The "More" rail: other releases of the same franchise, then works that share verified
+ * genres with the open title. Cards match the poster shelves on Home; a small label marks
+ * the immediate previous/next release, an upcoming one, or a related suggestion.
+ */
+@Composable
+private fun MoreWorksRail(
+    entries: List<MoreWorksEntry>,
+    onScrollActive: (String, Boolean) -> Unit,
+    onOpenWork: (SearchResponse) -> Unit,
+) {
+    val rowState = rememberLazyListState()
+    LaunchedEffect(rowState) {
+        try {
+            snapshotFlow { rowState.isScrollInProgress }
+                .distinctUntilChanged()
+                .collect { active -> onScrollActive("details-more-rail", active) }
+        } finally {
+            onScrollActive("details-more-rail", false)
+        }
+    }
+    Column {
+        SectionTitle(stringResource(R.string.details_more_title))
+        // The rail keeps Compose's native layout direction, so it starts at the right in
+        // RTL locales and the swipe direction matches every other shelf.
+        LazyRow(
+            state = rowState,
+            contentPadding = PaddingValues(horizontal = 20.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            items(
+                items = entries,
+                key = { it.key },
+                contentType = { it.kind.name },
+            ) { entry ->
+                val item = entry.work ?: return@items
+                val cardWidth = 128.dp
+                Box(Modifier.width(cardWidth)) {
+                    PosterCard(
+                        item = item,
+                        onClick = { onOpenWork(item) },
+                        modifier = Modifier.fillMaxWidth(),
+                        cardWidth = cardWidth,
+                    )
+                    val label = when (entry.badge) {
+                        MoreWorksBadge.PREVIOUS -> stringResource(R.string.more_badge_previous)
+                        MoreWorksBadge.NEXT -> stringResource(R.string.more_badge_next)
+                        MoreWorksBadge.COMING_SOON -> stringResource(R.string.coming_soon)
+                        MoreWorksBadge.RELATED -> stringResource(R.string.more_badge_related)
+                        null -> null
+                    }
+                    if (label != null) {
+                        val upcoming = entry.badge == MoreWorksBadge.COMING_SOON
+                        Surface(
+                            modifier = Modifier.align(Alignment.TopEnd).padding(5.dp),
+                            shape = MaterialTheme.shapes.extraSmall,
+                            color = if (upcoming) MaterialTheme.colorScheme.tertiaryContainer
+                            else MaterialTheme.colorScheme.secondaryContainer,
+                            contentColor = if (upcoming) MaterialTheme.colorScheme.onTertiaryContainer
+                            else MaterialTheme.colorScheme.onSecondaryContainer,
+                        ) {
+                            Text(
+                                text = label,
+                                style = MaterialTheme.typography.labelSmall,
+                                maxLines = 1,
+                                modifier = Modifier.padding(horizontal = 5.dp, vertical = 3.dp),
+                            )
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -1499,7 +1644,6 @@ private fun PrimaryActions(
     }
 }
 
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun ActionTile(
     tile: ActionTileSpec,
@@ -2078,8 +2222,8 @@ private fun EpisodeHeader(
     onLatest: () -> Unit,
     hideWatched: Boolean,
     onMarkPreviousWatched: () -> Unit,
-    isDownloadingSeason: Boolean = false,
     onDownloadSeason: () -> Unit,
+    isDownloadingSeason: Boolean = false,
     onToggleHideWatched: () -> Unit,
     seasonAction: (@Composable () -> Unit)? = null,
 ) {
@@ -2106,7 +2250,18 @@ private fun EpisodeHeader(
                         },
                     )
                     DropdownMenuItem(
-                        text = { Text(stringResource(R.string.download_season)) },
+                        text = {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(stringResource(R.string.download_season))
+                                if (isDownloadingSeason) {
+                                    Spacer(Modifier.width(8.dp))
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(16.dp),
+                                        strokeWidth = 2.dp,
+                                    )
+                                }
+                            }
+                        },
                         enabled = !isDownloadingSeason,
                         onClick = {
                             onDownloadSeason()
@@ -2159,31 +2314,6 @@ private fun EpisodeHeader(
                         label = { Text(dubLabel(dub)) },
                     )
                 }
-            }
-        }
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 6.dp),
-        ) {
-            FilledTonalButton(
-                onClick = onDownloadSeason,
-                enabled = !isDownloadingSeason,
-            ) {
-                if (isDownloadingSeason) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(18.dp),
-                        strokeWidth = 2.dp,
-                    )
-                } else {
-                    Icon(
-                        imageVector = Icons.Rounded.Download,
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp),
-                    )
-                }
-                Spacer(Modifier.width(8.dp))
-                Text(stringResource(R.string.download_season))
             }
         }
         seasonAction?.invoke()

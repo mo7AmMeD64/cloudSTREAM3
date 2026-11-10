@@ -32,11 +32,30 @@ object Engine {
     /** One search page: its items and whether the provider has another page. */
     data class SearchResult(val items: List<SearchResponse>, val hasNext: Boolean)
 
-    /** Every provider that loaded successfully, in registration order. */
+    /**
+     * Every provider that loaded successfully, in registration order.
+     *
+     * Two extension repos can ship different plugins that register the same
+     * provider name. Everything above this layer addresses sources by name
+     * (prefs, search scope, the source sheet), so the duplicates were both
+     * listed and the sheet's name-keyed list crashed with a duplicate LazyColumn
+     * key. Keep the last registration, which is the one [provider] resolves.
+     */
     fun providers(): List<MainAPI> =
         APIHolder.allProviders.withLock { APIHolder.allProviders.toList() }
+            .asReversed()
+            .distinctBy { it.name }
+            .asReversed()
 
     fun provider(name: String?): MainAPI? = APIHolder.getApiFromNameNull(name)
+
+    /**
+     * Last-resort provider resolution for a page whose source name was lost: a saved
+     * entry from an older build or a restored back stack can carry an empty `apiName`.
+     * The page url still starts with the provider's site, so the owner is recovered from
+     * it instead of failing the screen with `Provider "" is not loaded`.
+     */
+    fun providerForUrl(url: String?): MainAPI? = APIHolder.getApiFromUrlNull(url)
 
     /** Providers that can show a home page of their own. */
     fun homeProviders(): List<MainAPI> = providers().filter { it.hasMainPage }
@@ -55,22 +74,39 @@ object Engine {
         }
     }
 
+    /**
+     * Fills in the owning provider on results that do not declare one, and drops results
+     * that have no url (they could never be opened).
+     */
+    private fun <T : SearchResponse> stampSource(api: MainAPI, items: List<T>): List<T> =
+        stampResults(api.name, items)
+
     suspend fun mainPage(api: MainAPI, page: MainPageData, pageNumber: Int = 1): Result<MainPageResult> =
         guarded(api.getMainPageTimeoutMs) {
             val request = MainPageRequest(page.name, page.data, page.horizontalImages)
             val response = api.getMainPage(pageNumber, request)
-            MainPageResult(response?.items.orEmpty(), response?.hasNext == true)
+            // Home rows are HomePageList buckets, each holding its own items.
+            val lists = response?.items.orEmpty().map { row ->
+                row.copy(list = stampSource(api, row.list))
+            }
+            MainPageResult(lists, response?.hasNext == true)
         }
 
     suspend fun search(api: MainAPI, query: String, page: Int = 1): Result<SearchResult> =
         guarded(api.searchTimeoutMs) {
             val response = api.search(query, page)
-            SearchResult(response?.items.orEmpty(), response?.hasNext == true)
+            SearchResult(stampSource(api, response?.items.orEmpty()), response?.hasNext == true)
         }
 
     suspend fun load(api: MainAPI, url: String): Result<LoadResponse> =
         guarded(api.loadTimeoutMs) {
-            api.load(url) ?: throw IllegalStateException("The provider returned nothing for this page")
+            val response = api.load(url)
+                ?: throw IllegalStateException("The provider returned nothing for this page")
+            response.apiName = sourceNameFor(response.apiName, api.name)
+            // Recommendations feed the "More" row; stamping them here is what lets it be
+            // limited to this one source.
+            response.recommendations = response.recommendations?.let { stampSource(api, it) }
+            response
         }
 }
 

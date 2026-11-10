@@ -1,202 +1,46 @@
 package com.kodastream.app.ui.settings
 
-import android.os.Build
-import android.widget.Toast
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.Send
-import androidx.compose.material.icons.rounded.Check
-import androidx.compose.material.icons.rounded.Code
-import androidx.compose.material.icons.rounded.Contrast
-import androidx.compose.material.icons.rounded.DarkMode
+import androidx.compose.material.icons.rounded.AutoStories
+import androidx.compose.material.icons.rounded.BarChart
 import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.Extension
-import androidx.compose.material.icons.rounded.FastForward
-import androidx.compose.material.icons.rounded.Folder
 import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.PlayCircle
-import androidx.compose.material.icons.rounded.Restore
-import androidx.compose.material.icons.rounded.Search
-import androidx.compose.material.icons.rounded.Security
-import androidx.compose.material.icons.rounded.Speed
-import androidx.compose.material.icons.rounded.Translate
-import androidx.compose.material.icons.rounded.Tune
-import androidx.compose.material.icons.rounded.Upload
-import androidx.compose.material.icons.rounded.ViewCarousel
-import androidx.compose.material.icons.rounded.ViewSidebar
-import androidx.compose.material.icons.rounded.VolunteerActivism
-import androidx.compose.material.icons.rounded.Wifi
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.kodastream.app.BuildConfig
 import com.kodastream.app.R
-import com.kodastream.app.data.AppPrefs
-import com.kodastream.app.data.DataExport
-import com.kodastream.app.data.DataExportLogic
-import com.kodastream.app.data.DataExportManager
-import com.kodastream.app.data.DownloadLocations
-import com.kodastream.app.data.ImportMode
-import com.kodastream.app.data.ImportSummary
-import com.kodastream.app.data.SearchHistoryStore
-import com.kodastream.app.ui.home.hero.HeroStyle
-import com.kodastream.app.ui.theme.APP_PALETTES
-import com.kodastream.app.ui.theme.DYNAMIC_PALETTE_ID
-import com.kodastream.app.ui.theme.PALETTE_CATEGORIES
-import com.kodastream.app.ui.theme.PaletteStyle
-import com.kodastream.app.ui.theme.ThemeMode
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import java.time.LocalDate
 import com.kodastream.app.ui.theme.ThemeViewModel
-import com.kodastream.app.ui.theme.contrastInk
 
-private const val GITHUB_URL = "https://github.com/mo7AmMeD64/cloudSTREAM3"
-private const val DONATE_URL = "https://creators.sa/x3onq"
-private const val TELEGRAM_URL = "https://t.me/fullappk"
-
+/**
+ * Settings root: a short list of category "folders". Every category opens its
+ * own page that holds only its settings; the pages live next to this file.
+ */
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun SettingsScreen(
     contentPadding: PaddingValues,
-    themeViewModel: ThemeViewModel,
-    onOpenPlayerSettings: () -> Unit = {},
+    onOpenCategory: (SettingsCategory) -> Unit,
 ) {
-    val context = LocalContext.current
-    val uriHandler = LocalUriHandler.current
-
-    fun openLink(url: String) {
-        try {
-            uriHandler.openUri(url)
-        } catch (_: Exception) {
-            Toast.makeText(context, R.string.update_link_failed, Toast.LENGTH_SHORT).show()
-        }
-    }
-    var autoUpdate by remember { mutableStateOf(AppPrefs.autoUpdate(context)) }
-    var navPosition by remember { mutableStateOf(AppPrefs.navPosition(context)) }
-    var uiStyle by remember { mutableStateOf(AppPrefs.uiStyle(context)) }
-    var pauseHistory by remember { mutableStateOf(AppPrefs.pauseHistory(context)) }
-    var keepScreenOn by remember { mutableStateOf(AppPrefs.keepScreenOn(context)) }
-    var allowInvalidSsl by remember { mutableStateOf(AppPrefs.allowInvalidSsl(context)) }
-    var holdToSpeedUp by remember { mutableStateOf(AppPrefs.holdToSpeedUp(context)) }
-    var downloadWifiOnly by remember { mutableStateOf(AppPrefs.downloadWifiOnly(context)) }
-    var downloadConcurrent by remember { mutableStateOf(AppPrefs.downloadMaxConcurrent(context)) }
-    var downloadLocation by remember { mutableStateOf(DownloadLocations.readableLocation(context)) }
-    var customFolder by remember { mutableStateOf(AppPrefs.downloadTreeUri(context) != null) }
-    var appLanguage by remember { mutableStateOf(AppPrefs.appLanguage(context)) }
-    var languageDialog by remember { mutableStateOf(false) }
-    var styleDialog by remember { mutableStateOf(false) }
-    var heroStyle by remember { mutableStateOf(HeroStyle.parse(AppPrefs.homeHeroStyle(context))) }
-    var heroDialog by remember { mutableStateOf(false) }
-
-    val resolvedDark = when (themeViewModel.mode) {
-        ThemeMode.SYSTEM -> isSystemInDarkTheme()
-        ThemeMode.LIGHT -> false
-        ThemeMode.DARK -> true
-    }
-    val dynamicAvailable = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
-    val wallpaper = dynamicAvailable && themeViewModel.palette == DYNAMIC_PALETTE_ID
-
-    val scope = rememberCoroutineScope()
-    var pendingImport by remember { mutableStateOf<Pair<DataExport, ImportSummary>?>(null) }
-
-    val exportLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.CreateDocument("application/json")
-    ) { uri ->
-        if (uri != null) {
-            scope.launch(Dispatchers.IO) {
-                val result = DataExportManager.exportToUri(context, uri)
-                withContext(Dispatchers.Main) {
-                    if (result.isSuccess) {
-                        Toast.makeText(context, R.string.data_export_success, Toast.LENGTH_SHORT).show()
-                    } else {
-                        Toast.makeText(context, R.string.data_export_failed, Toast.LENGTH_SHORT).show()
-                    }
-                }
-            }
-        }
-    }
-
-    val importLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.OpenDocument()
-    ) { uri ->
-        if (uri != null) {
-            scope.launch(Dispatchers.IO) {
-                val result = DataExportManager.readFromUri(context, uri)
-                withContext(Dispatchers.Main) {
-                    result.onSuccess { imported ->
-                        val current = DataExportManager.createExport(context)
-                        val summary = DataExportLogic.computeSummary(current, imported)
-                        pendingImport = Pair(imported, summary)
-                    }.onFailure { e ->
-                        val msg = e.localizedMessage ?: e.javaClass.simpleName
-                        Toast.makeText(
-                            context,
-                            context.getString(R.string.data_import_failed, msg),
-                            Toast.LENGTH_LONG,
-                        ).show()
-                    }
-                }
-            }
-        }
-    }
-
-    val pickFolder = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
-        if (uri != null) {
-            if (DownloadLocations.adoptTree(context, uri)) {
-                downloadLocation = DownloadLocations.readableLocation(context)
-                customFolder = true
-            } else {
-                Toast.makeText(context, R.string.download_folder_invalid, Toast.LENGTH_SHORT).show()
-            }
-        }
-    }
-
     CenteredListBox { gutter ->
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
@@ -206,7 +50,7 @@ fun SettingsScreen(
                 top = contentPadding.calculateTopPadding() + 8.dp,
                 bottom = contentPadding.calculateBottomPadding() + 24.dp,
             ),
-            verticalArrangement = Arrangement.spacedBy(24.dp),
+            verticalArrangement = Arrangement.spacedBy(20.dp),
         ) {
             item(key = "header") {
                 Column(Modifier.padding(horizontal = 16.dp)) {
@@ -224,600 +68,87 @@ fun SettingsScreen(
                 }
             }
 
-            item(key = "appearance") {
-                val count = 5 + if (resolvedDark) 1 else 0
-                SettingsGroup(stringResource(R.string.settings_appearance)) {
-                    ChoiceRow(
-                        index = 0,
-                        count = count,
-                        icon = Icons.Rounded.DarkMode,
-                        title = stringResource(R.string.settings_theme),
-                        options = ThemeMode.entries,
-                        selected = themeViewModel.mode,
-                        label = { mode ->
-                            stringResource(
-                                when (mode) {
-                                    ThemeMode.SYSTEM -> R.string.theme_system
-                                    ThemeMode.LIGHT -> R.string.theme_light
-                                    ThemeMode.DARK -> R.string.theme_dark
-                                }
+            SettingsCategory.clusters.forEach { cluster ->
+                item(key = "cluster_${cluster.first().id}") {
+                    Column(verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap)) {
+                        cluster.forEachIndexed { index, category ->
+                            NavigationRow(
+                                index = index,
+                                count = cluster.size,
+                                icon = categoryIcon(category),
+                                title = stringResource(categoryTitle(category)),
+                                supporting = stringResource(categorySummary(category)),
+                                onClick = { onOpenCategory(category) },
                             )
-                        },
-                        onSelect = themeViewModel::updateMode,
-                    )
-                    NavigationRow(
-                        index = 1,
-                        count = count,
-                        icon = Icons.Rounded.Translate,
-                        title = stringResource(R.string.setup_language_title),
-                        supporting = languageLabel(appLanguage),
-                        onClick = { languageDialog = true },
-                    )
-                    if (resolvedDark) {
-                        SwitchRow(
-                            index = 2,
-                            count = count,
-                            icon = Icons.Rounded.Contrast,
-                            title = stringResource(R.string.settings_amoled),
-                            supporting = stringResource(R.string.settings_amoled_summary),
-                            checked = themeViewModel.amoled,
-                            onCheckedChange = themeViewModel::updateAmoled,
-                        )
-                    }
-                    ChoiceRow(
-                        index = if (resolvedDark) 3 else 2,
-                        count = count,
-                        icon = Icons.Rounded.ViewSidebar,
-                        title = stringResource(R.string.settings_navigation),
-                        options = listOf(AppPrefs.NAV_SIDE, AppPrefs.NAV_BOTTOM),
-                        selected = navPosition,
-                        label = { position ->
-                            stringResource(
-                                if (position == AppPrefs.NAV_SIDE) {
-                                    R.string.nav_position_side
-                                } else {
-                                    R.string.nav_position_bottom
-                                }
-                            )
-                        },
-                        onSelect = { position ->
-                            AppPrefs.setNavPosition(context, position)
-                            navPosition = position
-                        },
-                    )
-                    ChoiceRow(
-                        index = if (resolvedDark) 4 else 3,
-                        count = count,
-                        icon = Icons.Rounded.Tune,
-                        title = stringResource(R.string.settings_ui_style),
-                        options = listOf(AppPrefs.UI_STYLE_MATERIAL, AppPrefs.UI_STYLE_GLASS),
-                        selected = uiStyle,
-                        label = { style ->
-                            stringResource(
-                                if (style == AppPrefs.UI_STYLE_GLASS) {
-                                    R.string.settings_ui_style_glass
-                                } else {
-                                    R.string.settings_ui_style_material
-                                }
-                            )
-                        },
-                        onSelect = { style ->
-                            AppPrefs.setUiStyle(context, style)
-                            uiStyle = style
-                        },
-                    )
-                    NavigationRow(
-                        index = if (resolvedDark) 5 else 4,
-                        count = count,
-                        icon = Icons.Rounded.ViewCarousel,
-                        title = stringResource(R.string.settings_home_hero),
-                        supporting = stringResource(heroStyle.labelRes),
-                        onClick = { heroDialog = true },
-                    )
-                }
-            }
-
-            item(key = "colors") {
-                val firstCategory = if (dynamicAvailable) 1 else 0
-                val count = firstCategory + PALETTE_CATEGORIES.size + 1
-                SettingsGroup(stringResource(R.string.settings_colors)) {
-                    if (dynamicAvailable) {
-                        SwitchRow(
-                            index = 0,
-                            count = count,
-                            icon = Icons.Rounded.Palette,
-                            title = stringResource(R.string.settings_wallpaper_colors),
-                            supporting = stringResource(R.string.settings_wallpaper_colors_summary),
-                            checked = wallpaper,
-                            onCheckedChange = themeViewModel::setWallpaperColors,
-                        )
-                    }
-                    PALETTE_CATEGORIES.forEachIndexed { categoryIndex, category ->
-                        PaletteCategoryRow(
-                            index = firstCategory + categoryIndex,
-                            count = count,
-                            category = category,
-                            selectedId = themeViewModel.palette,
-                            dimmed = wallpaper,
-                            onPick = themeViewModel::updatePalette,
-                        )
-                    }
-                    NavigationRow(
-                        index = count - 1,
-                        count = count,
-                        icon = Icons.Rounded.Tune,
-                        title = stringResource(R.string.settings_palette_style),
-                        supporting = stringResource(themeViewModel.style.labelRes),
-                        onClick = { styleDialog = true },
-                    )
-                }
-            }
-
-            item(key = "player") {
-                SettingsGroup(stringResource(R.string.settings_player)) {
-                    NavigationRow(
-                        index = 0,
-                        count = 1,
-                        icon = Icons.Rounded.PlayCircle,
-                        title = stringResource(R.string.settings_player_title),
-                        supporting = stringResource(R.string.settings_player_summary),
-                        onClick = onOpenPlayerSettings,
-                    )
-                }
-            }
-
-            item(key = "playback") {
-                SettingsGroup(stringResource(R.string.settings_playback)) {
-                    SwitchRow(
-                        index = 0,
-                        count = 3,
-                        icon = Icons.Rounded.Speed,
-                        title = stringResource(R.string.settings_keep_screen_on),
-                        supporting = stringResource(R.string.settings_keep_screen_on_summary),
-                        checked = keepScreenOn,
-                        onCheckedChange = { value ->
-                            AppPrefs.setKeepScreenOn(context, value)
-                            keepScreenOn = value
-                        },
-                    )
-                    SwitchRow(
-                        index = 1,
-                        count = 3,
-                        icon = Icons.Rounded.Security,
-                        title = stringResource(R.string.settings_allow_invalid_ssl),
-                        supporting = stringResource(R.string.settings_allow_invalid_ssl_summary),
-                        checked = allowInvalidSsl,
-                        onCheckedChange = { value ->
-                            AppPrefs.setAllowInvalidSsl(context, value)
-                            allowInvalidSsl = value
-                        },
-                    )
-                    SwitchRow(
-                        index = 2,
-                        count = 3,
-                        icon = Icons.Rounded.FastForward,
-                        title = stringResource(R.string.settings_hold_speedup),
-                        supporting = stringResource(R.string.settings_hold_speedup_summary),
-                        checked = holdToSpeedUp,
-                        onCheckedChange = { value ->
-                            AppPrefs.setHoldToSpeedUp(context, value)
-                            holdToSpeedUp = value
-                        },
-                    )
-                }
-            }
-
-            item(key = "downloads") {
-                val count = 3 + if (customFolder) 1 else 0
-                SettingsGroup(stringResource(R.string.settings_downloads)) {
-                    NavigationRow(
-                        index = 0,
-                        count = count,
-                        icon = Icons.Rounded.Folder,
-                        title = stringResource(R.string.download_location),
-                        supporting = downloadLocation,
-                        onClick = { pickFolder.launch(null) },
-                    )
-                    if (customFolder) {
-                        NavigationRow(
-                            index = 1,
-                            count = count,
-                            icon = Icons.Rounded.Restore,
-                            title = stringResource(R.string.download_location_reset),
-                            supporting = stringResource(R.string.download_location_reset_summary),
-                            onClick = {
-                                AppPrefs.setDownloadTreeUri(context, null)
-                                downloadLocation = DownloadLocations.readableLocation(context)
-                                customFolder = false
-                            },
-                        )
-                    }
-                    SwitchRow(
-                        index = if (customFolder) 2 else 1,
-                        count = count,
-                        icon = Icons.Rounded.Wifi,
-                        title = stringResource(R.string.download_wifi_only),
-                        supporting = stringResource(R.string.download_wifi_summary),
-                        checked = downloadWifiOnly,
-                        onCheckedChange = { value ->
-                            AppPrefs.setDownloadWifiOnly(context, value)
-                            downloadWifiOnly = value
-                        },
-                    )
-                    ChoiceRow(
-                        index = if (customFolder) 3 else 2,
-                        count = count,
-                        icon = Icons.Rounded.Download,
-                        title = stringResource(R.string.download_max_concurrent),
-                        supporting = stringResource(R.string.download_max_concurrent_summary),
-                        options = listOf(1, 2, 3),
-                        selected = downloadConcurrent,
-                        label = { it.toString() },
-                        onSelect = { value ->
-                            AppPrefs.setDownloadMaxConcurrent(context, value)
-                            downloadConcurrent = value
-                        },
-                    )
-                }
-            }
-
-            item(key = "privacy") {
-                SettingsGroup(stringResource(R.string.settings_privacy_history)) {
-                    SwitchRow(
-                        index = 0,
-                        count = 2,
-                        icon = Icons.Rounded.History,
-                        title = stringResource(R.string.settings_pause_history),
-                        supporting = stringResource(R.string.settings_pause_history_summary),
-                        checked = pauseHistory,
-                        onCheckedChange = { value ->
-                            AppPrefs.setPauseHistory(context, value)
-                            pauseHistory = value
-                        },
-                    )
-                    NavigationRow(
-                        index = 1,
-                        count = 2,
-                        icon = Icons.Rounded.Search,
-                        title = stringResource(R.string.settings_clear_search_history),
-                        supporting = stringResource(R.string.settings_clear_search_history_summary),
-                        onClick = {
-                            SearchHistoryStore.clear(context)
-                            Toast.makeText(
-                                context,
-                                R.string.search_history_cleared,
-                                Toast.LENGTH_SHORT,
-                            ).show()
-                        },
-                    )
-                }
-            }
-
-            item(key = "data") {
-                SettingsGroup(stringResource(R.string.settings_data)) {
-                    NavigationRow(
-                        index = 0,
-                        count = 2,
-                        icon = Icons.Rounded.Upload,
-                        title = stringResource(R.string.settings_export_data),
-                        supporting = stringResource(R.string.settings_export_data_summary),
-                        onClick = {
-                            val defaultName = "cloud3_backup_${LocalDate.now()}.json"
-                            exportLauncher.launch(defaultName)
-                        },
-                    )
-                    NavigationRow(
-                        index = 1,
-                        count = 2,
-                        icon = Icons.Rounded.Download,
-                        title = stringResource(R.string.settings_import_data),
-                        supporting = stringResource(R.string.settings_import_data_summary),
-                        onClick = {
-                            importLauncher.launch(arrayOf("application/json"))
-                        },
-                    )
-                }
-            }
-
-            item(key = "extensions") {
-                SettingsGroup(stringResource(R.string.nav_extensions)) {
-                    SwitchRow(
-                        index = 0,
-                        count = 1,
-                        icon = Icons.Rounded.Extension,
-                        title = stringResource(R.string.settings_auto_update),
-                        supporting = stringResource(R.string.settings_auto_update_summary),
-                        checked = autoUpdate,
-                        onCheckedChange = { value ->
-                            AppPrefs.setAutoUpdate(context, value)
-                            autoUpdate = value
-                        },
-                    )
-                }
-            }
-
-            item(key = "about") {
-                SettingsGroup(stringResource(R.string.settings_about)) {
-                    val count = 5
-                    InfoRow(
-                        index = 0,
-                        count = count,
-                        icon = Icons.Rounded.Info,
-                        title = stringResource(R.string.app_name),
-                        supporting = stringResource(R.string.settings_version, BuildConfig.VERSION_NAME),
-                    )
-                    AboutFooterRow(index = 1, count = count)
-                    NavigationRow(
-                        index = 2,
-                        count = count,
-                        icon = Icons.Rounded.Code,
-                        title = stringResource(R.string.settings_github_title),
-                        supporting = stringResource(R.string.settings_github_summary),
-                        onClick = { openLink(GITHUB_URL) },
-                    )
-                    NavigationRow(
-                        index = 3,
-                        count = count,
-                        icon = Icons.Rounded.VolunteerActivism,
-                        title = stringResource(R.string.settings_donate_title),
-                        supporting = stringResource(R.string.settings_donate_summary),
-                        onClick = { openLink(DONATE_URL) },
-                    )
-                    NavigationRow(
-                        index = 4,
-                        count = count,
-                        icon = Icons.AutoMirrored.Rounded.Send,
-                        title = stringResource(R.string.settings_telegram_title),
-                        supporting = stringResource(R.string.settings_telegram_summary),
-                        onClick = { openLink(TELEGRAM_URL) },
-                    )
-                }
-            }
-        }
-    }
-
-    if (languageDialog) {
-        ChoiceDialog(
-            title = stringResource(R.string.setup_language_title),
-            options = listOf(AppPrefs.LANGUAGE_SYSTEM, "en", "ar"),
-            selected = appLanguage,
-            icon = Icons.Rounded.Translate,
-            label = { tag -> languageLabel(tag) },
-            onSelect = { tag ->
-                AppPrefs.setAppLanguage(context, tag)
-                appLanguage = tag
-                languageDialog = false
-                AppPrefs.applyAppLanguage(context)
-            },
-            onDismiss = { languageDialog = false },
-        )
-    }
-
-    if (styleDialog) {
-        ChoiceDialog(
-            title = stringResource(R.string.settings_palette_style),
-            options = PaletteStyle.entries,
-            selected = themeViewModel.style,
-            icon = Icons.Rounded.Tune,
-            label = { style -> stringResource(style.labelRes) },
-            onSelect = { style ->
-                themeViewModel.updateStyle(style)
-                styleDialog = false
-            },
-            onDismiss = { styleDialog = false },
-        )
-    }
-
-    if (heroDialog) {
-        ChoiceDialog(
-            title = stringResource(R.string.settings_home_hero),
-            options = HeroStyle.entries,
-            selected = heroStyle,
-            icon = Icons.Rounded.ViewCarousel,
-            label = { style -> stringResource(style.labelRes) },
-            description = { style -> stringResource(style.descriptionRes) },
-            onSelect = { style ->
-                AppPrefs.setHomeHeroStyle(context, style.storageId)
-                heroStyle = style
-                heroDialog = false
-            },
-            onDismiss = { heroDialog = false },
-        )
-    }
-
-    pendingImport?.let { (importedData, summary) ->
-        AlertDialog(
-            onDismissRequest = { pendingImport = null },
-            title = { Text(stringResource(R.string.data_import_dialog_title)) },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(
-                        text = stringResource(R.string.data_import_dialog_message),
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
-                    Text("• " + stringResource(R.string.data_import_section_favorites, summary.favorites.incomingCount, summary.favorites.overwriteCount))
-                    Text("• " + stringResource(R.string.data_import_section_watchlist, summary.watchlist.incomingCount, summary.watchlist.overwriteCount))
-                    Text("• " + stringResource(R.string.data_import_section_history, summary.history.incomingCount, summary.history.overwriteCount))
-                    Text("• " + stringResource(R.string.data_import_section_watched, summary.watched.incomingCount, summary.watched.overwriteCount))
-                    Text("• " + stringResource(R.string.data_import_section_search, summary.searchHistory.incomingCount))
-                    Text("• " + stringResource(R.string.data_import_section_prefs, summary.appPrefs.incomingCount))
-                }
-            },
-            confirmButton = {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    TextButton(onClick = {
-                        val toImport = importedData
-                        pendingImport = null
-                        scope.launch(Dispatchers.IO) {
-                            DataExportManager.applyImport(context, ImportMode.REPLACE, toImport)
-                            withContext(Dispatchers.Main) {
-                                Toast.makeText(context, R.string.data_import_success, Toast.LENGTH_SHORT).show()
-                            }
                         }
-                    }) {
-                        Text(
-                            text = stringResource(R.string.data_import_dialog_replace),
-                            color = MaterialTheme.colorScheme.error,
-                        )
                     }
-                    Button(onClick = {
-                        val toImport = importedData
-                        pendingImport = null
-                        scope.launch(Dispatchers.IO) {
-                            DataExportManager.applyImport(context, ImportMode.MERGE, toImport)
-                            withContext(Dispatchers.Main) {
-                                Toast.makeText(context, R.string.data_import_success, Toast.LENGTH_SHORT).show()
-                            }
-                        }
-                    }) {
-                        Text(stringResource(R.string.data_import_dialog_merge))
-                    }
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { pendingImport = null }) {
-                    Text(stringResource(R.string.cancel))
-                }
-            },
-        )
-    }
-}
-
-@Composable
-private fun languageLabel(tag: String): String = stringResource(
-    when (tag) {
-        "en" -> R.string.setup_language_english
-        "ar" -> R.string.setup_language_arabic
-        else -> R.string.setup_language_system
-    }
-)
-
-/**
- * One palette category inside the Colors card. The swatches stay tappable
- * while wallpaper colors are on; a tap turns the switch off and takes that
- * seed, which is the shortest way out of the disabled state.
- */
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
-@Composable
-private fun PaletteCategoryRow(
-    index: Int,
-    count: Int,
-    category: String,
-    selectedId: String,
-    dimmed: Boolean,
-    onPick: (String) -> Unit,
-) {
-    Surface(
-        shape = ListItemDefaults.segmentedShapes(index = index, count = count).shape,
-        color = MaterialTheme.colorScheme.surfaceBright,
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        Column(
-            modifier = Modifier
-                .padding(horizontal = 16.dp, vertical = 12.dp)
-                .graphicsLayer { alpha = if (dimmed) 0.45f else 1f },
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Text(
-                text = category,
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                items(APP_PALETTES.filter { it.category == category }, key = { it.id }) { palette ->
-                    Swatch(
-                        first = palette.seedPrimary,
-                        second = palette.seedTertiary,
-                        selected = palette.id == selectedId,
-                        label = palette.name,
-                        onClick = { onPick(palette.id) },
-                    )
                 }
             }
         }
     }
 }
 
-/** A round preview of a palette: two of its seed colors side by side. */
+/** One category page; the host route passes the callbacks the manga rows need. */
 @Composable
-private fun Swatch(
-    first: Color,
-    second: Color,
-    selected: Boolean,
-    label: String,
-    onClick: () -> Unit,
+fun SettingsCategoryScreen(
+    category: SettingsCategory,
+    themeViewModel: ThemeViewModel,
+    onBack: () -> Unit,
+    onOpenMangaExtensions: () -> Unit,
+    onOpenMangaStores: () -> Unit,
+    onMangaSectionChanged: (Boolean) -> Unit,
 ) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier
-            .clip(MaterialTheme.shapes.medium)
-            .clickable(onClick = onClick)
-            .padding(4.dp),
-    ) {
-        Box(
-            modifier = Modifier
-                .size(52.dp)
-                .clip(CircleShape)
-                .background(Brush.linearGradient(listOf(first, second)))
-                .border(
-                    border = BorderStroke(
-                        width = if (selected) 3.dp else 1.dp,
-                        color = if (selected) {
-                            MaterialTheme.colorScheme.primary
-                        } else {
-                            MaterialTheme.colorScheme.outlineVariant
-                        },
-                    ),
-                    shape = CircleShape,
-                ),
-            contentAlignment = Alignment.Center,
-        ) {
-            if (selected) {
-                Icon(
-                    imageVector = Icons.Rounded.Check,
-                    contentDescription = null,
-                    tint = contrastInk(first),
-                    modifier = Modifier.size(24.dp),
-                )
-            }
-        }
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            maxLines = 1,
-            modifier = Modifier.padding(top = 4.dp),
+    when (category) {
+        SettingsCategory.APPEARANCE -> AppearanceSettingsPage(
+            themeViewModel = themeViewModel,
+            onBack = onBack,
         )
+        SettingsCategory.PLAYER -> PlayerSettingsPage(onBack = onBack)
+        SettingsCategory.DOWNLOADS -> DownloadsSettingsPage(onBack = onBack)
+        SettingsCategory.PRIVACY -> PrivacySettingsPage(onBack = onBack)
+        SettingsCategory.STATISTICS -> StatisticsSettingsPage(onBack = onBack)
+        SettingsCategory.EXTENSIONS -> ExtensionsSettingsPage(onBack = onBack)
+        SettingsCategory.MANGA -> MangaSettingsPage(
+            onBack = onBack,
+            onOpenMangaExtensions = onOpenMangaExtensions,
+            onOpenMangaStores = onOpenMangaStores,
+            onMangaSectionChanged = onMangaSectionChanged,
+        )
+        SettingsCategory.ABOUT -> AboutSettingsPage(onBack = onBack)
     }
 }
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
-@Composable
-private fun AboutFooterRow(index: Int, count: Int) {
-    Surface(
-        shape = ListItemDefaults.segmentedShapes(index = index, count = count).shape,
-        color = MaterialTheme.colorScheme.surfaceBright,
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Text(
-                text = stringResource(R.string.about_text),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Text(
-                text = stringResource(R.string.about_disclaimer),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Text(
-                text = stringResource(R.string.about_nuvio),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-    }
+@StringRes
+private fun categoryTitle(category: SettingsCategory): Int = when (category) {
+    SettingsCategory.APPEARANCE -> R.string.settings_appearance
+    SettingsCategory.PLAYER -> R.string.settings_cat_player
+    SettingsCategory.DOWNLOADS -> R.string.settings_downloads
+    SettingsCategory.PRIVACY -> R.string.settings_privacy_history
+    SettingsCategory.STATISTICS -> R.string.settings_cat_statistics
+    SettingsCategory.EXTENSIONS -> R.string.nav_extensions
+    SettingsCategory.MANGA -> R.string.settings_manga
+    SettingsCategory.ABOUT -> R.string.settings_about
+}
+
+@StringRes
+private fun categorySummary(category: SettingsCategory): Int = when (category) {
+    SettingsCategory.APPEARANCE -> R.string.settings_cat_appearance_summary
+    SettingsCategory.PLAYER -> R.string.settings_cat_player_summary
+    SettingsCategory.DOWNLOADS -> R.string.settings_cat_downloads_summary
+    SettingsCategory.PRIVACY -> R.string.settings_cat_privacy_summary
+    SettingsCategory.STATISTICS -> R.string.settings_cat_statistics_summary
+    SettingsCategory.EXTENSIONS -> R.string.settings_cat_extensions_summary
+    SettingsCategory.MANGA -> R.string.settings_cat_manga_summary
+    SettingsCategory.ABOUT -> R.string.settings_cat_about_summary
+}
+
+private fun categoryIcon(category: SettingsCategory): ImageVector = when (category) {
+    SettingsCategory.APPEARANCE -> Icons.Rounded.Palette
+    SettingsCategory.PLAYER -> Icons.Rounded.PlayCircle
+    SettingsCategory.DOWNLOADS -> Icons.Rounded.Download
+    SettingsCategory.PRIVACY -> Icons.Rounded.History
+    SettingsCategory.STATISTICS -> Icons.Rounded.BarChart
+    SettingsCategory.EXTENSIONS -> Icons.Rounded.Extension
+    SettingsCategory.MANGA -> Icons.Rounded.AutoStories
+    SettingsCategory.ABOUT -> Icons.Rounded.Info
 }

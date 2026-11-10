@@ -18,4 +18,4 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "KodaStream"
-include(":app", ":library")
+include(":app", ":library", ":mihon-compat")

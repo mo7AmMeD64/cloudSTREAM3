@@ -28,5 +28,179 @@ uses Engine.load; MDBList ratings, the IMDb logo and AppFeaturePolicy removed;
 RTL sign handling and status-bar/cutout insets added; Nuvio's vertical-bar
 padding helpers replaced by plain horizontal padding from the ported layout.
 
+KodaStream includes code ported from Mihon
+(https://github.com/mihonapp/mihon), licensed under the Apache License 2.0.
+The full license text is in licenses/Mihon-LICENSE.
+
+Copied files and their new locations (package paths are preserved):
+
+- core/common/src/main/kotlin/eu/kanade/tachiyomi/network/AndroidCookieJar.kt
+  -> mihon-compat/src/main/kotlin/eu/kanade/tachiyomi/network/AndroidCookieJar.kt
+- core/common/src/main/kotlin/eu/kanade/tachiyomi/network/HttpException.kt
+  -> mihon-compat/src/main/kotlin/eu/kanade/tachiyomi/network/HttpException.kt
+- core/common/src/main/kotlin/eu/kanade/tachiyomi/network/JavaScriptEngine.kt
+  -> mihon-compat/src/main/kotlin/eu/kanade/tachiyomi/network/JavaScriptEngine.kt
+- core/common/src/main/kotlin/eu/kanade/tachiyomi/network/NetworkHelper.kt
+  -> mihon-compat/src/main/kotlin/eu/kanade/tachiyomi/network/NetworkHelper.kt
+- core/common/src/main/kotlin/eu/kanade/tachiyomi/network/NetworkPreferences.kt
+  -> mihon-compat/src/main/kotlin/eu/kanade/tachiyomi/network/NetworkPreferences.kt
+- core/common/src/main/kotlin/eu/kanade/tachiyomi/network/OkHttpExtensions.kt
+  -> mihon-compat/src/main/kotlin/eu/kanade/tachiyomi/network/OkHttpExtensions.kt
+- core/common/src/main/kotlin/eu/kanade/tachiyomi/network/ProgressListener.kt
+  -> mihon-compat/src/main/kotlin/eu/kanade/tachiyomi/network/ProgressListener.kt
+- core/common/src/main/kotlin/eu/kanade/tachiyomi/network/ProgressResponseBody.kt
+  -> mihon-compat/src/main/kotlin/eu/kanade/tachiyomi/network/ProgressResponseBody.kt
+- core/common/src/main/kotlin/eu/kanade/tachiyomi/network/Requests.kt
+  -> mihon-compat/src/main/kotlin/eu/kanade/tachiyomi/network/Requests.kt
+- core/common/src/main/kotlin/eu/kanade/tachiyomi/network/interceptor/CloudflareInterceptor.kt
+  -> mihon-compat/src/main/kotlin/eu/kanade/tachiyomi/network/interceptor/CloudflareInterceptor.kt
+- core/common/src/main/kotlin/eu/kanade/tachiyomi/network/interceptor/RateLimitInterceptor.kt
+  -> mihon-compat/src/main/kotlin/eu/kanade/tachiyomi/network/interceptor/RateLimitInterceptor.kt
+- core/common/src/main/kotlin/eu/kanade/tachiyomi/network/interceptor/SpecificHostRateLimitInterceptor.kt
+  -> mihon-compat/src/main/kotlin/eu/kanade/tachiyomi/network/interceptor/SpecificHostRateLimitInterceptor.kt
+- core/common/src/main/kotlin/eu/kanade/tachiyomi/network/interceptor/UncaughtExceptionInterceptor.kt
+  -> mihon-compat/src/main/kotlin/eu/kanade/tachiyomi/network/interceptor/UncaughtExceptionInterceptor.kt
+- core/common/src/main/kotlin/eu/kanade/tachiyomi/network/interceptor/UserAgentInterceptor.kt
+  -> mihon-compat/src/main/kotlin/eu/kanade/tachiyomi/network/interceptor/UserAgentInterceptor.kt
+- core/common/src/main/kotlin/eu/kanade/tachiyomi/network/interceptor/WebViewInterceptor.kt
+  -> mihon-compat/src/main/kotlin/eu/kanade/tachiyomi/network/interceptor/WebViewInterceptor.kt
+- core/common/src/main/kotlin/eu/kanade/tachiyomi/util/system/ToastExtensions.kt
+  -> mihon-compat/src/main/kotlin/eu/kanade/tachiyomi/util/system/ToastExtensions.kt
+- core/common/src/main/kotlin/eu/kanade/tachiyomi/util/system/WebViewUtil.kt
+  -> mihon-compat/src/main/kotlin/eu/kanade/tachiyomi/util/system/WebViewUtil.kt
+- core/common/src/main/kotlin/mihon/core/common/extensions/JsonObject.kt
+  -> mihon-compat/src/main/kotlin/mihon/core/common/extensions/JsonObject.kt
+- core/common/src/main/kotlin/tachiyomi/core/common/util/lang/RxCoroutineBridge.kt
+  -> mihon-compat/src/main/kotlin/tachiyomi/core/common/util/lang/RxCoroutineBridge.kt
+- app/src/main/java/mihon/data/dalvik/DelegateLastClassLoaderCompat.kt
+  -> mihon-compat/src/main/kotlin/mihon/data/dalvik/DelegateLastClassLoaderCompat.kt
+- source-api/src/main/kotlin/eu/kanade/tachiyomi/source/CatalogueSource.kt
+  -> mihon-compat/src/main/kotlin/eu/kanade/tachiyomi/source/CatalogueSource.kt
+- source-api/src/main/kotlin/eu/kanade/tachiyomi/source/ConfigurableSource.kt
+  -> mihon-compat/src/main/kotlin/eu/kanade/tachiyomi/source/ConfigurableSource.kt
+- source-api/src/main/kotlin/eu/kanade/tachiyomi/source/Source.kt
+  -> mihon-compat/src/main/kotlin/eu/kanade/tachiyomi/source/Source.kt
+- source-api/src/main/kotlin/eu/kanade/tachiyomi/source/SourceFactory.kt
+  -> mihon-compat/src/main/kotlin/eu/kanade/tachiyomi/source/SourceFactory.kt
+- source-api/src/main/kotlin/eu/kanade/tachiyomi/source/UnmeteredSource.kt
+  -> mihon-compat/src/main/kotlin/eu/kanade/tachiyomi/source/UnmeteredSource.kt
+- source-api/src/main/kotlin/eu/kanade/tachiyomi/source/model/Filter.kt
+  -> mihon-compat/src/main/kotlin/eu/kanade/tachiyomi/source/model/Filter.kt
+- source-api/src/main/kotlin/eu/kanade/tachiyomi/source/model/FilterList.kt
+  -> mihon-compat/src/main/kotlin/eu/kanade/tachiyomi/source/model/FilterList.kt
+- source-api/src/main/kotlin/eu/kanade/tachiyomi/source/model/MangasPage.kt
+  -> mihon-compat/src/main/kotlin/eu/kanade/tachiyomi/source/model/MangasPage.kt
+- source-api/src/main/kotlin/eu/kanade/tachiyomi/source/model/Page.kt
+  -> mihon-compat/src/main/kotlin/eu/kanade/tachiyomi/source/model/Page.kt
+- source-api/src/main/kotlin/eu/kanade/tachiyomi/source/model/SChapter.kt
+  -> mihon-compat/src/main/kotlin/eu/kanade/tachiyomi/source/model/SChapter.kt
+- source-api/src/main/kotlin/eu/kanade/tachiyomi/source/model/SChapterImpl.kt
+  -> mihon-compat/src/main/kotlin/eu/kanade/tachiyomi/source/model/SChapterImpl.kt
+- source-api/src/main/kotlin/eu/kanade/tachiyomi/source/model/SManga.kt
+  -> mihon-compat/src/main/kotlin/eu/kanade/tachiyomi/source/model/SManga.kt
+- source-api/src/main/kotlin/eu/kanade/tachiyomi/source/model/SMangaImpl.kt
+  -> mihon-compat/src/main/kotlin/eu/kanade/tachiyomi/source/model/SMangaImpl.kt
+- source-api/src/main/kotlin/eu/kanade/tachiyomi/source/model/SMangaUpdate.kt
+  -> mihon-compat/src/main/kotlin/eu/kanade/tachiyomi/source/model/SMangaUpdate.kt
+- source-api/src/main/kotlin/eu/kanade/tachiyomi/source/model/UpdateStrategy.kt
+  -> mihon-compat/src/main/kotlin/eu/kanade/tachiyomi/source/model/UpdateStrategy.kt
+- source-api/src/main/kotlin/eu/kanade/tachiyomi/source/online/HttpSource.kt
+  -> mihon-compat/src/main/kotlin/eu/kanade/tachiyomi/source/online/HttpSource.kt
+- source-api/src/main/kotlin/eu/kanade/tachiyomi/source/online/ParsedHttpSource.kt
+  -> mihon-compat/src/main/kotlin/eu/kanade/tachiyomi/source/online/ParsedHttpSource.kt
+- source-api/src/main/kotlin/eu/kanade/tachiyomi/source/online/ResolvableSource.kt
+  -> mihon-compat/src/main/kotlin/eu/kanade/tachiyomi/source/online/ResolvableSource.kt
+- source-api/src/main/kotlin/eu/kanade/tachiyomi/util/JsoupExtensions.kt
+  -> mihon-compat/src/main/kotlin/eu/kanade/tachiyomi/util/JsoupExtensions.kt
+
+App-side behaviour was ported from these Mihon files and rewritten around
+KodaStream components:
+- app/src/main/java/eu/kanade/tachiyomi/extension/util/ExtensionInstaller.kt
+  -> app/src/main/java/com/kodastream/app/manga/extension/ExtensionInstaller.kt
+- app/src/main/java/eu/kanade/tachiyomi/extension/util/ExtensionLoader.kt
+  -> app/src/main/java/com/kodastream/app/manga/extension/ExtensionLoader.kt
+- app/src/main/java/eu/kanade/domain/source/service/SourcePreferences.kt
+  -> app/src/main/java/com/kodastream/app/manga/extension/SourcePreferences.kt
+- app/src/main/java/eu/kanade/tachiyomi/ui/browse/extension/details/SourcePreferencesScreen.kt
+  -> app/src/main/java/com/kodastream/app/ui/manga/SourcePreferencesScreen.kt
+- data/src/main/java/mihon/data/extension/service/ExtensionStoreService.kt
+  -> app/src/main/java/com/kodastream/app/manga/store/ExtensionStoreService.kt
+- data/src/main/java/mihon/data/extension/model/*.kt
+  -> app/src/main/java/com/kodastream/app/manga/store/MangaStoreModels.kt
+
+Adaptations for KodaStream: OkHttp 5 API calls replaced with OkHttp 4.12
+equivalents; Metro dependency injection and SQLDelight removed (a hand-written
+Injekt registrar and SharedPreferences/JSON persistence in the app replace
+them); only private extension APKs are loaded, never system-installed
+packages; app-only dependencies (AndroidX navigation, Coil, WorkManager,
+DataStore) removed from the API module; Cloudflare WebView handling and a
+QuickJS JavaScript engine wired to the app; Android string resources added
+for the app-side screens.
+
+The manga reader is a port of Mihon's reader. These files were copied or
+adapted into app/src/main/java/com/kodastream/app/manga/reader/:
+
+- app/src/main/java/eu/kanade/tachiyomi/ui/reader/model/ReaderChapter.kt
+- app/src/main/java/eu/kanade/tachiyomi/ui/reader/model/ReaderPage.kt
+- app/src/main/java/eu/kanade/tachiyomi/ui/reader/model/ViewerChapters.kt
+- app/src/main/java/eu/kanade/tachiyomi/ui/reader/model/ChapterTransition.kt
+  -> ReaderModels.kt
+- app/src/main/java/eu/kanade/tachiyomi/ui/reader/viewer/Viewer.kt
+- app/src/main/java/eu/kanade/tachiyomi/ui/reader/viewer/ViewerItems.kt
+- app/src/main/java/eu/kanade/tachiyomi/ui/reader/viewer/ReaderTransitionView.kt
+- app/src/main/java/eu/kanade/tachiyomi/ui/reader/viewer/pager/PagerViewer.kt
+- app/src/main/java/eu/kanade/tachiyomi/ui/reader/viewer/pager/PagerPageHolder.kt
+- app/src/main/java/eu/kanade/tachiyomi/ui/reader/viewer/pager/PagerTransitionHolder.kt
+- app/src/main/java/eu/kanade/tachiyomi/ui/reader/viewer/pager/PagerItems.kt
+- app/src/main/java/eu/kanade/tachiyomi/ui/reader/viewer/webtoon/WebtoonViewer.kt
+- app/src/main/java/eu/kanade/tachiyomi/ui/reader/viewer/webtoon/WebtoonAdapter.kt
+- app/src/main/java/eu/kanade/tachiyomi/ui/reader/viewer/webtoon/WebtoonPageHolder.kt
+- app/src/main/java/eu/kanade/tachiyomi/ui/reader/viewer/webtoon/WebtoonBaseHolder.kt
+- app/src/main/java/eu/kanade/tachiyomi/ui/reader/viewer/webtoon/WebtoonTransitionHolder.kt
+- app/src/main/java/eu/kanade/tachiyomi/ui/reader/viewer/webtoon/WebtoonItems.kt
+  -> ReaderViewers.kt
+- app/src/main/java/eu/kanade/tachiyomi/ui/reader/viewer/ReaderPageImageView.kt
+  -> ReaderPageImageView.kt
+- app/src/main/java/eu/kanade/tachiyomi/ui/reader/viewer/GestureDetectorWithLongTap.kt
+- app/src/main/java/eu/kanade/tachiyomi/ui/reader/viewer/pager/Pager.kt
+  -> Pager.kt
+- app/src/main/java/eu/kanade/tachiyomi/ui/reader/viewer/webtoon/WebtoonRecyclerView.kt
+- app/src/main/java/eu/kanade/tachiyomi/ui/reader/viewer/webtoon/WebtoonFrame.kt
+  -> WebtoonTouch.kt
+- app/src/main/java/eu/kanade/tachiyomi/ui/reader/viewer/webtoon/WebtoonLayoutManager.kt
+  -> WebtoonLayoutManager.kt
+- app/src/main/java/eu/kanade/tachiyomi/ui/reader/viewer/webtoon/WebtoonStripImageView.kt
+  -> WebtoonStripImageView.kt
+- app/src/main/java/eu/kanade/tachiyomi/ui/reader/loader/PageLoader.kt
+- app/src/main/java/eu/kanade/tachiyomi/ui/reader/loader/HttpPageLoader.kt
+- app/src/main/java/eu/kanade/tachiyomi/ui/reader/loader/ChapterLoader.kt
+  -> ReaderLoaders.kt
+- app/src/main/java/eu/kanade/tachiyomi/ui/reader/ReaderViewModel.kt
+  -> MangaReaderViewModel.kt
+- app/src/main/java/eu/kanade/tachiyomi/ui/reader/setting/ReaderPreferences.kt
+- app/src/main/java/eu/kanade/tachiyomi/ui/reader/setting/ReadingMode.kt
+- app/src/main/java/eu/kanade/tachiyomi/ui/reader/setting/ReaderOrientation.kt
+  -> MangaReaderSettings.kt, MangaPrefs.kt
+- app/src/main/java/eu/kanade/tachiyomi/ui/reader/viewer/ViewerNavigation.kt
+- app/src/main/java/eu/kanade/tachiyomi/ui/reader/viewer/navigation/*.kt
+  -> tapRegions() in MangaModels.kt
+
+Adaptations for KodaStream: Coil 3 replaced with Coil 2.7 and source fetchers;
+Mihon's DI graph, SQLDelight models, Voyager, Metro, Injekt preferences, the
+download manager, archive/epub/local loaders and the WebGPU viewer are not
+ported. The WebtoonStripImageView decodes cached files with BitmapRegionDecoder
+(with a sampled BitmapFactory fallback) instead of ca.mpreg:imagedecoder.
+Wide-page splitting (InsertPage) and the dual-page viewer are skipped. Chapter
+transitions are Compose views; the reader overlay, settings sheet and error
+states are new Compose code written for KodaStream.
+
+KodaStream 0.12.0 includes code adapted from an earlier community fork of this
+project (the "Levm / MAVRE 0.2" fork), licensed under the GNU General Public
+License v3.0. Adapted from it: the player fixes and control settings, the
+player's refreshed look, watch statistics, the "More" rail on the title page
+(same-franchise releases and genre-verified suggestions) and the source stamping
+of provider results. The code was re-integrated into this project's current
+structure and is covered by the same licence.
+
 The KodaStream project as a whole is licensed under the GNU General Public
 License v3.0 (see LICENSE).

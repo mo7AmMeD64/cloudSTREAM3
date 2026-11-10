@@ -8,7 +8,6 @@ import android.content.res.ColorStateList
 import android.graphics.Matrix
 import android.media.AudioManager
 import android.media.audiofx.LoudnessEnhancer
-import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
@@ -18,7 +17,6 @@ import android.view.MotionEvent
 import android.view.ScaleGestureDetector
 import android.view.View
 import android.view.ViewGroup
-import android.view.WindowInsets
 import android.view.animation.AlphaAnimation
 import android.view.animation.Animation
 import android.view.animation.AnimationUtils
@@ -35,13 +33,13 @@ import com.lagradost.cloudstream3.CommonActivity.screenHeightWithOrientation
 import com.lagradost.cloudstream3.CommonActivity.screenWidthWithOrientation
 import com.lagradost.cloudstream3.CommonActivity.showToast
 import com.kodastream.app.R
+import com.kodastream.app.data.AppPrefs
 import com.lagradost.cloudstream3.mvvm.logError
 import com.lagradost.cloudstream3.mvvm.safe
 import com.lagradost.cloudstream3.ui.settings.Globals.EMULATOR
 import com.lagradost.cloudstream3.ui.settings.Globals.PHONE
 import com.lagradost.cloudstream3.ui.settings.Globals.isLayout
 import com.lagradost.cloudstream3.utils.DataStoreHelper
-import com.lagradost.cloudstream3.utils.UIHelper.getStatusBarHeight
 import com.lagradost.cloudstream3.utils.Vector2
 import kotlin.math.abs
 import kotlin.math.absoluteValue
@@ -78,6 +76,13 @@ class PlayerGestureHelper(private val playerView: PlayerView) {
         const val DOUBLE_TAP_MINIMUM_TIME_BETWEEN = 200L
         /** Fraction of view width on each side that counts as "left" / "right" seek zone. */
         const val DOUBLE_TAP_PAUSE_PERCENTAGE = 0.15
+        /**
+         * A finger that moves farther than this (in dp) between down and up is a
+         * drag, not a tap.
+         */
+        const val TAP_MOVEMENT_SLOP_DP = 16f
+        /** Two taps farther apart than this fraction of the width are not a double-tap. */
+        const val DOUBLE_TAP_MAX_DISTANCE_PERCENTAGE = 0.25f
 
         /** Zoom constants */
         /** Minimum zoom; allows zooming out past 100% but snaps back. */
@@ -185,11 +190,11 @@ class PlayerGestureHelper(private val playerView: PlayerView) {
     /** Monotonically-incremented token; cancels any pending single-tap runnable when a double-tap arrives. */
     private var doubleTapToken = 0
 
-    /** Number of consecutive taps in the current double-tap window. */
-    private var tapCount = 0
-
-    /** System time of the most-recent touch end.  Updated by callers at the end of every ACTION_UP. */
-    var lastTouchEndTime: Long = 0L
+    /** The last genuine tap; swipes, cancelled gestures and long presses clear it. */
+    private val doubleTapTracker = DoubleTapTracker(
+        maxGapMs = DOUBLE_TAP_MINIMUM_TIME_BETWEEN,
+        maxDistanceFraction = DOUBLE_TAP_MAX_DISTANCE_PERCENTAGE,
+    )
 
     /** Zoom state */
 
@@ -212,6 +217,9 @@ class PlayerGestureHelper(private val playerView: PlayerView) {
 
     private var overlayLayoutListener: View.OnLayoutChangeListener? = null
 
+    /** Whether the center rewind/forward buttons are shown between seek animations. */
+    private var seekButtonsVisible = true
+
     /** Called from [PlayerView.initialize] after views are bound. */
     fun initialize() {
         try {
@@ -219,12 +227,19 @@ class PlayerGestureHelper(private val playerView: PlayerView) {
             swipeVerticalEnabled = sm.getBoolean(context.getString(R.string.swipe_vertical_enabled_key), true)
             swipeHorizontalEnabled = sm.getBoolean(context.getString(R.string.swipe_enabled_key), true)
             extraBrightnessEnabled = sm.getBoolean(context.getString(R.string.extra_brightness_key), false)
-            speedupEnabled = sm.getBoolean(context.getString(R.string.speedup_key), false)
+            speedupEnabled = sm.getBoolean(context.getString(R.string.speedup_key), true)
             doubleTapEnabled = sm.getBoolean(context.getString(R.string.double_tap_enabled_key), false)
             doubleTapPauseEnabled = sm.getBoolean(context.getString(R.string.double_tap_pause_enabled_key), false)
             fastForwardTime = sm.getInt(context.getString(R.string.double_tap_seek_time_key), 10).toLong() * 1000L
         } catch (_: Exception) {
         }
+
+        // The center rewind/forward buttons are a user switch (Player settings). The same
+        // views carry the double-tap seek feedback, so rewind() and fastForward() show
+        // them for the length of that animation even while the buttons are hidden.
+        seekButtonsVisible = AppPrefs.playerShowSeekButtons(context)
+        playerView.playerRewHolder?.isVisible = seekButtonsVisible
+        playerView.playerFfwdHolder?.isVisible = seekButtonsVisible
 
         // Inject the brightness overlay into the ExoPlayer content frame so it sits
         // directly on top of the video surface.  Alpha is set by handleBrightnessAdjustment.
@@ -895,6 +910,7 @@ class PlayerGestureHelper(private val playerView: PlayerView) {
             }
             // Always clear any stale fillAfter alpha so the button is visible during animation.
             rewHolder.alpha = 1f
+            rewHolder.isVisible = true
 
             rew?.startAnimation(AnimationUtils.loadAnimation(context, R.anim.rotate_left))
             val goLeft = AnimationUtils.loadAnimation(context, R.anim.go_left)
@@ -904,6 +920,7 @@ class PlayerGestureHelper(private val playerView: PlayerView) {
                 override fun onAnimationEnd(animation: Animation?) {
                     rewText?.post {
                         resetRewindText()
+                        rewHolder.isVisible = seekButtonsVisible
                         // Restore parent chain only if we changed it and controls are still hidden.
                         if (!wasShowing && !(playerView.callbacks?.isUIShowing() ?: false)) {
                             playerView.playerCenterMenu?.isGone = prevCenterMenuGone
@@ -935,6 +952,7 @@ class PlayerGestureHelper(private val playerView: PlayerView) {
             }
             // Always clear any stale fillAfter alpha so the button is visible during animation.
             ffwdHolder.alpha = 1f
+            ffwdHolder.isVisible = true
 
             ffwd?.startAnimation(AnimationUtils.loadAnimation(context, R.anim.rotate_right))
             val goRight = AnimationUtils.loadAnimation(context, R.anim.go_right)
@@ -944,6 +962,7 @@ class PlayerGestureHelper(private val playerView: PlayerView) {
                 override fun onAnimationEnd(animation: Animation?) {
                     ffwdText?.post {
                         resetFastForwardText()
+                        ffwdHolder.isVisible = seekButtonsVisible
                         if (!wasShowing && !(playerView.callbacks?.isUIShowing() ?: false)) {
                             playerView.playerCenterMenu?.isGone = prevCenterMenuGone
                             playerView.playerVideoHolder?.isVisible = prevVideoHolderVisible
@@ -964,7 +983,7 @@ class PlayerGestureHelper(private val playerView: PlayerView) {
      * Call when a valid tap is detected (short hold, minimal movement, valid touch area).
      * Routes to double-tap seeking/pausing or schedules a delayed single-tap callback.
      *
-     * Updates [lastTouchEndTime] when a confirmed tap (single or double) is recorded.
+     * Registers the tap with [doubleTapTracker]; callers clear it after anything that is not a tap.
      *
      * @param x           X coordinate of the tap in the view's coordinate space.
      * @param viewWidth   Width of the view (used to compute left/center/right zones).
@@ -975,14 +994,19 @@ class PlayerGestureHelper(private val playerView: PlayerView) {
     fun onTapDetected(x: Float, viewWidth: Int, isLocked: Boolean, onSingleTap: () -> Unit): Boolean {
         val anyDoubleTap = doubleTapEnabled || doubleTapPauseEnabled
         if (!anyDoubleTap) {
+            doubleTapTracker.clear()
             onSingleTap()
             return false
         }
 
-        val timeSinceLast = System.currentTimeMillis() - lastTouchEndTime
-        return if (!isLocked && timeSinceLast < DOUBLE_TAP_MINIMUM_TIME_BETWEEN) {
+        val isDoubleTap = if (isLocked) {
+            doubleTapTracker.clear()
+            false
+        } else {
+            doubleTapTracker.registerTap(x, viewWidth, System.currentTimeMillis())
+        }
+        return if (isDoubleTap) {
             /** Double-tap */
-            tapCount++
             doubleTapToken++ // cancel any pending single-tap runnable
             if (doubleTapPauseEnabled) {
                 when {
@@ -1001,8 +1025,7 @@ class PlayerGestureHelper(private val playerView: PlayerView) {
             }
             true
         } else {
-            /** Single tap (first tap, or too slow for double-tap) */
-            tapCount = 0
+            /** Single tap (first tap, or too slow or too far from the previous tap) */
             val token = ++doubleTapToken
             playerView.playerHolder?.postDelayed({
                 if (token == doubleTapToken) {
@@ -1046,16 +1069,13 @@ class PlayerGestureHelper(private val playerView: PlayerView) {
         holder.setOnTouchListener(::handleGesture)
     }
 
+    @Suppress("UNUSED_PARAMETER")
     private fun isValidTouch(rawX: Float, rawY: Float): Boolean {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            val holder = playerView.playerHolder ?: return true
-            val insets = holder.rootWindowInsets.getInsetsIgnoringVisibility(WindowInsets.Type.systemBars())
-            val validHeight = rawY > insets.top && rawY < screenHeightWithOrientation - insets.bottom
-            val validWidth = rawX > insets.left && rawX < screenWidthWithOrientation - insets.right
-            return validHeight && validWidth
-        }
-
-        return rawY > context.getStatusBarHeight() && rawX < screenWidthWithOrientation
+        // Gestures must work anywhere on the video surface, including its edges. The
+        // player is immersive, so the system-bar insets are hidden and rejecting touches
+        // inside them only made the outer strip of the screen dead. The view already
+        // clips input to its own bounds, so there is nothing unsafe to accept here.
+        return true
     }
 
     private fun handleGesture(view: View, event: MotionEvent): Boolean {
@@ -1087,6 +1107,10 @@ class PlayerGestureHelper(private val playerView: PlayerView) {
 
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
+                // A previous swipe must not poison this gesture: its own actions are
+                // the only ones that decide whether it is a tap.
+                currentTouchAction = null
+                currentLastTouchAction = null
                 isCurrentTouchValid = isValidTouch(event.rawX, event.rawY)
                 if (isCurrentTouchValid) {
                     playerView.callbacks?.onTouchDown()
@@ -1165,6 +1189,9 @@ class PlayerGestureHelper(private val playerView: PlayerView) {
 
             MotionEvent.ACTION_CANCEL, MotionEvent.ACTION_UP -> {
                 holdHandler.removeCallbacks(holdRunnable)
+                // Remember whether hold-to-speed ran: the flag is cleared just below, but the
+                // tap decision further down must still know this touch was a long press.
+                val speedUpWasTriggered = hasTriggeredSpeedUp
                 if (hasTriggeredSpeedUp) {
                     playerView.player.setPlaybackSpeed(DataStoreHelper.playBackSpeed)
                     showOrHideSpeedUp(false)
@@ -1184,17 +1211,31 @@ class PlayerGestureHelper(private val playerView: PlayerView) {
                             }
                         }
                     }
-                    // Tap detection: only fire if the finger was held briefly (not a long-press).
+                    // Tap detection: lifted finger, brief hold (not a long-press), little
+                    // movement (not a drag) and no swipe in progress.
                     val holdTime = currentTouchStartTime?.let { System.currentTimeMillis() - it }
-                    if (currentTouchAction == null && currentLastTouchAction == null
-                        && !hasTriggeredSpeedUp
-                        && (holdTime == null || holdTime < DOUBLE_TAP_MAXIMUM_HOLD_TIME)) {
+                    val slopPx = TAP_MOVEMENT_SLOP_DP * view.resources.displayMetrics.density
+                    val movedPx = startTouch?.distanceTo(currentTouch) ?: 0f
+                    val isTap = TapGesture.isTap(
+                        endedWithUp = event.actionMasked == MotionEvent.ACTION_UP,
+                        hadSwipe = currentTouchAction != null || currentLastTouchAction != null,
+                        speedUpTriggered = speedUpWasTriggered,
+                        movedPx = movedPx,
+                        slopPx = slopPx,
+                        holdTimeMs = holdTime,
+                        maxHoldMs = DOUBLE_TAP_MAXIMUM_HOLD_TIME,
+                    )
+                    if (isTap) {
                         onTapDetected(
                             x = currentTouch.x,
                             viewWidth = view.width,
                             isLocked = isLocked,
                             onSingleTap = { playerView.callbacks?.onSingleTap() }
                         )
+                    } else {
+                        // A swipe or long press must not become the "first tap" of a
+                        // later double-tap.
+                        doubleTapTracker.clear()
                     }
                 }
 
@@ -1202,11 +1243,13 @@ class PlayerGestureHelper(private val playerView: PlayerView) {
                 val hadSwipe = currentTouchAction != null || currentLastTouchAction != null
                 playerView.callbacks?.onGestureEnd(hadSwipe, uiShowingBeforeGesture)
 
-                // Reset touch
-                lastTouchEndTime = System.currentTimeMillis()
+                // Reset touch. A cancelled gesture must never seed a double-tap.
+                if (event.actionMasked == MotionEvent.ACTION_CANCEL || !isCurrentTouchValid) {
+                    doubleTapTracker.clear()
+                }
                 isCurrentTouchValid = false
                 currentTouchStart = null
-                currentLastTouchAction = currentTouchAction
+                currentLastTouchAction = null
                 currentTouchAction = null
                 currentTouchStartPlayerTime = null
                 currentTouchLast = null

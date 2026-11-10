@@ -136,7 +136,19 @@ const val toleranceAfterUs = 300_000L
 @OptIn(UnstableApi::class)
 class CS3IPlayer : IPlayer {
     private var playerListener: Player.Listener? = null
-    private var isPlaying = false
+    @Volatile private var isPlaying = false
+    @Volatile private var playbackStateObserver: ((Boolean) -> Unit)? = null
+
+    /** Observes the real ExoPlayer isPlaying state; used for wall-clock watch-time tracking. */
+    fun setPlaybackStateObserver(observer: ((Boolean) -> Unit)?) {
+        playbackStateObserver = observer
+        observer?.invoke(isPlaying)
+    }
+
+    private fun publishPlayingState(value: Boolean) {
+        isPlaying = value
+        playbackStateObserver?.invoke(value)
+    }
     private var exoPlayer: ExoPlayer? = null
         set(value) {
             // If the old value is not null then the player has not been properly released.
@@ -589,7 +601,7 @@ class CS3IPlayer : IPlayer {
         exoPlayer?.let { exo ->
             playbackPosition = exo.currentPosition
             currentWindow = exo.currentMediaItemIndex
-            isPlaying = exo.isPlaying
+            publishPlayingState(exo.isPlaying)
         }
     }
 
@@ -622,6 +634,7 @@ class CS3IPlayer : IPlayer {
         }
         //simpleCache?.release()
 
+        publishPlayingState(false)
         exoPlayer = null
         event(PlayerAttachedEvent(null))
         //simpleCache = null
@@ -1340,7 +1353,7 @@ class CS3IPlayer : IPlayer {
 
             exoPlayer?.let { exo ->
                 event(StatusEvent(CSPlayerLoading.IsBuffering, CSPlayerLoading.IsBuffering))
-                isPlaying = exo.isPlaying
+                publishPlayingState(exo.isPlaying)
             }
 
             // we want to avoid an empty exoplayer from sending events
@@ -1409,7 +1422,7 @@ class CS3IPlayer : IPlayer {
                                     }
                             )
                         )
-                        isPlaying = exo.isPlaying
+                        publishPlayingState(exo.isPlaying)
                     }
 
                     when (playbackState) {
@@ -1491,6 +1504,7 @@ class CS3IPlayer : IPlayer {
 
                 override fun onIsPlayingChanged(isPlaying: Boolean) {
                     super.onIsPlayingChanged(isPlaying)
+                    publishPlayingState(isPlaying)
                     if (isPlaying) {
                         event(RequestAudioFocusEvent())
                         onRenderFirst()

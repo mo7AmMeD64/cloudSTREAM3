@@ -1,5 +1,6 @@
 package com.kodastream.app.data
 
+import com.kodastream.app.manga.MangaRef
 import com.lagradost.cloudstream3.LoadResponse
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
@@ -43,12 +44,17 @@ object NavArgs {
     private val counter = AtomicInteger(0)
     private val details = ConcurrentHashMap<Int, DetailsArgs>()
     private val players = ConcurrentHashMap<Int, PlayerArgs>()
+    private val mangas = ConcurrentHashMap<Int, MangaRef>()
 
     fun put(args: DetailsArgs): Int = counter.incrementAndGet().also { details[it] = args }
 
     fun put(args: PlayerArgs): Int = counter.incrementAndGet().also { players[it] = args }
 
+    fun put(ref: MangaRef): Int = counter.incrementAndGet().also { mangas[it] = ref }
+
     fun details(id: Int): DetailsArgs? = details[id]
 
     fun player(id: Int): PlayerArgs? = players[id]
+
+    fun manga(id: Int): MangaRef? = mangas[id]
 }

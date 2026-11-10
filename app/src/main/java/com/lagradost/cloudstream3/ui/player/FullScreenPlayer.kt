@@ -42,6 +42,7 @@ import com.google.android.material.button.MaterialButton
 import com.lagradost.cloudstream3.CommonActivity.keyEventListener
 import com.lagradost.cloudstream3.LoadResponse
 import com.kodastream.app.R
+import com.kodastream.app.data.AppPrefs
 import com.kodastream.app.databinding.FragmentPlayerBinding
 import com.kodastream.app.databinding.PlayerCustomLayoutBinding
 import com.kodastream.app.databinding.SpeedDialogBinding
@@ -92,6 +93,9 @@ open class FullScreenPlayer : AbstractPlayerFragment<FragmentPlayerBinding>(
     private var metadataVisibilityToken = 0
     protected var hasEpisodes = false
         private set
+
+    /** True when the current subtitle track supports a timing offset (not built-in media3 cues). */
+    private var subtitleOffsetAvailable = false
 
     /**
      * Default profile 1
@@ -403,8 +407,8 @@ open class FullScreenPlayer : AbstractPlayerFragment<FragmentPlayerBinding>(
 
             if (!isLocked) {
                 playerHostView?.gestureHelper?.animateCenterControls(fadeTo)
-                shadowOverlay.isVisible = true
-                shadowOverlay.startAnimation(fadeAnimation)
+                // No full-screen dim over the video: the controls fade without a dark shade.
+                shadowOverlay.isGone = true
                 downloadBothHeader.startAnimation(fadeAnimation)
             }
 
@@ -420,8 +424,8 @@ open class FullScreenPlayer : AbstractPlayerFragment<FragmentPlayerBinding>(
             track.sampleMimeType == MimeTypes.APPLICATION_MEDIA3_CUES
         }
         // Subtitle offset is not possible on built-in media3 tracks
-        playerBinding?.playerSubtitleOffsetBtt?.isGone =
-            isBuiltinSubtitles || tracks.currentTextTracks.isEmpty()
+        subtitleOffsetAvailable = !(isBuiltinSubtitles || tracks.currentTextTracks.isEmpty())
+        updateUIVisibility()
     }
 
     private fun restoreOrientationWithSensor(activity: Activity) {
@@ -453,10 +457,14 @@ open class FullScreenPlayer : AbstractPlayerFragment<FragmentPlayerBinding>(
     }
 
     private fun lockOrientation(activity: Activity) {
-        val display = if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R)
+        // Activity.display is nullable (the activity may not be attached to a display
+        // yet, e.g. during a configuration change); bail out instead of crashing.
+        val display = if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
             @Suppress("DEPRECATION")
             (activity.getSystemService(Context.WINDOW_SERVICE) as WindowManager).defaultDisplay
-        else activity.display!!
+        } else {
+            activity.display
+        } ?: return
         val rotation = display.rotation
         val currentOrientation = activity.resources.configuration.orientation
         val orientation: Int
@@ -1079,8 +1087,7 @@ open class FullScreenPlayer : AbstractPlayerFragment<FragmentPlayerBinding>(
             // BOTTOM
             playerLockHolder.startAnimation(fadeAnimation)
             // player_go_back_holder?.startAnimation(fadeAnimation)
-            shadowOverlay.isVisible = true
-            shadowOverlay.startAnimation(fadeAnimation)
+            shadowOverlay.isGone = true
         }
         updateLockUI()
     }
@@ -1095,6 +1102,15 @@ open class FullScreenPlayer : AbstractPlayerFragment<FragmentPlayerBinding>(
                 togglePlayerTitleGone = true
             }
         }
+        val context = context
+        // Control visibility is chosen on the Player settings page and is read each time
+        // the controls are shown, so a switch applies on the next playback screen.
+        val showSource = context == null || AppPrefs.playerShowSourceControl(context)
+        val showLock = context == null || AppPrefs.playerShowLockControl(context)
+        val showRotate = context == null || AppPrefs.playerShowRotateControl(context)
+        val showResize = context == null || AppPrefs.playerShowResizeControl(context)
+        val showSubtitleOffset = context == null || AppPrefs.playerShowSubtitleOffsetControl(context)
+        val compact = context == null || AppPrefs.playerCompactControls(context)
         playerBinding?.apply {
             playerLockHolder.isGone = isGone
             playerVideoBar.isGone = isGone
@@ -1109,17 +1125,45 @@ open class FullScreenPlayer : AbstractPlayerFragment<FragmentPlayerBinding>(
             playerVideoTitleRez.isGone = isGone || playerVideoTitleRez.text.isBlank()
             playerEpisodeFiller.isGone = isGone
             playerCenterMenu.isGone = isGone
-            playerLock.isGone = !isShowing
+            // Hiding the lock button is only honored while unlocked, so a locked player
+            // can always be unlocked again.
+            playerLock.isGone = !isShowing || (!showLock && !isLocked)
             playerGoBackHolder.isGone = isGone
-            playerSourcesBtt.isGone = isGone
-            shadowOverlay.isGone = isGone
+            playerSourcesBtt.isGone = isGone || !showSource
+            playerSubtitleOffsetBtt.isGone = isGone || !showSubtitleOffset || !subtitleOffsetAvailable
+            playerResizeBtt.isGone = isGone || !playerResizeEnabled || !showResize
+            playerRotateBtt.isGone =
+                isGone || !playerRotateEnabled || !showRotate || isLayout(TV or EMULATOR)
+            // Intentionally no full-screen dim/shadow overlay over the video.
+            shadowOverlay.isGone = true
             playerSkipEpisode.isClickable = !isGone
+            applyCompactControlSizing(compact)
         }
+    }
+
+    /** Resizes the control icons only; touch targets and the bottom-row layout stay as they are. */
+    private fun applyCompactControlSizing(compact: Boolean) {
+        val binding = playerBinding ?: return
+        val density = binding.root.resources.displayMetrics.density
+        val iconSize = ((if (compact) 18 else 22) * density).toInt().coerceAtLeast(1)
+        listOf(
+            binding.playerLock,
+            binding.playerRotateBtt,
+            binding.playerResizeBtt,
+            binding.playerSpeedBtt,
+            binding.playerSubtitleOffsetBtt,
+            binding.playerSourcesBtt,
+            binding.playerCompressorBtt,
+            binding.playerSkipOp,
+            binding.playerSkipEpisode,
+        ).forEach { button -> button.iconSize = iconSize }
     }
 
     private fun updateLockUI() {
         playerBinding?.apply {
-            playerLock.setIconResource(if (isLocked) R.drawable.video_locked else R.drawable.video_unlocked)
+            playerLock.setIconResource(
+                if (isLocked) R.drawable.player_ic_lock_modern else R.drawable.player_ic_unlock_modern
+            )
             val color = if (isLocked) context?.colorFromAttribute(R.attr.colorPrimary)
             else Color.WHITE
             if (color != null) {

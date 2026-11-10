@@ -49,6 +49,7 @@ import com.lagradost.cloudstream3.CommonActivity.screenWidth
 import com.lagradost.cloudstream3.CommonActivity.showToast
 import com.lagradost.cloudstream3.ErrorLoadingException
 import com.kodastream.app.R
+import com.kodastream.app.data.AppPrefs
 import com.lagradost.cloudstream3.mvvm.logError
 import com.lagradost.cloudstream3.mvvm.safe
 import com.lagradost.cloudstream3.ui.player.live.LivePreviewTimeBar
@@ -283,6 +284,7 @@ class PlayerView @JvmOverloads constructor(
             // Preview bar
             val progressBar: PreviewTimeBar? = exoPlayerView?.findViewById(R.id.exo_progress)
             exoProgress = progressBar as? LivePreviewTimeBar
+            applyProgressStyle(progressBar)
             val previewImageView: ImageView? = exoPlayerView?.findViewById(R.id.previewImageView)
             val previewFrameLayout: FrameLayout? =
                 exoPlayerView?.findViewById(R.id.previewFrameLayout)
@@ -535,10 +537,39 @@ class PlayerView @JvmOverloads constructor(
 
     /** Player UI helpers */
 
+    /**
+     * Applies the slim / standard / bold choice from the Player settings page to the
+     * progress bar. The played and scrubber colors come from the layout (white).
+     *
+     * Media3 1.9 only exposes the bar thickness as the `bar_height` XML attribute, so the
+     * private field is set reflectively. R8 is off, which keeps the field name stable, and
+     * any failure keeps the XML default (4dp), so the worst case is an unchanged bar.
+     */
+    private fun applyProgressStyle(progressBar: View?) {
+        val bar = progressBar as? DefaultTimeBar ?: return
+        val barHeightDp = when (AppPrefs.playerProgressStyle(context)) {
+            AppPrefs.PLAYER_PROGRESS_SLIM -> 2
+            AppPrefs.PLAYER_PROGRESS_BOLD -> 6
+            else -> 4
+        }
+        runCatching {
+            val density = context.resources.displayMetrics.density
+            DefaultTimeBar::class.java
+                .getDeclaredField("barHeight")
+                .apply { isAccessible = true }
+                .setInt(bar, (barHeightDp * density).toInt().coerceAtLeast(1))
+            bar.invalidate()
+        }
+    }
+
     private fun keepScreenOn(on: Boolean) {
         val window = (context as? Activity)?.window ?: return
-        if (on) window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-        else window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        // Settings has a "keep screen on" switch; honor it (on by default).
+        if (on && AppPrefs.keepScreenOn(context)) {
+            window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        } else {
+            window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        }
     }
 
     fun updateIsPlaying(wasPlaying: CSPlayerLoading, isPlaying: CSPlayerLoading) {
