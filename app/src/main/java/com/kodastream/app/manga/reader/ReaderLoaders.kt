@@ -417,38 +417,61 @@ class EmptyChapterException(
 ) : Exception("The source returned no pages for this chapter")
 
 /**
- * Fetches the chapter's own web page once more and summarises it in a line.
+ * Fetches the chapter's own web page twice and summarises both in a few lines.
  * An empty page list has several causes that look the same from outside: a
- * Cloudflare check, a login or lock page, a redirect, or markup the extension
- * no longer reads. The line says which one it is. Never throws.
+ * Cloudflare check, a lock page, a redirect to the home page, or markup the
+ * extension no longer reads. The first request uses the source's own headers;
+ * the second adds the headers a browser sends, so a site that turns away plain
+ * clients shows up as a difference between the two. Never throws.
  */
 internal suspend fun probeChapterPage(source: HttpSource, chapter: MangaChapter): String? = try {
     val url = source.getChapterUrl(chapter.toSChapter())
-    val request = Request.Builder().url(url).headers(source.headers).build()
-    withTimeout(PROBE_TIMEOUT_MS) { source.client.newCall(request).await() }.use { response ->
-        val html = response.body.string().take(PROBE_MAX_CHARS)
-        val title = Regex("<title[^>]*>(.*?)</title>", setOf(RegexOption.DOT_MATCHES_ALL, RegexOption.IGNORE_CASE))
-            .find(html)?.groupValues?.get(1)?.trim()?.replace(Regex("\\s+"), " ")?.take(60)
-        val images = Regex("<img\\b", RegexOption.IGNORE_CASE).findAll(html).count()
-        val challenge = listOf("Just a moment", "cf-chl", "challenge-platform", "cf-turnstile")
-            .any { html.contains(it, ignoreCase = true) }
-        buildString {
-            append("HTTP ").append(response.code)
-            if (response.request.url.toString() != url) {
-                append(", redirected to ").append(response.request.url.encodedPath)
-            }
-            append("\ntitle: ").append(title ?: "none")
-            append("\nimg tags: ").append(images)
-            append(", reading-content: ").append(if (html.contains("reading-content")) "yes" else "no")
-            append(", protector: ").append(if (html.contains("chapter-protector-data")) "yes" else "no")
-            append("\nchallenge: ").append(if (challenge) "yes" else "no")
-            append(", size: ").append(html.length / 1024).append(" KB")
-        }
+    val origin = url.toHttpUrlOrNull()?.let { "${it.scheme}://${it.host}/" }
+    val browser = source.headers.newBuilder()
+        .set("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
+        .set("Sec-Fetch-Dest", "document")
+        .set("Sec-Fetch-Mode", "navigate")
+        .set("Sec-Fetch-Site", "same-origin")
+        .set("Upgrade-Insecure-Requests", "1")
+        .apply { if (origin != null) set("Referer", origin) }
+        .build()
+    buildString {
+        append("asked: ").append(url.toHttpUrlOrNull()?.encodedPath ?: url)
+        append("\nplain: ").append(probeOnce(source, url, source.headers))
+        append("\nbrowser: ").append(probeOnce(source, url, browser))
     }
 } catch (e: CancellationException) {
     throw e
 } catch (e: Throwable) {
     "probe failed: ${rootMessage(e)}"
+}
+
+private suspend fun probeOnce(source: HttpSource, url: String, headers: okhttp3.Headers): String = try {
+    val request = Request.Builder().url(url).headers(headers).build()
+    withTimeout(PROBE_TIMEOUT_MS) { source.client.newCall(request).await() }.use { response ->
+        val html = response.body.string().take(PROBE_MAX_CHARS)
+        val title = Regex("<title[^>]*>(.*?)</title>", setOf(RegexOption.DOT_MATCHES_ALL, RegexOption.IGNORE_CASE))
+            .find(html)?.groupValues?.get(1)?.trim()?.replace(Regex("\\s+"), " ")?.take(40)
+        val images = Regex("<img\\b", RegexOption.IGNORE_CASE).findAll(html).count()
+        val challenge = response.header("cf-mitigated") != null ||
+            listOf("Just a moment", "cf_chl_opt", "cf-chl-").any { html.contains(it, ignoreCase = true) }
+        val finalPath = response.request.url.encodedPath
+        buildString {
+            append(response.code)
+            if (response.request.url.toString() != url) append(" -> ").append(finalPath)
+            append(", img ").append(images)
+            append(", reading ").append(if (html.contains("reading-content")) "yes" else "no")
+            append(", wp-img ").append(if (html.contains("wp-manga-chapter-img")) "yes" else "no")
+            append(", protector ").append(if (html.contains("chapter-protector-data")) "yes" else "no")
+            append(", challenge ").append(if (challenge) "yes" else "no")
+            append(", ").append(html.length / 1024).append(" KB")
+            append(", title ").append(title ?: "none")
+        }
+    }
+} catch (e: CancellationException) {
+    throw e
+} catch (e: Throwable) {
+    "failed: ${rootMessage(e)}"
 }
 
 private const val PROBE_TIMEOUT_MS = 15_000L
