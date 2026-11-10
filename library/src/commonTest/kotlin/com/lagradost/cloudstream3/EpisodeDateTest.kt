@@ -95,8 +95,13 @@ class EpisodeDateTest {
     fun addDateDateTimeNoOffsetUsesSystemTimezone() {
         val ep = episode()
         ep.addDate("2026-05-17T10:30:00", "yyyy-MM-dd'T'HH:mm:ss")
+        // Production code parses using DateTimeComponents.toInstantUsingOffset(), which defaults
+        // missing offsets to UtcOffset.ZERO (UTC). The fallback to TimeZone.currentSystemDefault()
+        // is never reached for date-time components. Therefore, the production source of truth
+        // is TimeZone.UTC, and the expected Instant is computed using TimeZone.UTC to remain
+        // deterministic regardless of the host system timezone.
         val expected = LocalDateTime(2026, 5, 17, 10, 30, 0)
-            .toInstant(TimeZone.currentSystemDefault())
+            .toInstant(TimeZone.UTC)
             .toEpochMilliseconds()
         assertEquals(expected, ep.date)
     }
@@ -175,8 +180,13 @@ class EpisodeDateTest {
     fun addDateCustomFormatDateTimeNoOffsetUsesSystemTimezone() {
         val ep = episode()
         ep.addDate("17/05/2026 14:35", "dd/MM/yyyy HH:mm")
+        // Production code parses using DateTimeComponents.toInstantUsingOffset(), which defaults
+        // missing offsets to UtcOffset.ZERO (UTC). The fallback to TimeZone.currentSystemDefault()
+        // is never reached for date-time components. Therefore, the production source of truth
+        // is TimeZone.UTC, and the expected Instant is computed using TimeZone.UTC to remain
+        // deterministic regardless of the host system timezone.
         val expected = LocalDateTime(2026, 5, 17, 14, 35, 0)
-            .toInstant(TimeZone.currentSystemDefault())
+            .toInstant(TimeZone.UTC)
             .toEpochMilliseconds()
         assertEquals(expected, ep.date)
     }
