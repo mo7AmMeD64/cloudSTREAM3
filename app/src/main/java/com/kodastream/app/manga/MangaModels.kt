@@ -51,6 +51,15 @@ data class MangaChapter(
     val memo: String = "",
 )
 
+/**
+ * The key a chapter's page list is cached under. Sources built on the newer
+ * extension API give a chapter only its slug as a URL (`chapter-1`) and keep the
+ * manga's path in the memo, so the URL alone repeats across manga and one title
+ * would be shown another title's pages.
+ */
+fun MangaChapter.pageListKey(): String =
+    if (memo.isBlank() || memo == "{}") url else "$url|$memo"
+
 data class MangaChapterList(
     val chapters: List<MangaChapter> = emptyList(),
 )

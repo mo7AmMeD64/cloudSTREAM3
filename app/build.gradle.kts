@@ -21,8 +21,8 @@ android {
         // desugaring enabled below on anything older than API 33.
         minSdk = 26
         targetSdk = libs.versions.targetSdk.get().toInt()
-        versionCode = 20
-        versionName = "0.12.3"
+        versionCode = 21
+        versionName = "0.12.4"
     }
 
     // CI decodes the stable release keystore from secrets; without it (local
