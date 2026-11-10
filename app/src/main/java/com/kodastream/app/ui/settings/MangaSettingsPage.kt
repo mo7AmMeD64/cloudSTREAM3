@@ -1,5 +1,27 @@
 package com.kodastream.app.ui.settings
 
+import androidx.compose.foundation.layout.Row
+import eu.kanade.tachiyomi.network.PREF_DOH_SHECAN
+import eu.kanade.tachiyomi.network.PREF_DOH_QUAD9
+import eu.kanade.tachiyomi.network.PREF_DOH_QUAD101
+import eu.kanade.tachiyomi.network.PREF_DOH_NJALLA
+import eu.kanade.tachiyomi.network.PREF_DOH_MULLVAD
+import eu.kanade.tachiyomi.network.PREF_DOH_GOOGLE
+import eu.kanade.tachiyomi.network.PREF_DOH_DNSPOD
+import eu.kanade.tachiyomi.network.PREF_DOH_CONTROLD
+import eu.kanade.tachiyomi.network.PREF_DOH_CLOUDFLARE
+import eu.kanade.tachiyomi.network.PREF_DOH_ALIDNS
+import eu.kanade.tachiyomi.network.PREF_DOH_ADGUARD
+import eu.kanade.tachiyomi.network.PREF_DOH_360
+import eu.kanade.tachiyomi.network.NetworkPreferences
+import eu.kanade.tachiyomi.compat.MangaEngine
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.Text
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material.icons.rounded.Public
+import android.webkit.WebView
+import android.webkit.WebStorage
 import android.widget.Toast
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
@@ -41,6 +63,40 @@ import com.kodastream.app.ui.manga.mangaSourceLanguages
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+
+/** The DNS-over-HTTPS providers Mihon offers, in its order. -1 is off. */
+private val dohProviders = listOf(
+    -1,
+    PREF_DOH_CLOUDFLARE,
+    PREF_DOH_GOOGLE,
+    PREF_DOH_ADGUARD,
+    PREF_DOH_QUAD9,
+    PREF_DOH_ALIDNS,
+    PREF_DOH_DNSPOD,
+    PREF_DOH_360,
+    PREF_DOH_QUAD101,
+    PREF_DOH_MULLVAD,
+    PREF_DOH_CONTROLD,
+    PREF_DOH_NJALLA,
+    PREF_DOH_SHECAN,
+)
+
+@Composable
+private fun dohLabel(id: Int): String = when (id) {
+    PREF_DOH_CLOUDFLARE -> "Cloudflare"
+    PREF_DOH_GOOGLE -> "Google"
+    PREF_DOH_ADGUARD -> "AdGuard"
+    PREF_DOH_QUAD9 -> "Quad9"
+    PREF_DOH_ALIDNS -> "AliDNS"
+    PREF_DOH_DNSPOD -> "DNSPod"
+    PREF_DOH_360 -> "360"
+    PREF_DOH_QUAD101 -> "Quad 101"
+    PREF_DOH_MULLVAD -> "Mullvad"
+    PREF_DOH_CONTROLD -> "Control D"
+    PREF_DOH_NJALLA -> "Njalla"
+    PREF_DOH_SHECAN -> "Shecan"
+    else -> stringResource(R.string.manga_doh_disabled)
+}
 
 @Composable
 private fun modeReaderLabel(mode: MangaReadingMode): String = stringResource(
@@ -121,6 +177,11 @@ internal fun MangaSettingsPage(
     }
     var checkOnOpen by remember { mutableStateOf(MangaPrefs.checkUpdatesOnOpen(context)) }
     var nsfwGlobal by remember { mutableStateOf(MangaPrefs.showNsfwGlobalSearch(context)) }
+    val networkPrefs = remember { NetworkPreferences(context) }
+    var dohProvider by remember { mutableStateOf(networkPrefs.dohProvider) }
+    var dohDialog by remember { mutableStateOf(false) }
+    var userAgent by remember { mutableStateOf(networkPrefs.defaultUserAgent) }
+    var userAgentDialog by remember { mutableStateOf(false) }
     val directionShown = readerMode == MangaReadingMode.PAGED_RTL ||
         readerMode == MangaReadingMode.PAGED_LTR
 
@@ -351,6 +412,120 @@ internal fun MangaSettingsPage(
                 )
             }
         }
+
+        // Mihon's network options: what a source that is blocked or sits behind a check needs.
+        item(key = "manga_network") {
+            val count = 4
+            var row = -1
+            SettingsGroup(stringResource(R.string.settings_manga_group_network)) {
+                NavigationRow(
+                    index = ++row,
+                    count = count,
+                    icon = Icons.Rounded.Public,
+                    title = stringResource(R.string.settings_manga_doh),
+                    supporting = dohLabel(dohProvider),
+                    onClick = { dohDialog = true },
+                )
+                NavigationRow(
+                    index = ++row,
+                    count = count,
+                    icon = Icons.Rounded.DeleteSweep,
+                    title = stringResource(R.string.settings_manga_clear_cookies),
+                    supporting = stringResource(R.string.settings_manga_clear_cookies_summary),
+                    onClick = {
+                        MangaEngine.get(context).network?.cookieJar?.removeAll()
+                        Toast.makeText(context, R.string.settings_manga_cookies_cleared, Toast.LENGTH_SHORT).show()
+                    },
+                )
+                NavigationRow(
+                    index = ++row,
+                    count = count,
+                    icon = Icons.Rounded.Restore,
+                    title = stringResource(R.string.settings_manga_clear_webview),
+                    supporting = stringResource(R.string.settings_manga_clear_webview_summary),
+                    onClick = {
+                        try {
+                            WebStorage.getInstance().deleteAllData()
+                            WebView(context).run {
+                                clearCache(true)
+                                clearFormData()
+                                clearHistory()
+                                clearSslPreferences()
+                                destroy()
+                            }
+                            Toast.makeText(context, R.string.settings_manga_webview_cleared, Toast.LENGTH_SHORT).show()
+                        } catch (_: Exception) {
+                            Toast.makeText(context, R.string.manga_webview_missing, Toast.LENGTH_SHORT).show()
+                        }
+                    },
+                )
+                NavigationRow(
+                    index = ++row,
+                    count = count,
+                    icon = Icons.Rounded.Tune,
+                    title = stringResource(R.string.settings_manga_user_agent),
+                    supporting = userAgent,
+                    onClick = { userAgentDialog = true },
+                )
+            }
+        }
+    }
+
+    if (dohDialog) {
+        ChoiceDialog(
+            title = stringResource(R.string.settings_manga_doh),
+            options = dohProviders,
+            selected = dohProvider,
+            icon = Icons.Rounded.Public,
+            label = { dohLabel(it) },
+            onSelect = { id ->
+                dohProvider = id
+                networkPrefs.dohProvider = id
+                dohDialog = false
+                // Mihon asks for a restart too: the client is built once.
+                Toast.makeText(context, R.string.settings_manga_doh_restart, Toast.LENGTH_LONG).show()
+            },
+            onDismiss = { dohDialog = false },
+        )
+    }
+
+    if (userAgentDialog) {
+        var draft by remember { mutableStateOf(userAgent) }
+        AlertDialog(
+            onDismissRequest = { userAgentDialog = false },
+            title = { Text(stringResource(R.string.settings_manga_user_agent)) },
+            text = {
+                OutlinedTextField(
+                    value = draft,
+                    onValueChange = { draft = it },
+                    modifier = androidx.compose.ui.Modifier,
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val value = draft.trim().ifEmpty { NetworkPreferences.DEFAULT_USER_AGENT }
+                        networkPrefs.defaultUserAgent = value
+                        userAgent = value
+                        userAgentDialog = false
+                    },
+                ) { Text(stringResource(R.string.ok)) }
+            },
+            dismissButton = {
+                Row {
+                    TextButton(
+                        onClick = {
+                            networkPrefs.defaultUserAgent = NetworkPreferences.DEFAULT_USER_AGENT
+                            userAgent = NetworkPreferences.DEFAULT_USER_AGENT
+                            userAgentDialog = false
+                        },
+                    ) { Text(stringResource(R.string.settings_manga_user_agent_reset)) }
+                    TextButton(onClick = { userAgentDialog = false }) {
+                        Text(stringResource(R.string.cancel))
+                    }
+                }
+            },
+        )
     }
 
     if (mangaLanguageDialog) {

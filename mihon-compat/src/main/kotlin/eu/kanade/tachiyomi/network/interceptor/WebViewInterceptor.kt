@@ -5,6 +5,7 @@ import android.os.Build
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.widget.Toast
+import eu.kanade.tachiyomi.util.system.DeviceUtil
 import eu.kanade.tachiyomi.util.system.WebViewUtil
 import eu.kanade.tachiyomi.util.system.setDefaultSettings
 import eu.kanade.tachiyomi.util.system.setUserAgent
@@ -25,7 +26,10 @@ abstract class WebViewInterceptor(
 ) : Interceptor {
 
     private val initWebView by lazy {
-        if (Build.VERSION.SDK_INT == Build.VERSION_CODES.S) {
+        // Crashes on some devices. We skip this in some cases since the only impact is slower
+        // WebView init in those rare cases.
+        // See https://bugs.chromium.org/p/chromium/issues/detail?id=1279562
+        if (DeviceUtil.isMiui || (Build.VERSION.SDK_INT == Build.VERSION_CODES.S && DeviceUtil.isSamsung)) {
             return@lazy
         }
 

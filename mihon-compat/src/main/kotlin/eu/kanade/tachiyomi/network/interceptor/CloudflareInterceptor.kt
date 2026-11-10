@@ -2,7 +2,6 @@ package eu.kanade.tachiyomi.network.interceptor
 
 import android.annotation.SuppressLint
 import android.content.Context
-import android.os.SystemClock
 import android.util.Log
 import android.webkit.JavascriptInterface
 import android.webkit.RenderProcessGoneDetail
@@ -12,6 +11,9 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.Toast
 import androidx.core.content.ContextCompat
+import androidx.webkit.ScriptHandler
+import androidx.webkit.WebViewCompat
+import androidx.webkit.WebViewFeature
 import eu.kanade.tachiyomi.network.AndroidCookieJar
 import eu.kanade.tachiyomi.util.system.isOutdated
 import eu.kanade.tachiyomi.util.system.toWebViewHeaders
@@ -40,11 +42,6 @@ class CloudflareInterceptor(
     // Requests to a host share its lock while a challenge is solved under it alone, so concurrent requests wait for
     // one WebView instead of each opening their own
     private val hostLocks = ConcurrentHashMap<String, ReentrantReadWriteLock>()
-
-    // A host whose challenge could not be solved fails fast for a while instead of making every queued request
-    // (covers, pages, searches) wait its own turn at the WebView. Solving the check by hand in the in-app browser
-    // sets a new clearance, which is checked before this, so it ends the window at once.
-    private val failedUntil = ConcurrentHashMap<String, Long>()
 
     private val listenerScript = """
         addEventListener("message", ({data}) => {
@@ -78,16 +75,8 @@ class CloudflareInterceptor(
             if (isCleared(request.url, clearance)) {
                 response.close()
             } else {
-                val blockedUntil = failedUntil[request.url.host]
-                if (blockedUntil != null && SystemClock.elapsedRealtime() < blockedUntil) return response
                 if (!prepareWebView()) return response
-                try {
-                    solve(request, response, clearance)
-                } catch (e: IOException) {
-                    failedUntil[request.url.host] = SystemClock.elapsedRealtime() + FAIL_FAST_MS
-                    throw e
-                }
-                failedUntil.remove(request.url.host)
+                solve(request, response, clearance)
             }
         }
 
@@ -130,6 +119,8 @@ class CloudflareInterceptor(
         val latch = CountDownLatch(1)
 
         var webview: WebView? = null
+        var listenerScriptHandler: ScriptHandler? = null
+        val useIsolatedWorld = WebViewFeature.isFeatureSupported(WebViewFeature.JS_INJECTION_IN_FRAME_AND_WORLD)
 
         var challengeFound = false
         var cloudflareBypassed = false
@@ -162,14 +153,30 @@ class CloudflareInterceptor(
                 }
             }
 
-            webview.addJavascriptInterface(
-                object {
-                    @Suppress("unused")
-                    @JavascriptInterface
-                    fun postMessage(event: String) = onChallengeEvent(event)
-                },
-                "mihon",
-            )
+            if (useIsolatedWorld) {
+                // An isolated world keeps the bridge out of the page's reach
+                val world = WebViewCompat.getExecutionWorld(webview, "mihon")
+                val origins = setOf(originalRequest.url.origin())
+                WebViewCompat.addWebMessageListener(webview, "mihon", origins, world) { _, message, _, isMainFrame, _ ->
+                    if (isMainFrame) message.data?.let(::onChallengeEvent)
+                }
+                listenerScriptHandler = WebViewCompat.addJavaScriptOnEvent(
+                    webview,
+                    listenerScript,
+                    WebViewCompat.INJECTION_EVENT_DOCUMENT_START,
+                    origins,
+                    world,
+                )
+            } else {
+                webview.addJavascriptInterface(
+                    object {
+                        @Suppress("unused")
+                        @JavascriptInterface
+                        fun postMessage(event: String) = onChallengeEvent(event)
+                    },
+                    "mihon",
+                )
+            }
 
             webview.webViewClient = object : WebViewClient() {
                 override fun onPageFinished(view: WebView, url: String) {
@@ -182,7 +189,7 @@ class CloudflareInterceptor(
                         if (!challengeFound) {
                             // The first request didn't return the challenge, abort.
                             latch.countDown()
-                        } else {
+                        } else if (!useIsolatedWorld) {
                             view.evaluateJavascript(listenerScript, null)
                         }
                     }
@@ -230,7 +237,16 @@ class CloudflareInterceptor(
 
             webview?.run {
                 if (!isRenderProcessGone) {
-                    removeJavascriptInterface("mihon")
+                    if (useIsolatedWorld) {
+                        WebViewCompat.removeWebMessageListener(
+                            this,
+                            WebViewCompat.getExecutionWorld(this, "mihon"),
+                            "mihon",
+                        )
+                    } else {
+                        removeJavascriptInterface("mihon")
+                    }
+                    listenerScriptHandler?.remove()
                     stopLoading()
                 }
                 destroy()
@@ -258,8 +274,6 @@ private fun HttpUrl.origin(): String {
 
 private val SERVER_CHECK = arrayOf("cloudflare-nginx", "cloudflare")
 private val COOKIE_NAMES = listOf("cf_clearance")
-
-private const val FAIL_FAST_MS = 60_000L
 
 /** The check could not be passed without the user; the app offers its in-app browser when it sees this. */
 class CloudflareBypassException : Exception()
