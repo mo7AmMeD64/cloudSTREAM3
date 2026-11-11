@@ -3,8 +3,6 @@ package com.kodastream.app.ui
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Box
@@ -20,7 +18,6 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -37,6 +34,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
@@ -48,6 +46,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -59,6 +58,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -67,12 +67,15 @@ import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.kodastream.app.R
 import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.exp
@@ -81,6 +84,20 @@ import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.sin
 import kotlin.math.sqrt
+
+/**
+ * NuvioMobile's own bar colours, not Material roles, so the style matches
+ * Nuvio's default WHITE theme exactly: #1C1C1E glass, white accent, muted
+ * #969CA3 labels. The fallback surface is Nuvio's non-haze one (0.82 alpha)
+ * plus its 0.75dp white edge.
+ */
+private val NuvioBarSurface = Color(0xFF1C1C1E)
+private val NuvioBarAccent = Color(0xFFF5F5F5)
+private val NuvioBarMuted = Color(0xFF969CA3)
+private val NuvioBarFont = FontFamily(
+    Font(R.font.jetbrains_sans_regular, FontWeight.Normal),
+    Font(R.font.jetbrains_sans_bold, FontWeight.Bold),
+)
 
 /**
  * The Nuvio navigation bar, ported from NuvioMobile's jelly bar: a floating
@@ -102,18 +119,16 @@ internal fun NuvioNavBar(
 ) {
     if (destinations.isEmpty()) return
     val items = destinations.map { destination ->
-        val selected = destination.route == selectedRoute
         NuvioNavItem(
             label = stringResource(destination.labelRes),
-            selected = selected,
+            selected = destination.route == selectedRoute,
             onClick = { onSelect(destination.route) },
-            icon = if (selected) destination.filledIcon else destination.outlinedIcon,
+            icon = destination.nuvioIcon,
+            iconRes = destination.nuvioIconRes,
         )
     }
-    val primary = MaterialTheme.colorScheme.primary
-    val activeContent = MaterialTheme.colorScheme.onPrimaryContainer
-    val activeSurface = MaterialTheme.colorScheme.primaryContainer
-    val inactiveContent = MaterialTheme.colorScheme.onSurfaceVariant
+    val accent = NuvioBarAccent
+    val muted = NuvioBarMuted
     val labelFraction by animateFloatAsState(
         targetValue = scrollState.labelVisibility,
         animationSpec = tween(300, easing = FastOutSlowInEasing),
@@ -127,10 +142,8 @@ internal fun NuvioNavBar(
     val currentItems by rememberUpdatedState(items)
     val currentIsRtl by rememberUpdatedState(isRtl)
     val density = LocalDensity.current
-    val compact = items.size > 4
-    val trackHeight = 48.dp + (if (compact) 8.dp else 16.dp) * labelFraction
-    val expandedPadding = if (compact) 12.dp else 28.dp
-    val horizontalPadding = expandedPadding + (58.dp - expandedPadding) * (1f - labelFraction)
+    val trackHeight = 48.dp + 16.dp * labelFraction
+    val horizontalPadding = 28.dp + (58.dp - 28.dp) * (1f - labelFraction)
 
     LaunchedEffect(visualSelectedIndex, items.size) {
         motion.select(visualSelectedIndex)
@@ -195,20 +208,32 @@ internal fun NuvioNavBar(
                                 .clip(RoundedCornerShape(50))
                                 .drawWithContent {
                                     drawContent()
-                                    drawJellyGlow(motion.frame, primary)
+                                    drawJellyGlow(motion.frame, accent)
                                 },
                         ) {
                             Box(
                                 Modifier
                                     .matchParentSize()
-                                    .background(
-                                        MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.97f)
-                                    )
-                                    .border(
-                                        width = 0.75.dp,
-                                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f),
-                                        shape = RoundedCornerShape(50),
-                                    ),
+                                    .drawWithCache {
+                                        val fill = NuvioBarSurface.copy(alpha = 0.82f)
+                                        val edge = Brush.verticalGradient(
+                                            listOf(
+                                                Color.White.copy(alpha = 0.27f),
+                                                Color.White.copy(alpha = 0.02f),
+                                            )
+                                        )
+                                        val width = 0.75.dp.toPx()
+                                        onDrawBehind {
+                                            drawRect(fill)
+                                            drawRoundRect(
+                                                brush = edge,
+                                                topLeft = Offset(width / 2, width / 2),
+                                                size = Size(size.width - width, size.height - width),
+                                                cornerRadius = CornerRadius((size.height - width) / 2),
+                                                style = Stroke(width),
+                                            )
+                                        }
+                                    },
                             )
                         }
                         Box(
@@ -227,9 +252,8 @@ internal fun NuvioNavBar(
                                 labelFraction = labelFraction,
                                 motion = motion,
                                 active = false,
-                                compact = compact,
-                                activeContent = activeContent,
-                                inactiveContent = inactiveContent,
+                                accent = accent,
+                                muted = muted,
                                 modifier = Modifier.matchParentSize(),
                             )
                         }
@@ -241,8 +265,8 @@ internal fun NuvioNavBar(
                                         drawJellyPill(
                                             motion.frame,
                                             items.size,
-                                            activeSurface,
-                                            primary,
+                                            accent.copy(alpha = 0.15f),
+                                            accent,
                                         ) { drawContent() }
                                     },
                             ) {
@@ -251,9 +275,8 @@ internal fun NuvioNavBar(
                                     labelFraction = labelFraction,
                                     motion = motion,
                                     active = true,
-                                    compact = compact,
-                                    activeContent = activeContent,
-                                    inactiveContent = inactiveContent,
+                                    accent = accent,
+                                    muted = muted,
                                     modifier = Modifier.matchParentSize(),
                                 )
                             }
@@ -275,6 +298,7 @@ private class NuvioNavItem(
     val selected: Boolean,
     val onClick: () -> Unit,
     val icon: ImageVector,
+    val iconRes: Int,
 )
 
 /** 1f = labels fully visible, 0f = icons only. */
@@ -332,15 +356,14 @@ private fun JellyTabRow(
     labelFraction: Float,
     motion: JellyMotion,
     active: Boolean,
-    compact: Boolean,
-    activeContent: Color,
-    inactiveContent: Color,
+    accent: Color,
+    muted: Color,
     modifier: Modifier,
 ) {
-    val color = if (active) activeContent else inactiveContent
-    val iconSize = if (compact) 24.dp else 28.dp
-    val labelHeight = if (compact) 14.dp else 16.dp
-    val iconTint = if (active) activeContent else inactiveContent
+    val color = if (active) accent else muted
+    val iconSize = 28.dp
+    val labelHeight = 16.dp
+    val iconTint = if (active) accent else muted
     Row(
         modifier = modifier.padding(4.dp).clearAndSetSemantics {},
         verticalAlignment = Alignment.CenterVertically,
@@ -360,7 +383,16 @@ private fun JellyTabRow(
                             translationY = 2.dp.toPx() * labelFraction
                         }
                     ) {
-                        Icon(item.icon, null, Modifier.size(iconSize), tint = iconTint)
+                        if (item.iconRes != 0) {
+                            Icon(
+                                painter = painterResource(item.iconRes),
+                                contentDescription = null,
+                                modifier = Modifier.size(iconSize),
+                                tint = iconTint,
+                            )
+                        } else {
+                            Icon(item.icon, null, Modifier.size(iconSize), tint = iconTint)
+                        }
                     }
                     Box(
                         Modifier.height(labelHeight * labelFraction)
@@ -372,8 +404,9 @@ private fun JellyTabRow(
                             text = item.label,
                             color = color,
                             style = TextStyle(
-                                fontSize = if (compact) 12.sp else 13.sp,
-                                lineHeight = if (compact) 14.sp else 16.sp,
+                                fontFamily = NuvioBarFont,
+                                fontSize = 13.sp,
+                                lineHeight = 16.sp,
                                 fontWeight = if (active) FontWeight.Bold else FontWeight.Normal,
                                 textAlign = TextAlign.Center,
                             ),

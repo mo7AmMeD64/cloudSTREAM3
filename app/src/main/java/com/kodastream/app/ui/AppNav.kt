@@ -42,6 +42,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.MenuBook
 import androidx.compose.material.icons.automirrored.rounded.MenuBook
+import androidx.compose.material.icons.filled.Home as HomeFilled
 import androidx.compose.material.icons.outlined.Explore
 import androidx.compose.material.icons.outlined.Extension
 import androidx.compose.material.icons.outlined.History
@@ -183,20 +184,29 @@ internal data class TopLevel(
     val labelRes: Int,
     val filledIcon: ImageVector,
     val outlinedIcon: ImageVector,
+    /** The Nuvio bar's own icon for this tab; 0 uses [nuvioIcon], else [filledIcon]. */
+    val nuvioIconRes: Int = 0,
+    val nuvioIcon: ImageVector = filledIcon,
 )
 
 private val watchTopLevelDestinations = listOf(
-    TopLevel(Routes.HOME, R.string.nav_home, Icons.Rounded.Home, Icons.Outlined.Home),
-    TopLevel(Routes.SEARCH, R.string.nav_search, Icons.Rounded.Search, Icons.Outlined.Search),
-    TopLevel(Routes.LIBRARY, R.string.nav_library, Icons.Rounded.VideoLibrary, Icons.Outlined.VideoLibrary),
+    TopLevel(
+        Routes.HOME,
+        R.string.nav_home,
+        Icons.Rounded.Home,
+        Icons.Outlined.Home,
+        nuvioIcon = Icons.Filled.HomeFilled,
+    ),
+    TopLevel(Routes.SEARCH, R.string.nav_search, Icons.Rounded.Search, Icons.Outlined.Search, R.drawable.sidebar_search),
+    TopLevel(Routes.LIBRARY, R.string.nav_library, Icons.Rounded.VideoLibrary, Icons.Outlined.VideoLibrary, R.drawable.sidebar_library),
     TopLevel(Routes.HISTORY, R.string.nav_history, Icons.Rounded.History, Icons.Outlined.History),
     TopLevel(Routes.EXTENSIONS, R.string.nav_extensions, Icons.Rounded.Extension, Icons.Outlined.Extension),
-    TopLevel(Routes.SETTINGS, R.string.nav_settings, Icons.Rounded.Settings, Icons.Outlined.Settings),
+    TopLevel(Routes.SETTINGS, R.string.nav_settings, Icons.Rounded.Settings, Icons.Outlined.Settings, R.drawable.sidebar_settings),
 )
 
 private val mangaTopLevelDestinations = listOf(
     TopLevel(MangaRoutes.BROWSE, R.string.nav_browse, Icons.Rounded.Explore, Icons.Outlined.Explore),
-    TopLevel(MangaRoutes.SEARCH, R.string.nav_search, Icons.Rounded.Search, Icons.Outlined.Search),
+    TopLevel(MangaRoutes.SEARCH, R.string.nav_search, Icons.Rounded.Search, Icons.Outlined.Search, R.drawable.sidebar_search),
     TopLevel(
         MangaRoutes.LIBRARY,
         R.string.nav_library,
@@ -210,7 +220,13 @@ private val mangaTopLevelDestinations = listOf(
         Icons.Rounded.Extension,
         Icons.Outlined.Extension,
     ),
-    TopLevel(MangaRoutes.SETTINGS, R.string.nav_settings, Icons.Rounded.Settings, Icons.Outlined.Settings),
+    TopLevel(
+        MangaRoutes.SETTINGS,
+        R.string.nav_settings,
+        Icons.Rounded.Settings,
+        Icons.Outlined.Settings,
+        R.drawable.sidebar_settings,
+    ),
 )
 
 // ------------------------------------------------------------------ shared nav motion
@@ -444,7 +460,9 @@ fun AppRoot(themeViewModel: ThemeViewModel) {
                 Column(
                     modifier = Modifier
                         .navigationBarsPadding()
-                        .padding(bottom = 20.dp),
+                        // Nuvio sits 14dp above the inset (6dp + 8dp); Cloud's
+                        // own pill keeps its 20dp.
+                        .padding(bottom = if (nuvioBar) 14.dp else 20.dp),
                     horizontalAlignment = Alignment.End,
                 ) {
                     // App-level controls live above the pill: inside it they
