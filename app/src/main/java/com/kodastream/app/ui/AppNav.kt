@@ -77,6 +77,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
@@ -177,7 +178,7 @@ private object MangaRoutes {
     fun details(ref: MangaRef) = "manga_details/${NavArgs.put(ref)}"
 }
 
-private data class TopLevel(
+internal data class TopLevel(
     val route: String,
     val labelRes: Int,
     val filledIcon: ImageVector,
@@ -360,7 +361,10 @@ fun AppRoot(themeViewModel: ThemeViewModel) {
     }
 
     val navPosition by AppPrefs.navPosition.collectAsState(initial = AppPrefs.navPosition(context))
+    val navBarStyle by AppPrefs.navBarStyle.collectAsState(initial = AppPrefs.navBarStyle(context))
     val sideMode = showBar && navPosition != AppPrefs.NAV_BOTTOM
+    val nuvioBar = showBar && !sideMode && navBarStyle == AppPrefs.NAV_BAR_NUVIO
+    val navBarScrollState = rememberNuvioNavBarScrollState()
 
     // Either shell hands the screens the same contract: system-bar insets,
     // plus the pill's strip (and the source button above it) when it is there.
@@ -382,6 +386,10 @@ fun AppRoot(themeViewModel: ThemeViewModel) {
         Box(
             Modifier
                 .fillMaxSize()
+                .then(
+                    if (nuvioBar) Modifier.nestedScroll(navBarScrollState.nestedScrollConnection)
+                    else Modifier
+                )
                 .then(
                     if (sideMode) Modifier.padding(start = SideBarWidth + SideBarMargin)
                     else Modifier
@@ -467,11 +475,20 @@ fun AppRoot(themeViewModel: ThemeViewModel) {
                             }
                         }
                     }
-                    FloatingNavPill(
-                        destinations = destinations,
-                        selectedRoute = route,
-                        onSelect = { navController.navigateTopLevel(it) },
-                    )
+                    if (navBarStyle == AppPrefs.NAV_BAR_NUVIO) {
+                        NuvioNavBar(
+                            destinations = destinations,
+                            selectedRoute = route,
+                            onSelect = { navController.navigateTopLevel(it) },
+                            scrollState = navBarScrollState,
+                        )
+                    } else {
+                        FloatingNavPill(
+                            destinations = destinations,
+                            selectedRoute = route,
+                            onSelect = { navController.navigateTopLevel(it) },
+                        )
+                    }
                 }
             }
         }

@@ -16,6 +16,7 @@ object AppPrefs {
     private const val KEY_PROVIDER = "selected_provider"
     private const val KEY_AUTO_UPDATE = "auto_update_extensions"
     private const val KEY_NAV_POSITION = "nav_position"
+    private const val KEY_NAV_BAR_STYLE = "nav_bar_style"
     private const val KEY_APP_MODE = "app_mode"
     private const val KEY_HOME_HERO_STYLE = "home_hero_style"
     private const val KEY_SPEED = "playback_speed"
@@ -50,6 +51,8 @@ object AppPrefs {
 
     const val NAV_SIDE = "side"
     const val NAV_BOTTOM = "bottom"
+    const val NAV_BAR_CLOUD = "cloud"
+    const val NAV_BAR_NUVIO = "nuvio"
     const val LANGUAGE_SYSTEM = "system"
 
     private val _navPosition = MutableStateFlow<String?>(null)
@@ -66,6 +69,22 @@ object AppPrefs {
     fun setNavPosition(context: Context, value: String) {
         _navPosition.value = value
         prefs(context).edit { putString(KEY_NAV_POSITION, value) }
+    }
+
+    private val _navBarStyle = MutableStateFlow<String?>(null)
+
+    /** The bottom bar style, as a flow so the shell swaps it the moment it changes. */
+    val navBarStyle: StateFlow<String?> = _navBarStyle.asStateFlow()
+
+    /** "cloud" (the Material floating pill) or "nuvio" (the jelly bar). */
+    fun navBarStyle(context: Context): String =
+        _navBarStyle.value
+            ?: prefs(context).getString(KEY_NAV_BAR_STYLE, null)?.also { _navBarStyle.value = it }
+            ?: NAV_BAR_CLOUD
+
+    fun setNavBarStyle(context: Context, value: String) {
+        _navBarStyle.value = value
+        prefs(context).edit { putString(KEY_NAV_BAR_STYLE, value) }
     }
 
     /** "carousel", "cinematic" or "off"; unknown values are resolved by the caller. */

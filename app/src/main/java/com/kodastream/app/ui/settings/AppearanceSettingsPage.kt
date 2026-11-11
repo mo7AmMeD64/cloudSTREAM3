@@ -20,6 +20,7 @@ import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Contrast
 import androidx.compose.material.icons.rounded.DarkMode
 import androidx.compose.material.icons.rounded.Palette
+import androidx.compose.material.icons.rounded.Style
 import androidx.compose.material.icons.rounded.Translate
 import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material.icons.rounded.ViewCarousel
@@ -62,6 +63,7 @@ internal fun AppearanceSettingsPage(
 ) {
     val context = LocalContext.current
     var navPosition by remember { mutableStateOf(AppPrefs.navPosition(context)) }
+    var navBarStyle by remember { mutableStateOf(AppPrefs.navBarStyle(context)) }
     var appLanguage by remember { mutableStateOf(AppPrefs.appLanguage(context)) }
     var languageDialog by remember { mutableStateOf(false) }
     var styleDialog by remember { mutableStateOf(false) }
@@ -81,7 +83,7 @@ internal fun AppearanceSettingsPage(
         onBack = onBack,
     ) {
         item(key = "appearance") {
-            val count = 4 + if (resolvedDark) 1 else 0
+            val count = 5 + if (resolvedDark) 1 else 0
             SettingsGroup(stringResource(R.string.settings_group_general)) {
                 ChoiceRow(
                     index = 0,
@@ -141,8 +143,29 @@ internal fun AppearanceSettingsPage(
                         navPosition = position
                     },
                 )
-                NavigationRow(
+                ChoiceRow(
                     index = if (resolvedDark) 4 else 3,
+                    count = count,
+                    icon = Icons.Rounded.Style,
+                    title = stringResource(R.string.settings_nav_bar_style),
+                    options = listOf(AppPrefs.NAV_BAR_CLOUD, AppPrefs.NAV_BAR_NUVIO),
+                    selected = navBarStyle,
+                    label = { style ->
+                        stringResource(
+                            if (style == AppPrefs.NAV_BAR_NUVIO) {
+                                R.string.nav_bar_style_nuvio
+                            } else {
+                                R.string.nav_bar_style_cloud
+                            }
+                        )
+                    },
+                    onSelect = { style ->
+                        AppPrefs.setNavBarStyle(context, style)
+                        navBarStyle = style
+                    },
+                )
+                NavigationRow(
+                    index = if (resolvedDark) 5 else 4,
                     count = count,
                     icon = Icons.Rounded.ViewCarousel,
                     title = stringResource(R.string.settings_home_hero),

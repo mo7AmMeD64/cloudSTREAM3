@@ -201,6 +201,9 @@
     <string name="settings_navigation">Navigation bar position</string>
     <string name="nav_position_side">Side</string>
     <string name="nav_position_bottom">Bottom</string>
+    <string name="settings_nav_bar_style">Navigation bar style</string>
+    <string name="nav_bar_style_cloud">Cloud</string>
+    <string name="nav_bar_style_nuvio">Nuvio</string>
     <string name="search_scope_all">All sources</string>
     <string name="cd_resize">Resize mode</string>
     <string name="playback_speed">Playback speed</string>
