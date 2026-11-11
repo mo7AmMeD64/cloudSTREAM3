@@ -16,10 +16,13 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.AspectRatio
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Contrast
 import androidx.compose.material.icons.rounded.DarkMode
+import androidx.compose.material.icons.rounded.Height
 import androidx.compose.material.icons.rounded.Palette
+import androidx.compose.material.icons.rounded.PhotoSizeSelectLarge
 import androidx.compose.material.icons.rounded.Style
 import androidx.compose.material.icons.rounded.Translate
 import androidx.compose.material.icons.rounded.Tune
@@ -55,6 +58,7 @@ import com.kodastream.app.ui.theme.PaletteStyle
 import com.kodastream.app.ui.theme.ThemeMode
 import com.kodastream.app.ui.theme.ThemeViewModel
 import com.kodastream.app.ui.theme.contrastInk
+import kotlin.math.roundToInt
 
 @Composable
 internal fun AppearanceSettingsPage(
@@ -64,6 +68,9 @@ internal fun AppearanceSettingsPage(
     val context = LocalContext.current
     var navPosition by remember { mutableStateOf(AppPrefs.navPosition(context)) }
     var navBarStyle by remember { mutableStateOf(AppPrefs.navBarStyle(context)) }
+    var navBarIconSize by remember { mutableStateOf(AppPrefs.navBarIconSize(context)) }
+    var navBarWidth by remember { mutableStateOf(AppPrefs.navBarWidth(context)) }
+    var navBarHeight by remember { mutableStateOf(AppPrefs.navBarHeight(context)) }
     var appLanguage by remember { mutableStateOf(AppPrefs.appLanguage(context)) }
     var languageDialog by remember { mutableStateOf(false) }
     var styleDialog by remember { mutableStateOf(false) }
@@ -172,6 +179,55 @@ internal fun AppearanceSettingsPage(
                     supporting = stringResource(heroStyle.labelRes),
                     onClick = { heroDialog = true },
                 )
+            }
+        }
+
+        if (navBarStyle == AppPrefs.NAV_BAR_NUVIO && navPosition == AppPrefs.NAV_BOTTOM) {
+            item(key = "nav_bar_tuning") {
+                SettingsGroup(stringResource(R.string.settings_nav_bar_tuning)) {
+                    SliderRow(
+                        index = 0,
+                        count = 3,
+                        icon = Icons.Rounded.PhotoSizeSelectLarge,
+                        title = stringResource(R.string.settings_nav_bar_icon_size),
+                        valueText = stringResource(R.string.settings_nav_bar_dp, navBarIconSize),
+                        value = navBarIconSize.toFloat(),
+                        valueRange = 20f..34f,
+                        steps = 13,
+                        onValueChange = { navBarIconSize = it.roundToInt() },
+                        onValueChangeFinished = {
+                            AppPrefs.setNavBarIconSize(context, navBarIconSize)
+                        },
+                    )
+                    SliderRow(
+                        index = 1,
+                        count = 3,
+                        icon = Icons.Rounded.AspectRatio,
+                        title = stringResource(R.string.settings_nav_bar_width),
+                        valueText = stringResource(R.string.settings_nav_bar_dp, navBarWidth),
+                        value = navBarWidth.toFloat(),
+                        valueRange = 240f..480f,
+                        steps = 11,
+                        onValueChange = { navBarWidth = it.roundToInt() },
+                        onValueChangeFinished = {
+                            AppPrefs.setNavBarWidth(context, navBarWidth)
+                        },
+                    )
+                    SliderRow(
+                        index = 2,
+                        count = 3,
+                        icon = Icons.Rounded.Height,
+                        title = stringResource(R.string.settings_nav_bar_height),
+                        valueText = stringResource(R.string.settings_nav_bar_dp, navBarHeight),
+                        value = navBarHeight.toFloat(),
+                        valueRange = 48f..84f,
+                        steps = 8,
+                        onValueChange = { navBarHeight = it.roundToInt() },
+                        onValueChangeFinished = {
+                            AppPrefs.setNavBarHeight(context, navBarHeight)
+                        },
+                    )
+                }
             }
         }
 

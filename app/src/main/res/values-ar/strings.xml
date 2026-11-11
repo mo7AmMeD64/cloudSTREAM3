@@ -213,6 +213,11 @@
     <string name="settings_nav_bar_style">نمط شريط التنقل</string>
     <string name="nav_bar_style_cloud">كلاود</string>
     <string name="nav_bar_style_nuvio">نوفيو</string>
+    <string name="settings_nav_bar_tuning">حجم شريط التنقل</string>
+    <string name="settings_nav_bar_icon_size">حجم الأيقونة</string>
+    <string name="settings_nav_bar_width">العرض</string>
+    <string name="settings_nav_bar_height">الارتفاع</string>
+    <string name="settings_nav_bar_dp">%1$d dp</string>
     <string name="search_scope_all">كل المصادر</string>
     <string name="cd_resize">وضع التحجيم</string>
     <string name="playback_speed">سرعة التشغيل</string>

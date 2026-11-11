@@ -17,6 +17,9 @@ object AppPrefs {
     private const val KEY_AUTO_UPDATE = "auto_update_extensions"
     private const val KEY_NAV_POSITION = "nav_position"
     private const val KEY_NAV_BAR_STYLE = "nav_bar_style"
+    private const val KEY_NAV_BAR_ICON_SIZE = "nav_bar_icon_size"
+    private const val KEY_NAV_BAR_WIDTH = "nav_bar_width"
+    private const val KEY_NAV_BAR_HEIGHT = "nav_bar_height"
     private const val KEY_APP_MODE = "app_mode"
     private const val KEY_HOME_HERO_STYLE = "home_hero_style"
     private const val KEY_SPEED = "playback_speed"
@@ -85,6 +88,28 @@ object AppPrefs {
     fun setNavBarStyle(context: Context, value: String) {
         _navBarStyle.value = value
         prefs(context).edit { putString(KEY_NAV_BAR_STYLE, value) }
+    }
+
+    /** Nuvio bar tuning: icon dp (20-34), bar width dp (240-480), expanded height dp (48-84). */
+    fun navBarIconSize(context: Context): Int =
+        prefs(context).getInt(KEY_NAV_BAR_ICON_SIZE, 28)
+
+    fun setNavBarIconSize(context: Context, value: Int) {
+        prefs(context).edit { putInt(KEY_NAV_BAR_ICON_SIZE, value) }
+    }
+
+    fun navBarWidth(context: Context): Int =
+        prefs(context).getInt(KEY_NAV_BAR_WIDTH, 400)
+
+    fun setNavBarWidth(context: Context, value: Int) {
+        prefs(context).edit { putInt(KEY_NAV_BAR_WIDTH, value) }
+    }
+
+    fun navBarHeight(context: Context): Int =
+        prefs(context).getInt(KEY_NAV_BAR_HEIGHT, 64)
+
+    fun setNavBarHeight(context: Context, value: Int) {
+        prefs(context).edit { putInt(KEY_NAV_BAR_HEIGHT, value) }
     }
 
     /** "carousel", "cinematic" or "off"; unknown values are resolved by the caller. */

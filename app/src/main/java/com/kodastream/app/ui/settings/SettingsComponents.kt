@@ -30,6 +30,7 @@ import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.SegmentedListItem
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -224,6 +225,49 @@ internal fun SwitchRow(
             Text(supporting, maxLines = 2)
         },
         trailingContent = { Switch(checked = checked, onCheckedChange = null) },
+        modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),
+    ) {
+        Text(title, fontWeight = FontWeight.SemiBold)
+    }
+}
+
+/** A row with a titled slider; the value shows at the trailing edge. */
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+internal fun SliderRow(
+    index: Int,
+    count: Int,
+    icon: ImageVector,
+    title: String,
+    valueText: String,
+    value: Float,
+    valueRange: ClosedFloatingPointRange<Float>,
+    steps: Int,
+    onValueChange: (Float) -> Unit,
+    onValueChangeFinished: () -> Unit,
+) {
+    SegmentedListItem(
+        shapes = ListItemDefaults.segmentedShapes(index = index, count = count),
+        colors = settingsRowColors(),
+        verticalAlignment = Alignment.Top,
+        leadingContent = { RowIcon(icon) },
+        supportingContent = {
+            Slider(
+                value = value,
+                onValueChange = onValueChange,
+                valueRange = valueRange,
+                steps = steps,
+                onValueChangeFinished = onValueChangeFinished,
+                modifier = Modifier.padding(top = 6.dp),
+            )
+        },
+        trailingContent = {
+            Text(
+                text = valueText,
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        },
         modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),
     ) {
         Text(title, fontWeight = FontWeight.SemiBold)

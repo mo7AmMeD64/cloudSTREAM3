@@ -72,6 +72,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -116,6 +117,9 @@ internal fun NuvioNavBar(
     onSelect: (String) -> Unit,
     scrollState: NuvioNavBarScrollState,
     modifier: Modifier = Modifier,
+    iconSize: Dp = 28.dp,
+    maxWidth: Dp = 400.dp,
+    expandedHeight: Dp = 64.dp,
 ) {
     if (destinations.isEmpty()) return
     val items = destinations.map { destination ->
@@ -142,7 +146,13 @@ internal fun NuvioNavBar(
     val currentItems by rememberUpdatedState(items)
     val currentIsRtl by rememberUpdatedState(isRtl)
     val density = LocalDensity.current
-    val trackHeight = 48.dp + 16.dp * labelFraction
+    val scale = iconSize.value / 28f
+    val labelHeight = 16.dp * scale
+    // Keep the content from clipping when the icon is enlarged but the
+    // height slider is small.
+    val trackHeight =
+        (expandedHeight.coerceAtLeast(iconSize + labelHeight + 8.dp) - labelHeight) +
+            labelHeight * labelFraction
     val horizontalPadding = 28.dp + (58.dp - 28.dp) * (1f - labelFraction)
 
     LaunchedEffect(visualSelectedIndex, items.size) {
@@ -167,7 +177,7 @@ internal fun NuvioNavBar(
     ) {
         Box(
             modifier = Modifier
-                .widthIn(max = 400.dp)
+                .widthIn(max = maxWidth)
                 .fillMaxWidth()
                 .height(trackHeight)
                 .onSizeChanged {
@@ -254,6 +264,7 @@ internal fun NuvioNavBar(
                                 active = false,
                                 accent = accent,
                                 muted = muted,
+                                scale = scale,
                                 modifier = Modifier.matchParentSize(),
                             )
                         }
@@ -277,6 +288,7 @@ internal fun NuvioNavBar(
                                     active = true,
                                     accent = accent,
                                     muted = muted,
+                                    scale = scale,
                                     modifier = Modifier.matchParentSize(),
                                 )
                             }
@@ -358,11 +370,12 @@ private fun JellyTabRow(
     active: Boolean,
     accent: Color,
     muted: Color,
+    scale: Float,
     modifier: Modifier,
 ) {
     val color = if (active) accent else muted
-    val iconSize = 28.dp
-    val labelHeight = 16.dp
+    val iconSize = 28.dp * scale
+    val labelHeight = 16.dp * scale
     val iconTint = if (active) accent else muted
     Row(
         modifier = modifier.padding(4.dp).clearAndSetSemantics {},
@@ -371,16 +384,16 @@ private fun JellyTabRow(
         items.forEach { item ->
             Box(
                 Modifier.weight(1f).fillMaxHeight().graphicsLayer {
-                    val scale = if (active) motion.frame.contentScale else 1f
-                    scaleX = scale
-                    scaleY = scale
+                    val contentScale = if (active) motion.frame.contentScale else 1f
+                    scaleX = contentScale
+                    scaleY = contentScale
                 },
                 contentAlignment = Alignment.Center,
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Box(
                         Modifier.size(iconSize).graphicsLayer {
-                            translationY = 2.dp.toPx() * labelFraction
+                            translationY = 2.dp.toPx() * scale * labelFraction
                         }
                     ) {
                         if (item.iconRes != 0) {
@@ -405,8 +418,8 @@ private fun JellyTabRow(
                             color = color,
                             style = TextStyle(
                                 fontFamily = NuvioBarFont,
-                                fontSize = 13.sp,
-                                lineHeight = 16.sp,
+                                fontSize = 13.sp * scale,
+                                lineHeight = 16.sp * scale,
                                 fontWeight = if (active) FontWeight.Bold else FontWeight.Normal,
                                 textAlign = TextAlign.Center,
                             ),

@@ -204,6 +204,11 @@
     <string name="settings_nav_bar_style">Navigation bar style</string>
     <string name="nav_bar_style_cloud">Cloud</string>
     <string name="nav_bar_style_nuvio">Nuvio</string>
+    <string name="settings_nav_bar_tuning">Navigation bar size</string>
+    <string name="settings_nav_bar_icon_size">Icon size</string>
+    <string name="settings_nav_bar_width">Width</string>
+    <string name="settings_nav_bar_height">Height</string>
+    <string name="settings_nav_bar_dp">%1$d dp</string>
     <string name="search_scope_all">All sources</string>
     <string name="cd_resize">Resize mode</string>
     <string name="playback_speed">Playback speed</string>

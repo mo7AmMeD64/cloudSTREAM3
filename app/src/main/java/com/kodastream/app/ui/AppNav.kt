@@ -499,6 +499,9 @@ fun AppRoot(themeViewModel: ThemeViewModel) {
                             selectedRoute = route,
                             onSelect = { navController.navigateTopLevel(it) },
                             scrollState = navBarScrollState,
+                            iconSize = AppPrefs.navBarIconSize(context).dp,
+                            maxWidth = AppPrefs.navBarWidth(context).dp,
+                            expandedHeight = AppPrefs.navBarHeight(context).dp,
                         )
                     } else {
                         FloatingNavPill(
