@@ -114,6 +114,8 @@
     <string name="theme_dark">داكن</string>
     <string name="settings_amoled">أسود خالص</string>
     <string name="settings_amoled_summary">خلفيات سوداء تماماً في المظهر الداكن.</string>
+    <string name="settings_hide_status_bar">إخفاء شريط الحالة</string>
+    <string name="settings_hide_status_bar_summary">استخدم ارتفاع الشاشة الكامل. اسحب من الحافة العلوية لإظهاره.</string>
     <string name="settings_version">الإصدار %1$s</string>
     <string name="settings_privacy_history">الخصوصية والسجل</string>
     <string name="settings_colors">الألوان</string>

@@ -28,6 +28,7 @@ import androidx.compose.material.icons.rounded.Translate
 import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material.icons.rounded.ViewCarousel
 import androidx.compose.material.icons.rounded.ViewSidebar
+import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItemDefaults
@@ -68,6 +69,7 @@ internal fun AppearanceSettingsPage(
     val context = LocalContext.current
     var navPosition by remember { mutableStateOf(AppPrefs.navPosition(context)) }
     var navBarStyle by remember { mutableStateOf(AppPrefs.navBarStyle(context)) }
+    var hideStatusBar by remember { mutableStateOf(AppPrefs.hideStatusBar(context)) }
     var navBarIconSize by remember { mutableStateOf(AppPrefs.navBarIconSize(context)) }
     var navBarWidth by remember { mutableStateOf(AppPrefs.navBarWidth(context)) }
     var navBarHeight by remember { mutableStateOf(AppPrefs.navBarHeight(context)) }
@@ -90,7 +92,7 @@ internal fun AppearanceSettingsPage(
         onBack = onBack,
     ) {
         item(key = "appearance") {
-            val count = 5 + if (resolvedDark) 1 else 0
+            val count = 6 + if (resolvedDark) 1 else 0
             SettingsGroup(stringResource(R.string.settings_group_general)) {
                 ChoiceRow(
                     index = 0,
@@ -110,8 +112,20 @@ internal fun AppearanceSettingsPage(
                     },
                     onSelect = themeViewModel::updateMode,
                 )
-                NavigationRow(
+                SwitchRow(
                     index = 1,
+                    count = count,
+                    icon = Icons.Rounded.VisibilityOff,
+                    title = stringResource(R.string.settings_hide_status_bar),
+                    supporting = stringResource(R.string.settings_hide_status_bar_summary),
+                    checked = hideStatusBar,
+                    onCheckedChange = { checked ->
+                        AppPrefs.setHideStatusBar(context, checked)
+                        hideStatusBar = checked
+                    },
+                )
+                NavigationRow(
+                    index = 2,
                     count = count,
                     icon = Icons.Rounded.Translate,
                     title = stringResource(R.string.setup_language_title),
@@ -120,7 +134,7 @@ internal fun AppearanceSettingsPage(
                 )
                 if (resolvedDark) {
                     SwitchRow(
-                        index = 2,
+                        index = 3,
                         count = count,
                         icon = Icons.Rounded.Contrast,
                         title = stringResource(R.string.settings_amoled),
@@ -130,7 +144,7 @@ internal fun AppearanceSettingsPage(
                     )
                 }
                 ChoiceRow(
-                    index = if (resolvedDark) 3 else 2,
+                    index = if (resolvedDark) 4 else 3,
                     count = count,
                     icon = Icons.Rounded.ViewSidebar,
                     title = stringResource(R.string.settings_navigation),
@@ -151,7 +165,7 @@ internal fun AppearanceSettingsPage(
                     },
                 )
                 ChoiceRow(
-                    index = if (resolvedDark) 4 else 3,
+                    index = if (resolvedDark) 5 else 4,
                     count = count,
                     icon = Icons.Rounded.Style,
                     title = stringResource(R.string.settings_nav_bar_style),
@@ -172,7 +186,7 @@ internal fun AppearanceSettingsPage(
                     },
                 )
                 NavigationRow(
-                    index = if (resolvedDark) 5 else 4,
+                    index = if (resolvedDark) 6 else 5,
                     count = count,
                     icon = Icons.Rounded.ViewCarousel,
                     title = stringResource(R.string.settings_home_hero),
