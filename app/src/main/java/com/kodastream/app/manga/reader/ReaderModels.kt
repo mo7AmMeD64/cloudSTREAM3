@@ -207,6 +207,7 @@ data class ReaderOverlayState(
     val loading: Boolean = true,
     val error: String? = null,
     val noPages: Boolean = false,
+    val noPagesDetail: String? = null,
     val bookmarked: Boolean = false,
     val menuVisible: Boolean = false,
     val settings: MangaReaderSettings = MangaReaderSettings(),
