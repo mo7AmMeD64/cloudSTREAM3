@@ -185,7 +185,8 @@ class MangaDownloader(
         }
     }
 
-    private suspend fun runQueue() {        try {
+    private suspend fun runQueue() {
+        try {
             while (true) {
                 val pending = _queue.value.filter {
                     it.status == MangaDownload.State.QUEUE ||
