@@ -330,7 +330,7 @@ class MangaReaderActivity : AppCompatActivity(), ReaderViewerHost {
 
     override fun openInWebView() {
         val url = readerModel.chapterWebUrl() ?: readerModel.mangaWebUrl() ?: return
-        startActivity(MangaWebViewActivity.intent(this, url, ref.sourceId))
+        startActivity(MangaWebViewActivity.intent(this, url))
     }
 
     private fun createViewer() {

@@ -16,8 +16,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.util.concurrent.atomic.AtomicBoolean
@@ -28,7 +26,6 @@ class MangaSourceManager private constructor(context: Context) {
     private val loader = ExtensionLoader(appContext)
     private val installer = ExtensionInstaller(appContext)
     private val started = AtomicBoolean(false)
-    private val loadMutex = Mutex()
 
     private val _extensions = MutableStateFlow<List<MangaExtension.Installed>>(emptyList())
     val extensions: StateFlow<List<MangaExtension.Installed>> = _extensions.asStateFlow()
@@ -44,10 +41,7 @@ class MangaSourceManager private constructor(context: Context) {
 
     suspend fun ensureLoaded(stores: () -> List<ExtensionStore>) {
         if (started.get()) return
-        loadMutex.withLock {
-            if (started.get()) return
-            reload(stores())
-        }
+        reload(stores())
     }
 
     suspend fun reload(stores: List<ExtensionStore>) = withContext(Dispatchers.IO) {

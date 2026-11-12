@@ -3,7 +3,10 @@ package com.kodastream.app.data
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
 import android.os.Environment
+import android.os.StatFs
+import android.os.storage.StorageManager
 import android.provider.DocumentsContract
 import androidx.documentfile.provider.DocumentFile
 import com.kodastream.app.R
@@ -70,6 +73,7 @@ object DownloadStore {
         /** Where an interrupted HLS download continues from. */
         val hlsSegment: Int = 0,
         val hlsTotal: Int = 0,
+        val hlsInitWritten: Boolean = false,
         val error: String? = null,
         val createdAt: Long = 0,
     ) {
@@ -93,10 +97,31 @@ object DownloadStore {
     @Volatile
     private var loaded = false
 
+    @Volatile
+    private var appContext: Context? = null
+
+    // Serialization of the download list happens here, never on the main thread.
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+
+    private val debouncer = Debouncer(delayMs = 2_000L, maxDelayMs = 2_000L, scope = scope) {
+        val list = _entries.value.orEmpty()
+        appContext?.let { ctx ->
+            ctx.setKey(STORE_KEY, list)
+        }
+    }
+
+    val isDirty: Boolean
+        get() = debouncer.isDirty
+
     fun current(context: Context): List<Download> {
+        appContext = context.applicationContext
         if (!loaded) {
-            loaded = true
-            _entries.value = context.getKey<List<Download>>(STORE_KEY).orEmpty()
+            synchronized(this) {
+                if (!loaded) {
+                    loaded = true
+                    _entries.value = context.getKey<List<Download>>(STORE_KEY).orEmpty()
+                }
+            }
         }
         return _entries.value.orEmpty()
     }
@@ -108,29 +133,84 @@ object DownloadStore {
 
     /** False when this id is already in the list; nothing is overwritten. */
     fun enqueue(context: Context, download: Download): Boolean {
-        if (current(context).any { it.id == download.id }) return false
-        publish(context, (listOf(download) + current(context)).take(MAX_ENTRIES))
-        return true
+        synchronized(this) {
+            if (current(context).any { it.id == download.id }) return false
+            publish(context, (listOf(download) + current(context)).take(MAX_ENTRIES))
+            return true
+        }
+    }
+
+    /** State transitions (QUEUED->DOWNLOADING, DOWNLOADING->PAUSED, etc.) persist synchronously without debounce. */
+    fun updateState(context: Context, id: String, newState: String, error: String? = null) {
+        synchronized(this) {
+            appContext = context.applicationContext
+            val next = current(context).map {
+                if (it.id == id) it.copy(state = newState, error = error) else it
+            }
+            publish(context, next)
+        }
+    }
+
+    /** Progress ticks update memory immediately and schedule a debounced write to avoid disk thrash. */
+    fun updateProgress(
+        context: Context,
+        id: String,
+        bytes: Long,
+        total: Long = 0L,
+        hlsSegment: Int? = null,
+        hlsInitWritten: Boolean? = null,
+    ) {
+        synchronized(this) {
+            appContext = context.applicationContext
+            val next = current(context).map { entry ->
+                if (entry.id == id) {
+                    entry.copy(
+                        receivedBytes = bytes,
+                        totalBytes = if (total > 0L) total else entry.totalBytes,
+                        hlsSegment = hlsSegment ?: entry.hlsSegment,
+                        hlsInitWritten = hlsInitWritten ?: entry.hlsInitWritten,
+                    )
+                } else {
+                    entry
+                }
+            }
+            _entries.value = next
+            debouncer.schedule()
+        }
     }
 
     fun update(context: Context, id: String, transform: (Download) -> Download) {
-        publish(context, current(context).map { if (it.id == id) transform(it) else it })
+        synchronized(this) {
+            publish(context, current(context).map { if (it.id == id) transform(it) else it })
+        }
     }
 
     fun remove(context: Context, id: String) {
-        publish(context, current(context).filter { it.id != id })
+        synchronized(this) {
+            publish(context, current(context).filter { it.id != id })
+        }
     }
 
     fun clear(context: Context) {
-        publish(context, emptyList())
+        synchronized(this) {
+            publish(context, emptyList())
+        }
+    }
+
+    /** Flushes any pending debounced progress updates synchronously to disk if dirty. */
+    fun flush(context: Context) {
+        synchronized(this) {
+            appContext = context.applicationContext
+            debouncer.flush()
+        }
     }
 
     private fun publish(context: Context, next: List<Download>) {
+        appContext = context.applicationContext
+        debouncer.cancel()
         _entries.value = next
         scope.launch { context.setKey(STORE_KEY, next) }
     }
-
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 }
 
 /**
@@ -417,7 +497,95 @@ object DownloadLocations {
         }
     }
 
-    /** Best-effort free space at the download location. */
-    fun freeBytes(context: Context): Long =
-        validTree(context)?.let { defaultDir(context).usableSpace } ?: defaultDir(context).usableSpace
+    /** Best-effort free space at the download location. Returns -1L when unknown. */
+    fun freeBytes(context: Context): Long = try {
+        val treeUri = AppPrefs.downloadTreeUri(context)
+        if (treeUri == null) {
+            defaultDir(context).usableSpace
+        } else {
+            freeBytesForTree(context, treeUri)
+        }
+    } catch (_: Throwable) {
+        -1L
+    }
+
+    private fun freeBytesForTree(context: Context, treeUriString: String): Long = try {
+        val uri = Uri.parse(treeUriString)
+        val docId = try {
+            DocumentsContract.getTreeDocumentId(uri)
+        } catch (_: Throwable) {
+            null
+        }
+
+        val volumeId = docId?.substringBefore(':')
+
+        if (volumeId.equals("primary", ignoreCase = true)) {
+            try {
+                @Suppress("DEPRECATION")
+                val primaryDir = Environment.getExternalStorageDirectory()
+                StatFs(primaryDir.path).availableBytes
+            } catch (_: Throwable) {
+                queryStorageManager(context, volumeId)
+            }
+        } else {
+            queryStorageManager(context, volumeId)
+        }
+    } catch (_: Throwable) {
+        -1L
+    }
+
+    private fun queryStorageManager(context: Context, volumeId: String?): Long = try {
+        val sm = context.getSystemService(StorageManager::class.java)
+        if (sm == null) {
+            -1L
+        } else if (volumeId.equals("primary", ignoreCase = true)) {
+            sm.getAllocatableBytes(StorageManager.UUID_DEFAULT)
+        } else if (!volumeId.isNullOrBlank()) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                val volume = sm.storageVolumes.firstOrNull { it.uuid.equals(volumeId, ignoreCase = true) }
+                val dir = volume?.directory
+                if (dir != null) {
+                    try {
+                        val uuid = sm.getUuidForPath(dir)
+                        sm.getAllocatableBytes(uuid)
+                    } catch (_: Throwable) {
+                        StatFs(dir.path).availableBytes
+                    }
+                } else {
+                    fallbackVolumeBytes(context, sm, volumeId)
+                }
+            } else {
+                fallbackVolumeBytes(context, sm, volumeId)
+            }
+        } else {
+            -1L
+        }
+    } catch (_: Throwable) {
+        -1L
+    }
+
+    private fun fallbackVolumeBytes(context: Context, sm: StorageManager, volumeId: String): Long = try {
+        val targetFile = context.getExternalFilesDirs(null).firstOrNull { file ->
+            file != null && (
+                sm.getStorageVolume(file)?.uuid.equals(volumeId, ignoreCase = true) ||
+                file.absolutePath.contains(volumeId, ignoreCase = true)
+            )
+        }
+        if (targetFile != null) {
+            try {
+                val uuid = sm.getUuidForPath(targetFile)
+                sm.getAllocatableBytes(uuid)
+            } catch (_: Throwable) {
+                StatFs(targetFile.path).availableBytes
+            }
+        } else {
+            -1L
+        }
+    } catch (_: Throwable) {
+        -1L
+    }
+
+    /** Pure decision logic: returns true when free space is known and insufficient. */
+    fun shouldBlockForSpace(freeBytes: Long, remainingBytes: Long): Boolean =
+        freeBytes in 0 until remainingBytes
 }

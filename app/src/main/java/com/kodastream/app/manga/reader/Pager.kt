@@ -27,7 +27,7 @@ open class GestureDetectorWithLongTap(
     private var lastUp = 0L
     private var lastDownEvent: MotionEvent? = null
 
-    private val longTapFn = Runnable { lastDownEvent?.let(listener::onLongTapConfirmed) }
+    private val longTapFn = Runnable { listener.onLongTapConfirmed(lastDownEvent!!) }
 
     override fun onTouchEvent(ev: MotionEvent): Boolean {
         when (ev.actionMasked) {

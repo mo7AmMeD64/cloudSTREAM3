@@ -1,6 +1,7 @@
 package com.kodastream.app.data
 
 import com.kodastream.app.manga.MangaRef
+import com.lagradost.cloudstream3.LoadResponse
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
 
@@ -28,6 +29,8 @@ data class PlayerArgs(
     val offlineSubtitleUri: String? = null,
     /** The series' episode list when this is an episode, for prev/next and the episodes panel. */
     val queue: EpisodeQueue? = null,
+    /** The original LoadResponse for metadata (e.g. skip intro timestamps, IMDb/TMDb/MAL IDs). */
+    val loadResponse: LoadResponse? = null,
 )
 
 /**

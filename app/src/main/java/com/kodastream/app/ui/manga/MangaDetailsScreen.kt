@@ -1,8 +1,5 @@
 package com.kodastream.app.ui.manga
 
-import com.kodastream.app.manga.reader.MangaWebViewActivity
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.activity.compose.rememberLauncherForActivityResult
 import android.app.Application
 import android.content.Intent
 import android.net.Uri
@@ -151,14 +148,6 @@ fun MangaDetailsScreen(
 
     val shareUrl = remember(state.entry, state.favorite) { viewModel.shareUrl() }
 
-    // The in-app browser for a Cloudflare check; coming back refreshes with the new cookie.
-    val webViewLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.StartActivityForResult(),
-    ) { viewModel.refresh() }
-    val openInAppBrowser: (() -> Unit)? = shareUrl?.let { url ->
-        { webViewLauncher.launch(MangaWebViewActivity.intent(context, url, viewModel.sourceId)) }
-    }
-
     fun openBrowser() {
         val url = shareUrl ?: return
         context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
@@ -242,7 +231,6 @@ fun MangaDetailsScreen(
             onRefresh = viewModel::refresh,
             onShare = ::share,
             onOpenBrowser = ::openBrowser,
-            onOpenInApp = openInAppBrowser,
             onMoveToCategory = if (state.favorite) {
                 {
                     categories = MangaCategoryStore.categories(context)
@@ -283,11 +271,6 @@ fun MangaDetailsScreen(
                         style = MaterialTheme.typography.bodySmall,
                         modifier = Modifier.weight(1f),
                     )
-                    if (state.blocked && openInAppBrowser != null) {
-                        TextButton(onClick = openInAppBrowser) {
-                            Text(stringResource(R.string.manga_reader_open_webview))
-                        }
-                    }
                     TextButton(onClick = viewModel::refresh) {
                         Text(stringResource(R.string.retry))
                     }
@@ -494,7 +477,6 @@ private fun MangaToolbar(
     onRefresh: () -> Unit,
     onShare: () -> Unit,
     onOpenBrowser: () -> Unit,
-    onOpenInApp: (() -> Unit)?,
     onMoveToCategory: (() -> Unit)?,
     shareEnabled: Boolean,
     sourceAvailable: Boolean,
@@ -550,16 +532,6 @@ private fun MangaToolbar(
                         onOpenBrowser()
                     },
                 )
-                if (onOpenInApp != null) {
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.manga_reader_open_webview)) },
-                        leadingIcon = { Icon(Icons.Rounded.Public, contentDescription = null) },
-                        onClick = {
-                            menu = false
-                            onOpenInApp()
-                        },
-                    )
-                }
                 if (onMoveToCategory != null) {
                     DropdownMenuItem(
                         text = { Text(stringResource(R.string.manga_move_to_category)) },

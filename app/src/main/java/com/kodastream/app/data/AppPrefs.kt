@@ -16,11 +16,7 @@ object AppPrefs {
     private const val KEY_PROVIDER = "selected_provider"
     private const val KEY_AUTO_UPDATE = "auto_update_extensions"
     private const val KEY_NAV_POSITION = "nav_position"
-    private const val KEY_NAV_BAR_STYLE = "nav_bar_style"
-    private const val KEY_HIDE_STATUS_BAR = "hide_status_bar"
-    private const val KEY_NAV_BAR_ICON_SIZE = "nav_bar_icon_size"
-    private const val KEY_NAV_BAR_WIDTH = "nav_bar_width"
-    private const val KEY_NAV_BAR_HEIGHT = "nav_bar_height"
+    const val KEY_UI_STYLE = "ui_style"
     private const val KEY_APP_MODE = "app_mode"
     private const val KEY_HOME_HERO_STYLE = "home_hero_style"
     private const val KEY_SPEED = "playback_speed"
@@ -35,12 +31,13 @@ object AppPrefs {
     private const val KEY_PLAYER_SHOW_SEEK_BUTTONS = "player_show_seek_buttons"
     private const val KEY_PLAYER_COMPACT_CONTROLS = "player_compact_controls"
     private const val KEY_DL_TREE = "download_tree_uri"
-    private const val KEY_DL_WIFI = "download_wifi_only"
-    private const val KEY_DL_MAX = "download_max_concurrent"
+    const val KEY_DL_WIFI = "download_wifi_only"
+    const val KEY_DL_MAX = "download_max_concurrent"
     private const val KEY_DL_SERVER = "download_last_server"
     private const val KEY_DL_FOLDERS_DONE = "download_folders_migrated"
     private const val KEY_EXTERNAL_MANAGER = "external_download_manager"
     private const val KEY_KEEP_SCREEN_ON = "keep_screen_on"
+    const val KEY_ALLOW_INVALID_SSL = "allow_invalid_ssl"
     private const val KEY_POSTER_SIZE = "poster_size_step"
     private const val KEY_SETUP_DONE = "setup_done"
     private const val KEY_APP_LANGUAGE = "app_language"
@@ -55,14 +52,18 @@ object AppPrefs {
 
     const val NAV_SIDE = "side"
     const val NAV_BOTTOM = "bottom"
-    const val NAV_BAR_CLOUD = "cloud"
-    const val NAV_BAR_NUVIO = "nuvio"
+    const val UI_STYLE_MATERIAL = "material"
+    const val UI_STYLE_GLASS = "glass"
     const val LANGUAGE_SYSTEM = "system"
 
     private val _navPosition = MutableStateFlow<String?>(null)
+    private val _uiStyle = MutableStateFlow<String?>(null)
 
     /** The bar position, as a flow so the shell can switch layouts the moment it changes. */
     val navPosition: StateFlow<String?> = _navPosition.asStateFlow()
+
+    /** The UI style ("material" or "glass"), as a flow so the shell can update immediately. */
+    val uiStyle: StateFlow<String?> = _uiStyle.asStateFlow()
 
     /** Where the navigation bar sits. Side (left) is the default. */
     fun navPosition(context: Context): String =
@@ -75,56 +76,15 @@ object AppPrefs {
         prefs(context).edit { putString(KEY_NAV_POSITION, value) }
     }
 
-    private val _navBarStyle = MutableStateFlow<String?>(null)
+    /** The navigation UI style: "material" (default) or "glass". */
+    fun uiStyle(context: Context): String =
+        _uiStyle.value
+            ?: prefs(context).getString(KEY_UI_STYLE, null)?.also { _uiStyle.value = it }
+            ?: UI_STYLE_MATERIAL
 
-    /** The bottom bar style, as a flow so the shell swaps it the moment it changes. */
-    val navBarStyle: StateFlow<String?> = _navBarStyle.asStateFlow()
-
-    /** "cloud" (the Material floating pill) or "nuvio" (the jelly bar). */
-    fun navBarStyle(context: Context): String =
-        _navBarStyle.value
-            ?: prefs(context).getString(KEY_NAV_BAR_STYLE, null)?.also { _navBarStyle.value = it }
-            ?: NAV_BAR_CLOUD
-
-    fun setNavBarStyle(context: Context, value: String) {
-        _navBarStyle.value = value
-        prefs(context).edit { putString(KEY_NAV_BAR_STYLE, value) }
-    }
-
-    /** Nuvio bar tuning: icon dp (20-34), bar width dp (240-480), expanded height dp (48-84). */
-    fun navBarIconSize(context: Context): Int =
-        prefs(context).getInt(KEY_NAV_BAR_ICON_SIZE, 28)
-
-    fun setNavBarIconSize(context: Context, value: Int) {
-        prefs(context).edit { putInt(KEY_NAV_BAR_ICON_SIZE, value) }
-    }
-
-    fun navBarWidth(context: Context): Int =
-        prefs(context).getInt(KEY_NAV_BAR_WIDTH, 400)
-
-    fun setNavBarWidth(context: Context, value: Int) {
-        prefs(context).edit { putInt(KEY_NAV_BAR_WIDTH, value) }
-    }
-
-    fun navBarHeight(context: Context): Int =
-        prefs(context).getInt(KEY_NAV_BAR_HEIGHT, 64)
-
-    fun setNavBarHeight(context: Context, value: Int) {
-        prefs(context).edit { putInt(KEY_NAV_BAR_HEIGHT, value) }
-    }
-
-    private val _hideStatusBar = MutableStateFlow<Boolean?>(null)
-
-    /** Hiding the system status bar, as a flow so the window applies it immediately. */
-    val hideStatusBar: StateFlow<Boolean?> = _hideStatusBar.asStateFlow()
-
-    fun hideStatusBar(context: Context): Boolean =
-        _hideStatusBar.value
-            ?: prefs(context).getBoolean(KEY_HIDE_STATUS_BAR, false).also { _hideStatusBar.value = it }
-
-    fun setHideStatusBar(context: Context, value: Boolean) {
-        _hideStatusBar.value = value
-        prefs(context).edit { putBoolean(KEY_HIDE_STATUS_BAR, value) }
+    fun setUiStyle(context: Context, value: String) {
+        _uiStyle.value = value
+        prefs(context).edit { putString(KEY_UI_STYLE, value) }
     }
 
     /** "carousel", "cinematic" or "off"; unknown values are resolved by the caller. */
@@ -338,6 +298,13 @@ object AppPrefs {
         prefs(context).edit { putBoolean(KEY_KEEP_SCREEN_ON, value) }
     }
 
+    /** Allow the player to accept invalid SSL certificates. Off by default for security. */
+    fun allowInvalidSsl(context: Context): Boolean = prefs(context).getBoolean(KEY_ALLOW_INVALID_SSL, false)
+
+    fun setAllowInvalidSsl(context: Context, value: Boolean) {
+        prefs(context).edit { putBoolean(KEY_ALLOW_INVALID_SSL, value) }
+    }
+
     /** The server name last picked in the download card, preselected next time. */
     fun lastDownloadServer(context: Context): String? = prefs(context).getString(KEY_DL_SERVER, null)
 
@@ -361,7 +328,7 @@ object AppPrefs {
         prefs(context).edit { putString(KEY_EXTERNAL_MANAGER, packageName) }
     }
 
-    private fun prefs(context: Context) = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+    internal fun prefs(context: Context) = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
     fun selectedProvider(context: Context): String? = prefs(context).getString(KEY_PROVIDER, null)
 
@@ -379,6 +346,57 @@ object AppPrefs {
 
     fun setSelectedProvider(context: Context, name: String?) {
         prefs(context).edit { if (name == null) remove(KEY_PROVIDER) else putString(KEY_PROVIDER, name) }
+    }
+
+    /** Keys that are safe to export/import (excludes provider selection and machine-specific download paths). */
+    fun isExportablePrefKey(key: String): Boolean {
+        if (key == KEY_PROVIDER) return false
+        if (key.startsWith("download_")) return false
+        return true
+    }
+
+    fun getExportablePrefs(context: Context): Map<String, Any?> =
+        prefs(context).all.filter { (key, _) -> isExportablePrefKey(key) }
+
+    fun restorePrefs(context: Context, newPrefs: Map<String, Any?>, replace: Boolean) {
+        val p = prefs(context)
+        p.edit {
+            if (replace) {
+                p.all.keys.filter { isExportablePrefKey(it) }.forEach { remove(it) }
+            }
+            newPrefs.filter { (k, _) -> isExportablePrefKey(k) }.forEach { (key, value) ->
+                when (value) {
+                    is Boolean -> putBoolean(key, value)
+                    is String -> putString(key, value)
+                    is Float -> putFloat(key, value)
+                    is Double -> {
+                        if (key == KEY_SPEED) putFloat(key, value.toFloat())
+                        else putLong(key, value.toLong())
+                    }
+                    is Int -> {
+                        if (key.startsWith(POSITION_PREFIX) || key.startsWith(DURATION_PREFIX) || key == KEY_UPDATE_CHECK) {
+                            putLong(key, value.toLong())
+                        } else {
+                            putInt(key, value)
+                        }
+                    }
+                    is Long -> putLong(key, value)
+                    is Number -> {
+                        if (key == KEY_SPEED) {
+                            putFloat(key, value.toFloat())
+                        } else if (key.startsWith(POSITION_PREFIX) || key.startsWith(DURATION_PREFIX) || key == KEY_UPDATE_CHECK) {
+                            putLong(key, value.toLong())
+                        } else if (key == KEY_POSTER_SIZE) {
+                            putInt(key, value.toInt())
+                        } else {
+                            putLong(key, value.toLong())
+                        }
+                    }
+                }
+            }
+        }
+        _navPosition.value = p.getString(KEY_NAV_POSITION, null)
+        _uiStyle.value = p.getString(KEY_UI_STYLE, null)
     }
 
     fun autoUpdate(context: Context): Boolean = prefs(context).getBoolean(KEY_AUTO_UPDATE, true)

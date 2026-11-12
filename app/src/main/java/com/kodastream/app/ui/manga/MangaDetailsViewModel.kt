@@ -1,6 +1,5 @@
 package com.kodastream.app.ui.manga
 
-import com.kodastream.app.manga.isCloudflareBlock
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -46,8 +45,6 @@ data class MangaDetailsState(
     val loading: Boolean = false,
     val refreshing: Boolean = false,
     val error: String? = null,
-    /** The error looks like a Cloudflare check that needs the in-app browser. */
-    val blocked: Boolean = false,
     val sourceAvailable: Boolean = true,
 )
 
@@ -120,7 +117,6 @@ class MangaDetailsViewModel(
                 loading = first && it.chapters.isEmpty(),
                 refreshing = true,
                 error = null,
-                blocked = false,
             )
         }
         val before = _state.value
@@ -138,12 +134,7 @@ class MangaDetailsViewModel(
             throw e
         } catch (e: Throwable) {
             _state.update {
-                it.copy(
-                    loading = false,
-                    refreshing = false,
-                    error = rootMessage(e),
-                    blocked = isCloudflareBlock(e),
-                )
+                it.copy(loading = false, refreshing = false, error = rootMessage(e))
             }
             return
         }
@@ -171,7 +162,7 @@ class MangaDetailsViewModel(
         } catch (e: CancellationException) {
             throw e
         } catch (e: Throwable) {
-            _state.update { it.copy(error = rootMessage(e), blocked = isCloudflareBlock(e)) }
+            _state.update { it.copy(error = rootMessage(e)) }
         }
 
         try {
@@ -267,8 +258,6 @@ class MangaDetailsViewModel(
 
     fun sourceName(): String =
         _state.value.entry.sourceName.ifBlank { loaded?.source?.name.orEmpty() }
-
-    val sourceId: Long get() = ref.sourceId
 
     fun shareUrl(): String? {
         val http = source as? HttpSource ?: return null

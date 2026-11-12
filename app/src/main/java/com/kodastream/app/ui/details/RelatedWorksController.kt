@@ -280,7 +280,7 @@ internal class RelatedWorksController(private val scope: CoroutineScope) {
                         }
                         if (attempt != generation) return@launch
                         discoveryAttempted = true
-                        cachedSearchResults = searchResult?.getOrNull().orEmpty().take(DISCOVERY_LIMIT)
+                        cachedSearchResults = (searchResult?.getOrNull()?.items ?: emptyList()).take(DISCOVERY_LIMIT)
                         cachedSearchResults
                     }
                 } else emptyList()

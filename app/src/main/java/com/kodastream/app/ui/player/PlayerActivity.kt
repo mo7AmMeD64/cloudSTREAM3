@@ -100,7 +100,7 @@ class PlayerActivity : AppCompatActivity() {
                     android.R.id.content,
                     GeneratorPlayer().apply {
                         arguments = GeneratorPlayer.newInstance(
-                            KodaPlayerGenerator(episodes, offlineSubs),
+                            KodaPlayerGenerator(episodes, offlineSubs, response = args.loadResponse),
                             index,
                         )
                     },
@@ -121,6 +121,7 @@ class PlayerActivity : AppCompatActivity() {
         handler.removeCallbacks(progressTicker)
         handler.removeCallbacks(hideBars)
         recordProgress()
+        HistoryStore.flush(this)
         // A hold that never got its ACTION_UP (focus loss, rotation) must not
         // stick at 2x; the gesture helper only restores on touch end.
         restorePlaybackSpeed()
@@ -147,6 +148,7 @@ class PlayerActivity : AppCompatActivity() {
     override fun onDestroy() {
         handler.removeCallbacks(progressTicker)
         handler.removeCallbacks(hideBars)
+        HistoryStore.flush(this)
         // Rotation keeps the counter running; leaving the player closes the open interval.
         if (isFinishing && !isChangingConfigurations) {
             WatchStatsStore.updatePlaybackState(this, false)

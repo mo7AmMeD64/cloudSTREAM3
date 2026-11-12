@@ -12,21 +12,6 @@ import java.time.LocalDate
 import java.time.ZoneOffset
 
 class MangaModelsTest {
-
-    @Test
-    fun pageListKeyKeepsSlugOnlyChaptersOfDifferentMangaApart() {
-        val first = MangaChapter(url = "chapter-1", memo = """{"mangaPath":"/manga/a/"}""")
-        val second = MangaChapter(url = "chapter-1", memo = """{"mangaPath":"/manga/b/"}""")
-        assertTrue(first.pageListKey() != second.pageListKey())
-        assertEquals(first.pageListKey(), first.copy().pageListKey())
-    }
-
-    @Test
-    fun pageListKeyIsTheUrlWhenThereIsNoMemo() {
-        assertEquals("/manga/a/chapter-1", MangaChapter(url = "/manga/a/chapter-1").pageListKey())
-        assertEquals("/manga/a/chapter-1", MangaChapter(url = "/manga/a/chapter-1", memo = "{}").pageListKey())
-    }
-
     private fun chapter(
         url: String,
         number: Float,

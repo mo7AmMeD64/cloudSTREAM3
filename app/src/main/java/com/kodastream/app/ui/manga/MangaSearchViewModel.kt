@@ -1,6 +1,5 @@
 package com.kodastream.app.ui.manga
 
-import com.kodastream.app.manga.isCloudflareBlock
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -32,7 +31,6 @@ data class MangaSearchShelf(
     val sourceName: String,
     val loading: Boolean = true,
     val error: String? = null,
-    val blocked: Boolean = false,
     val items: List<SManga> = emptyList(),
 ) {
     val isEmpty: Boolean get() = !loading && error == null && items.isEmpty()
@@ -84,20 +82,9 @@ class MangaSearchViewModel(application: Application) : AndroidViewModel(applicat
         return visible.filter { it.source.id == selected?.id }
     }
 
-    private var lastQuery: String? = null
-    private var lastAllSources = false
-
-    /** Runs the last search again, after a Cloudflare check was passed in the in-app browser. */
-    fun searchAgain() {
-        val text = lastQuery ?: return
-        submit(text, lastAllSources)
-    }
-
     fun submit(query: String, allSources: Boolean = false) {
         val text = query.trim()
         if (text.isEmpty()) return
-        lastQuery = text
-        lastAllSources = allSources
         MangaSearchHistoryStore.add(app, text)
         val targets = if (allSources) visibleSources() else defaultTargets()
         job?.cancel()
@@ -135,7 +122,7 @@ class MangaSearchViewModel(application: Application) : AndroidViewModel(applicat
                                 throw e
                             } catch (e: Throwable) {
                                 update(entry.source.id) {
-                                    it.copy(loading = false, error = rootMessage(e), blocked = isCloudflareBlock(e))
+                                    it.copy(loading = false, error = rootMessage(e))
                                 }
                             }
                         }

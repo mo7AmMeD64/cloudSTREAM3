@@ -48,8 +48,6 @@ dependencies {
     // OkHttp 5 keeps the compression algorithms in separate artifacts.
     api(libs.ax.okhttp.brotli)
     api(libs.ax.okhttp.zstd)
-    // DNS over HTTPS, the same option Mihon offers for sites an ISP blocks by DNS.
-    api(libs.ax.okhttp.dnsoverhttps)
     api(libs.jsoup)
     api(libs.kotlinx.serialization.json)
     api(libs.kotlinx.serialization.json.okio)

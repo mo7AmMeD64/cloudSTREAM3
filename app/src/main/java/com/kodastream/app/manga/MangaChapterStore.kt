@@ -5,7 +5,6 @@ import com.lagradost.cloudstream3.utils.DataStore.getKey
 import com.lagradost.cloudstream3.utils.DataStore.getKeys
 import com.lagradost.cloudstream3.utils.DataStore.removeKey
 import com.lagradost.cloudstream3.utils.DataStore.setKey
-import com.lagradost.cloudstream3.utils.DataStore.setKeys
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -23,11 +22,6 @@ object MangaChapterStore {
     private val _revision = MutableStateFlow(0L)
     val revision: StateFlow<Long> = _revision.asStateFlow()
 
-    // getKeys() copies every preference in the app, so the progress key list
-    // is read once and kept in sync by the writers below.
-    private val progressKeys = HashSet<String>()
-    private var progressKeysLoaded = false
-
     fun chapters(context: Context, sourceId: Long, mangaUrl: String): List<MangaChapter> =
         context.getKey<MangaChapterList>(CHAPTERS, mangaKey(sourceId, mangaUrl))?.chapters.orEmpty()
 
@@ -42,7 +36,7 @@ object MangaChapterStore {
     }
 
     fun allProgress(context: Context): List<MangaProgressRecord> =
-        keysMatching(context, "$PROGRESS/")
+        context.getKeys(PROGRESS)
             .mapNotNull { path -> context.getKey<MangaProgressRecord>(path) }
             .filter { it.chapterUrl.isNotBlank() }
 
@@ -51,8 +45,11 @@ object MangaChapterStore {
         sourceId: Long,
         mangaUrl: String,
     ): Map<String, ChapterProgress> {
+        // Filter keys before parsing: a large library has thousands of
+        // progress rows and only this title's are needed.
         val prefix = "$PROGRESS/${mangaKey(sourceId, mangaUrl)}|"
-        return keysMatching(context, prefix)
+        return context.getKeys(PROGRESS)
+            .filter { it.startsWith(prefix) }
             .mapNotNull { path -> context.getKey<MangaProgressRecord>(path) }
             .associate { it.chapterUrl to it.progress }
     }
@@ -75,13 +72,11 @@ object MangaChapterStore {
         chapterUrl: String,
         progress: ChapterProgress,
     ) {
-        val key = progressKey(sourceId, mangaUrl, chapterUrl)
         context.setKey(
             PROGRESS,
-            key,
+            progressKey(sourceId, mangaUrl, chapterUrl),
             MangaProgressRecord(sourceId, mangaUrl, chapterUrl, progress),
         )
-        noteKeys(listOf("$PROGRESS/$key"))
         _revision.value++
     }
 
@@ -127,20 +122,9 @@ object MangaChapterStore {
         chapterUrl: String,
     ) {
         val now = System.currentTimeMillis()
-        val existing = progress(context, sourceId, mangaUrl)
-        val updates = chaptersBefore(chapters, chapterUrl).associate { chapter ->
-            val old = existing[chapter.url] ?: ChapterProgress()
-            progressKey(sourceId, mangaUrl, chapter.url) to MangaProgressRecord(
-                sourceId = sourceId,
-                mangaUrl = mangaUrl,
-                chapterUrl = chapter.url,
-                progress = old.copy(read = true, readAt = now),
-            )
+        chaptersBefore(chapters, chapterUrl).forEach { chapter ->
+            setRead(context, sourceId, mangaUrl, chapter.url, read = true, at = now)
         }
-        if (updates.isEmpty()) return
-        context.setKeys(PROGRESS, updates)
-        noteKeys(updates.keys.map { "$PROGRESS/$it" })
-        _revision.value++
     }
 
     /**
@@ -172,25 +156,9 @@ object MangaChapterStore {
 
     fun removeProgress(context: Context, sourceId: Long, mangaUrl: String) {
         val prefix = "$PROGRESS/${mangaKey(sourceId, mangaUrl)}|"
-        keysMatching(context, prefix).forEach { path -> context.removeKey(path) }
-        forgetKeys(prefix)
+        context.getKeys(PROGRESS)
+            .filter { it.startsWith(prefix) }
+            .forEach { path -> context.removeKey(path) }
         _revision.value++
-    }
-
-    private fun keysMatching(context: Context, prefix: String): List<String> =
-        synchronized(progressKeys) {
-            if (!progressKeysLoaded) {
-                progressKeys.addAll(context.getKeys(PROGRESS))
-                progressKeysLoaded = true
-            }
-            progressKeys.filter { it.startsWith(prefix) }
-        }
-
-    private fun noteKeys(paths: Collection<String>) = synchronized(progressKeys) {
-        if (progressKeysLoaded) progressKeys.addAll(paths)
-    }
-
-    private fun forgetKeys(prefix: String) = synchronized(progressKeys) {
-        if (progressKeysLoaded) progressKeys.removeAll { it.startsWith(prefix) }
     }
 }

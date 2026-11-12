@@ -5,6 +5,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.text.format.DateFormat
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
@@ -49,6 +50,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.OpenInNew
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.rounded.Bookmark
 import androidx.compose.material.icons.rounded.BookmarkBorder
@@ -73,8 +75,10 @@ import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material.icons.rounded.Theaters
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
@@ -319,12 +323,16 @@ fun DetailsScreen(
     }
 }
 
+internal fun canOpenInBrowser(url: String?): Boolean =
+    url != null && (url.startsWith("http://") || url.startsWith("https://"))
+
 @Composable
 private fun TopBar(
     title: String,
     collapsed: Boolean,
     onBack: () -> Unit,
     onShare: (() -> Unit)?,
+    onOpenWebsite: (() -> Unit)? = null,
 ) {
     val barAlpha by animateFloatAsState(if (collapsed) 1f else 0f, label = "topBarAlpha")
     Row(
@@ -349,11 +357,22 @@ private fun TopBar(
                 .padding(horizontal = 12.dp)
                 .graphicsLayer { alpha = barAlpha },
         )
+        if (onOpenWebsite != null) {
+            FilledTonalIconButton(onClick = onOpenWebsite) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Rounded.OpenInNew,
+                    contentDescription = stringResource(R.string.cd_open_website),
+                )
+            }
+        }
+        if (onOpenWebsite != null && onShare != null) {
+            Spacer(Modifier.width(8.dp))
+        }
         if (onShare != null) {
             FilledTonalIconButton(onClick = onShare) {
                 Icon(Icons.Rounded.Share, contentDescription = stringResource(R.string.cd_share))
             }
-        } else {
+        } else if (onOpenWebsite == null) {
             Spacer(Modifier.size(48.dp))
         }
     }
@@ -484,6 +503,15 @@ private fun DetailsContent(
     val snackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     var downloadSheet by remember { mutableStateOf<DownloadTarget?>(null) }
+    var isDownloadingSeason by remember { mutableStateOf(false) }
+
+    val openWebsite: (() -> Unit)? = remember(response.url) {
+        if (canOpenInBrowser(response.url)) {
+            { runCatching { uriHandler.openUri(response.url) } }
+        } else {
+            null
+        }
+    }
     // The options sheet runs its own link lookup; stop the decorative "More" lookup first.
     LaunchedEffect(downloadSheet) {
         if (downloadSheet != null) onPauseOptionalProviderWork()
@@ -605,52 +633,61 @@ private fun DetailsContent(
 
     /** Season mode: apply the preferred server and language to every episode. */
     fun downloadSeason(episodes: List<Episode>, preferredServer: String, preferredSubLang: String?) {
+        isDownloadingSeason = true
+        Toast.makeText(context, R.string.fetching_season_links, Toast.LENGTH_SHORT).show()
         scope.launch {
-            val api = Engine.provider(response.apiName) ?: return@launch
-            var queued = 0
-            var fallbacks = 0
-            for ((index, episode) in episodes.withIndex()) {
-                val season = episode.season ?: selectedSeason
-                val number = episode.episode ?: index + 1
-                val id = DownloadStore.idOf(response.apiName, response.url, season, number)
-                if (DownloadStore.current(context).any { it.id == id && it.state == DownloadStore.STATE_DONE }) continue
-                // Thread-safe for the same reason as the download card:
-                // providers fire these callbacks from parallel extractors.
-                val links = java.util.Collections.synchronizedList(mutableListOf<ExtractorLink>())
-                val subs = java.util.Collections.synchronizedList(mutableListOf<SubtitleFile>())
-                try {
-                    Engine.guarded(api.loadLinksTimeoutMs ?: 120_000L) {
-                        api.loadLinks(
-                            episode.data, false,
-                            { sub -> runCatching { subs.add(sub) } },
-                            { link -> runCatching { links.add(link) } },
-                        )
+            try {
+                val api = Engine.provider(response.apiName) ?: return@launch
+                var queued = 0
+                var fallbacks = 0
+                for ((index, episode) in episodes.withIndex()) {
+                    val season = episode.season ?: selectedSeason
+                    val number = episode.episode ?: index + 1
+                    val id = DownloadStore.idOf(response.apiName, response.url, season, number)
+                    if (DownloadStore.current(context).any { it.id == id && it.state == DownloadStore.STATE_DONE }) continue
+                    // Thread-safe for the same reason as the download card:
+                    // providers fire these callbacks from parallel extractors.
+                    val links = java.util.Collections.synchronizedList(mutableListOf<ExtractorLink>())
+                    val subs = java.util.Collections.synchronizedList(mutableListOf<SubtitleFile>())
+                    try {
+                        Engine.guarded(api.loadLinksTimeoutMs ?: 120_000L) {
+                            api.loadLinks(
+                                episode.data, false,
+                                { sub -> runCatching { subs.add(sub) } },
+                                { link -> runCatching { links.add(link) } },
+                            )
+                        }
+                    } catch (t: Throwable) {
+                        continue
                     }
-                } catch (t: Throwable) {
-                    continue
-                }
-                val usable = synchronized(links) { links.toList() }
-                    .filter { it.type == ExtractorLinkType.VIDEO || it.type == ExtractorLinkType.M3U8 }
-                val chosen = usable.firstOrNull { it.name.equals(preferredServer, ignoreCase = true) }
-                    ?: usable.maxByOrNull { it.quality }
-                    ?: continue
-                if (!chosen.name.equals(preferredServer, ignoreCase = true)) fallbacks++
-                val sub = if (preferredSubLang == null) {
-                    null
-                } else {
-                    synchronized(subs) { subs.toList() }.firstOrNull { candidate ->
-                        candidate.lang.equals(preferredSubLang, ignoreCase = true) ||
-                            candidate.langTag?.startsWith(preferredSubLang, ignoreCase = true) == true
+                    val usable = synchronized(links) { links.toList() }
+                        .filter { it.type == ExtractorLinkType.VIDEO || it.type == ExtractorLinkType.M3U8 }
+                    val chosen = usable.firstOrNull { it.name.equals(preferredServer, ignoreCase = true) }
+                        ?: usable.maxByOrNull { it.quality }
+                        ?: continue
+                    if (!chosen.name.equals(preferredServer, ignoreCase = true)) fallbacks++
+                    val sub = if (preferredSubLang == null) {
+                        null
+                    } else {
+                        synchronized(subs) { subs.toList() }.firstOrNull { candidate ->
+                            candidate.lang.equals(preferredSubLang, ignoreCase = true) ||
+                                candidate.langTag?.startsWith(preferredSubLang, ignoreCase = true) == true
+                        }
                     }
+                    if (preferredSubLang != null && sub == null) fallbacks++
+                    startDownload(
+                        chosen, season, number, episode.name, episode.data,
+                        sub?.let { listOf(it) } ?: emptyList(),
+                    )
+                    queued++
                 }
-                if (preferredSubLang != null && sub == null) fallbacks++
-                startDownload(
-                    chosen, season, number, episode.name, episode.data,
-                    sub?.let { listOf(it) } ?: emptyList(),
-                )
-                queued++
+                if (queued > 0) {
+                    DownloadService.ensure(context)
+                    announceDownload(queued, fallbacks)
+                }
+            } finally {
+                isDownloadingSeason = false
             }
-            if (queued > 0) announceDownload(queued, fallbacks)
         }
     }
 
@@ -685,6 +722,7 @@ private fun DetailsContent(
                 subtitle = subtitle,
                 resumeKey = resumeKey,
                 queue = queue,
+                loadResponse = response,
                 history = HistoryEntry(
                     key = historyKey,
                     apiName = response.apiName,
@@ -893,6 +931,7 @@ private fun DetailsContent(
             onDownloadSeason = {
                 downloadSheet = DownloadTarget.Season(visibleEpisodes.toList())
             },
+            isDownloadingSeason = isDownloadingSeason,
             onToggleHideWatched = { hideWatched = !hideWatched },
             seasonAction = if (withSeasonAction) {
                 { SeasonWatchedAction(allWatched = allWatched, onClick = toggleSeasonWatched) }
@@ -906,7 +945,7 @@ private fun DetailsContent(
         itemsIndexed(
             items = visibleEpisodes,
             key = { index, episode ->
-                "${episode.season}:${episode.episode ?: index}:${episode.data.hashCode()}"
+                "${episode.season}:${episode.episode ?: index}:${episode.data.hashCode()}:$index"
             },
             contentType = { _, _ -> "episode" },
         ) { index, episode ->
@@ -1070,6 +1109,7 @@ private fun DetailsContent(
                             collapsed = false,
                             onBack = onBack,
                             onShare = share,
+                            onOpenWebsite = openWebsite,
                         )
                         ArtworkStatusBarIcons(overArtwork = startState.firstVisibleItemIndex == 0)
                     }
@@ -1166,6 +1206,7 @@ private fun DetailsContent(
                     collapsed = collapsed,
                     onBack = onBack,
                     onShare = share,
+                    onOpenWebsite = openWebsite,
                 )
                 ArtworkStatusBarIcons(overArtwork = !collapsed)
             }
@@ -2182,6 +2223,7 @@ private fun EpisodeHeader(
     hideWatched: Boolean,
     onMarkPreviousWatched: () -> Unit,
     onDownloadSeason: () -> Unit,
+    isDownloadingSeason: Boolean = false,
     onToggleHideWatched: () -> Unit,
     seasonAction: (@Composable () -> Unit)? = null,
 ) {
@@ -2208,7 +2250,19 @@ private fun EpisodeHeader(
                         },
                     )
                     DropdownMenuItem(
-                        text = { Text(stringResource(R.string.download_season)) },
+                        text = {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(stringResource(R.string.download_season))
+                                if (isDownloadingSeason) {
+                                    Spacer(Modifier.width(8.dp))
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(16.dp),
+                                        strokeWidth = 2.dp,
+                                    )
+                                }
+                            }
+                        },
+                        enabled = !isDownloadingSeason,
                         onClick = {
                             onDownloadSeason()
                             menuOpen = false

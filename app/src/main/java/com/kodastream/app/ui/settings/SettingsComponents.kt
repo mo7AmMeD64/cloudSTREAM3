@@ -30,7 +30,6 @@ import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.SegmentedListItem
-import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -231,49 +230,6 @@ internal fun SwitchRow(
     }
 }
 
-/** A row with a titled slider; the value shows at the trailing edge. */
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
-@Composable
-internal fun SliderRow(
-    index: Int,
-    count: Int,
-    icon: ImageVector,
-    title: String,
-    valueText: String,
-    value: Float,
-    valueRange: ClosedFloatingPointRange<Float>,
-    steps: Int,
-    onValueChange: (Float) -> Unit,
-    onValueChangeFinished: () -> Unit,
-) {
-    SegmentedListItem(
-        shapes = ListItemDefaults.segmentedShapes(index = index, count = count),
-        colors = settingsRowColors(),
-        verticalAlignment = Alignment.Top,
-        leadingContent = { RowIcon(icon) },
-        supportingContent = {
-            Slider(
-                value = value,
-                onValueChange = onValueChange,
-                valueRange = valueRange,
-                steps = steps,
-                onValueChangeFinished = onValueChangeFinished,
-                modifier = Modifier.padding(top = 6.dp),
-            )
-        },
-        trailingContent = {
-            Text(
-                text = valueText,
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        },
-        modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),
-    ) {
-        Text(title, fontWeight = FontWeight.SemiBold)
-    }
-}
-
 /** A row with no action, for values such as the app version. */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -309,6 +265,7 @@ internal fun <T> ChoiceRow(
     selected: T,
     label: @Composable (T) -> String,
     onSelect: (T) -> Unit,
+    supporting: String? = null,
 ) {
     SegmentedListItem(
         shapes = ListItemDefaults.segmentedShapes(index = index, count = count),
@@ -316,13 +273,23 @@ internal fun <T> ChoiceRow(
         verticalAlignment = Alignment.Top,
         leadingContent = { RowIcon(icon) },
         supportingContent = {
-            ConnectedChoiceGroup(
-                options = options,
-                selected = selected,
-                label = label,
-                onSelect = onSelect,
-                modifier = Modifier.padding(top = 10.dp),
-            )
+            Column {
+                if (supporting != null) {
+                    Text(
+                        text = supporting,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 4.dp, bottom = 6.dp),
+                    )
+                }
+                ConnectedChoiceGroup(
+                    options = options,
+                    selected = selected,
+                    label = label,
+                    onSelect = onSelect,
+                    modifier = Modifier.padding(top = if (supporting != null) 0.dp else 10.dp),
+                )
+            }
         },
         modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),
     ) {

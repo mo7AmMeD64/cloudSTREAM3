@@ -15,7 +15,10 @@ import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.border
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.material3.FloatingToolbarDefaults
+import androidx.compose.ui.draw.shadow
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -42,7 +45,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.MenuBook
 import androidx.compose.material.icons.automirrored.rounded.MenuBook
-import androidx.compose.material.icons.filled.Home as HomeFilled
 import androidx.compose.material.icons.outlined.Explore
 import androidx.compose.material.icons.outlined.Extension
 import androidx.compose.material.icons.outlined.History
@@ -78,7 +80,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
@@ -179,34 +180,25 @@ private object MangaRoutes {
     fun details(ref: MangaRef) = "manga_details/${NavArgs.put(ref)}"
 }
 
-internal data class TopLevel(
+private data class TopLevel(
     val route: String,
     val labelRes: Int,
     val filledIcon: ImageVector,
     val outlinedIcon: ImageVector,
-    /** The Nuvio bar's own icon for this tab; 0 uses [nuvioIcon], else [filledIcon]. */
-    val nuvioIconRes: Int = 0,
-    val nuvioIcon: ImageVector = filledIcon,
 )
 
 private val watchTopLevelDestinations = listOf(
-    TopLevel(
-        Routes.HOME,
-        R.string.nav_home,
-        Icons.Rounded.Home,
-        Icons.Outlined.Home,
-        nuvioIcon = Icons.Filled.HomeFilled,
-    ),
-    TopLevel(Routes.SEARCH, R.string.nav_search, Icons.Rounded.Search, Icons.Outlined.Search, R.drawable.sidebar_search),
-    TopLevel(Routes.LIBRARY, R.string.nav_library, Icons.Rounded.VideoLibrary, Icons.Outlined.VideoLibrary, R.drawable.sidebar_library),
+    TopLevel(Routes.HOME, R.string.nav_home, Icons.Rounded.Home, Icons.Outlined.Home),
+    TopLevel(Routes.SEARCH, R.string.nav_search, Icons.Rounded.Search, Icons.Outlined.Search),
+    TopLevel(Routes.LIBRARY, R.string.nav_library, Icons.Rounded.VideoLibrary, Icons.Outlined.VideoLibrary),
     TopLevel(Routes.HISTORY, R.string.nav_history, Icons.Rounded.History, Icons.Outlined.History),
     TopLevel(Routes.EXTENSIONS, R.string.nav_extensions, Icons.Rounded.Extension, Icons.Outlined.Extension),
-    TopLevel(Routes.SETTINGS, R.string.nav_settings, Icons.Rounded.Settings, Icons.Outlined.Settings, R.drawable.sidebar_settings),
+    TopLevel(Routes.SETTINGS, R.string.nav_settings, Icons.Rounded.Settings, Icons.Outlined.Settings),
 )
 
 private val mangaTopLevelDestinations = listOf(
     TopLevel(MangaRoutes.BROWSE, R.string.nav_browse, Icons.Rounded.Explore, Icons.Outlined.Explore),
-    TopLevel(MangaRoutes.SEARCH, R.string.nav_search, Icons.Rounded.Search, Icons.Outlined.Search, R.drawable.sidebar_search),
+    TopLevel(MangaRoutes.SEARCH, R.string.nav_search, Icons.Rounded.Search, Icons.Outlined.Search),
     TopLevel(
         MangaRoutes.LIBRARY,
         R.string.nav_library,
@@ -220,13 +212,7 @@ private val mangaTopLevelDestinations = listOf(
         Icons.Rounded.Extension,
         Icons.Outlined.Extension,
     ),
-    TopLevel(
-        MangaRoutes.SETTINGS,
-        R.string.nav_settings,
-        Icons.Rounded.Settings,
-        Icons.Outlined.Settings,
-        R.drawable.sidebar_settings,
-    ),
+    TopLevel(MangaRoutes.SETTINGS, R.string.nav_settings, Icons.Rounded.Settings, Icons.Outlined.Settings),
 )
 
 // ------------------------------------------------------------------ shared nav motion
@@ -377,10 +363,7 @@ fun AppRoot(themeViewModel: ThemeViewModel) {
     }
 
     val navPosition by AppPrefs.navPosition.collectAsState(initial = AppPrefs.navPosition(context))
-    val navBarStyle by AppPrefs.navBarStyle.collectAsState(initial = AppPrefs.navBarStyle(context))
     val sideMode = showBar && navPosition != AppPrefs.NAV_BOTTOM
-    val nuvioBar = showBar && !sideMode && navBarStyle == AppPrefs.NAV_BAR_NUVIO
-    val navBarScrollState = rememberNuvioNavBarScrollState()
 
     // Either shell hands the screens the same contract: system-bar insets,
     // plus the pill's strip (and the source button above it) when it is there.
@@ -402,10 +385,6 @@ fun AppRoot(themeViewModel: ThemeViewModel) {
         Box(
             Modifier
                 .fillMaxSize()
-                .then(
-                    if (nuvioBar) Modifier.nestedScroll(navBarScrollState.nestedScrollConnection)
-                    else Modifier
-                )
                 .then(
                     if (sideMode) Modifier.padding(start = SideBarWidth + SideBarMargin)
                     else Modifier
@@ -460,9 +439,7 @@ fun AppRoot(themeViewModel: ThemeViewModel) {
                 Column(
                     modifier = Modifier
                         .navigationBarsPadding()
-                        // Nuvio sits 14dp above the inset (6dp + 8dp); Cloud's
-                        // own pill keeps its 20dp.
-                        .padding(bottom = if (nuvioBar) 14.dp else 20.dp),
+                        .padding(bottom = 20.dp),
                     horizontalAlignment = Alignment.End,
                 ) {
                     // App-level controls live above the pill: inside it they
@@ -493,23 +470,11 @@ fun AppRoot(themeViewModel: ThemeViewModel) {
                             }
                         }
                     }
-                    if (navBarStyle == AppPrefs.NAV_BAR_NUVIO) {
-                        NuvioNavBar(
-                            destinations = destinations,
-                            selectedRoute = route,
-                            onSelect = { navController.navigateTopLevel(it) },
-                            scrollState = navBarScrollState,
-                            iconSize = AppPrefs.navBarIconSize(context).dp,
-                            maxWidth = AppPrefs.navBarWidth(context).dp,
-                            expandedHeight = AppPrefs.navBarHeight(context).dp,
-                        )
-                    } else {
-                        FloatingNavPill(
-                            destinations = destinations,
-                            selectedRoute = route,
-                            onSelect = { navController.navigateTopLevel(it) },
-                        )
-                    }
+                    FloatingNavPill(
+                        destinations = destinations,
+                        selectedRoute = route,
+                        onSelect = { navController.navigateTopLevel(it) },
+                    )
                 }
             }
         }
@@ -560,9 +525,12 @@ private fun AppNavGraph(
             CompositionLocalProvider(
                 LocalScreenActive provides lifecycleState.isAtLeast(Lifecycle.State.RESUMED),
             ) {
+                val context = LocalContext.current
                 HomeScreen(
                     contentPadding = contentPadding,
                     onOpenItem = navController::openDetails,
+                    onOpenDetails = navController::openDetails,
+                    onResume = { playerArgs -> openPlayer(playerArgs) },
                     onOpenExtensions = { navController.navigateTopLevel(Routes.EXTENSIONS) },
                     onOpenSources = onOpenSources,
                     sourceViewModel = sources,
@@ -843,11 +811,30 @@ private fun FloatingSideBar(
     onToggleMode: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val context = LocalContext.current
+    val uiStyleState by AppPrefs.uiStyle.collectAsState(initial = AppPrefs.uiStyle(context))
+    val isGlass = (uiStyleState ?: AppPrefs.uiStyle(context)) == AppPrefs.UI_STYLE_GLASS
+    val shape = RoundedCornerShape(50)
+
     Surface(
-        modifier = modifier,
-        shape = RoundedCornerShape(50),
-        color = MaterialTheme.colorScheme.surfaceContainerHigh,
-        tonalElevation = 2.dp,
+        modifier = if (isGlass) {
+            modifier
+                .shadow(elevation = 8.dp, shape = shape)
+                .border(
+                    width = 1.dp,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.15f),
+                    shape = shape,
+                )
+        } else {
+            modifier
+        },
+        shape = shape,
+        color = if (isGlass) {
+            MaterialTheme.colorScheme.surface.copy(alpha = 0.65f)
+        } else {
+            MaterialTheme.colorScheme.surfaceContainerHigh
+        },
+        tonalElevation = if (isGlass) 0.dp else 2.dp,
     ) {
         Column(
             modifier = Modifier
@@ -1041,8 +1028,32 @@ private fun FloatingNavPill(
     selectedRoute: String?,
     onSelect: (String) -> Unit,
 ) {
+    val context = LocalContext.current
+    val uiStyleState by AppPrefs.uiStyle.collectAsState(initial = AppPrefs.uiStyle(context))
+    val isGlass = (uiStyleState ?: AppPrefs.uiStyle(context)) == AppPrefs.UI_STYLE_GLASS
+    val pillShape = CircleShape
+
     HorizontalFloatingToolbar(
         expanded = true,
+        modifier = if (isGlass) {
+            Modifier
+                .shadow(elevation = 8.dp, shape = pillShape)
+                .border(
+                    width = 1.dp,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.15f),
+                    shape = pillShape,
+                )
+        } else {
+            Modifier
+        },
+        colors = if (isGlass) {
+            FloatingToolbarDefaults.standardFloatingToolbarColors(
+                toolbarContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.65f),
+            )
+        } else {
+            FloatingToolbarDefaults.standardFloatingToolbarColors()
+        },
+        expandedShadowElevation = if (isGlass) 0.dp else FloatingToolbarDefaults.ContainerExpandedElevation,
         content = {
             // Scrollable instead of clipped: with the open tab's label the
             // six destinations do not fit on every width or font scale.

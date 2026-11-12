@@ -17,11 +17,6 @@ class NetworkPreferences(context: Context) {
         get() = prefs.getBoolean("redact_sensitive_headers", true)
         set(value) = prefs.edit().putBoolean("redact_sensitive_headers", value).apply()
 
-    /** One of the PREF_DOH_* ids from DohProviders.kt, or -1 for none. Needs an app restart. */
-    var dohProvider: Int
-        get() = prefs.getInt("doh_provider", -1)
-        set(value) = prefs.edit().putInt("doh_provider", value).apply()
-
     var defaultUserAgent: String
         get() = prefs.getString("default_user_agent", DEFAULT_USER_AGENT) ?: DEFAULT_USER_AGENT
         set(value) = prefs.edit().putString("default_user_agent", value).apply()

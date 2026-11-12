@@ -11,9 +11,6 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.Toast
 import androidx.core.content.ContextCompat
-import androidx.webkit.ScriptHandler
-import androidx.webkit.WebViewCompat
-import androidx.webkit.WebViewFeature
 import eu.kanade.tachiyomi.network.AndroidCookieJar
 import eu.kanade.tachiyomi.util.system.isOutdated
 import eu.kanade.tachiyomi.util.system.toWebViewHeaders
@@ -119,8 +116,6 @@ class CloudflareInterceptor(
         val latch = CountDownLatch(1)
 
         var webview: WebView? = null
-        var listenerScriptHandler: ScriptHandler? = null
-        val useIsolatedWorld = WebViewFeature.isFeatureSupported(WebViewFeature.JS_INJECTION_IN_FRAME_AND_WORLD)
 
         var challengeFound = false
         var cloudflareBypassed = false
@@ -153,30 +148,14 @@ class CloudflareInterceptor(
                 }
             }
 
-            if (useIsolatedWorld) {
-                // An isolated world keeps the bridge out of the page's reach
-                val world = WebViewCompat.getExecutionWorld(webview, "mihon")
-                val origins = setOf(originalRequest.url.origin())
-                WebViewCompat.addWebMessageListener(webview, "mihon", origins, world) { _, message, _, isMainFrame, _ ->
-                    if (isMainFrame) message.data?.let(::onChallengeEvent)
-                }
-                listenerScriptHandler = WebViewCompat.addJavaScriptOnEvent(
-                    webview,
-                    listenerScript,
-                    WebViewCompat.INJECTION_EVENT_DOCUMENT_START,
-                    origins,
-                    world,
-                )
-            } else {
-                webview.addJavascriptInterface(
-                    object {
-                        @Suppress("unused")
-                        @JavascriptInterface
-                        fun postMessage(event: String) = onChallengeEvent(event)
-                    },
-                    "mihon",
-                )
-            }
+            webview.addJavascriptInterface(
+                object {
+                    @Suppress("unused")
+                    @JavascriptInterface
+                    fun postMessage(event: String) = onChallengeEvent(event)
+                },
+                "mihon",
+            )
 
             webview.webViewClient = object : WebViewClient() {
                 override fun onPageFinished(view: WebView, url: String) {
@@ -189,7 +168,7 @@ class CloudflareInterceptor(
                         if (!challengeFound) {
                             // The first request didn't return the challenge, abort.
                             latch.countDown()
-                        } else if (!useIsolatedWorld) {
+                        } else {
                             view.evaluateJavascript(listenerScript, null)
                         }
                     }
@@ -237,16 +216,7 @@ class CloudflareInterceptor(
 
             webview?.run {
                 if (!isRenderProcessGone) {
-                    if (useIsolatedWorld) {
-                        WebViewCompat.removeWebMessageListener(
-                            this,
-                            WebViewCompat.getExecutionWorld(this, "mihon"),
-                            "mihon",
-                        )
-                    } else {
-                        removeJavascriptInterface("mihon")
-                    }
-                    listenerScriptHandler?.remove()
+                    removeJavascriptInterface("mihon")
                     stopLoading()
                 }
                 destroy()
@@ -275,5 +245,4 @@ private fun HttpUrl.origin(): String {
 private val SERVER_CHECK = arrayOf("cloudflare-nginx", "cloudflare")
 private val COOKIE_NAMES = listOf("cf_clearance")
 
-/** The check could not be passed without the user; the app offers its in-app browser when it sees this. */
-class CloudflareBypassException : Exception()
+private class CloudflareBypassException : Exception()

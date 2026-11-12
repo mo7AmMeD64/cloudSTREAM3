@@ -42,6 +42,18 @@ object WatchedStore {
         return _keys.value.orEmpty()
     }
 
+    /** The full list of watched entries with timestamps (for data export). */
+    fun getEntries(context: Context): List<WatchedEntry> {
+        return context.getKey<List<WatchedEntry>>(STORE_KEY).orEmpty()
+    }
+
+    /** Replaces the full list of watched entries with timestamps (for data import). */
+    fun restore(context: Context, entries: List<WatchedEntry>) {
+        loaded = true
+        _keys.value = entries.map { it.key }.toSet()
+        scope.launch { context.setKey(STORE_KEY, entries) }
+    }
+
     fun keyOf(apiName: String, url: String, season: Int?, episode: Int?): String =
         "$apiName|$url|${season ?: -1}|${episode ?: -1}"
 

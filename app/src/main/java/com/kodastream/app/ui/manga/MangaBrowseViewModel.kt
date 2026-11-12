@@ -1,6 +1,5 @@
 package com.kodastream.app.ui.manga
 
-import com.kodastream.app.manga.isCloudflareBlock
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -43,8 +42,6 @@ data class MangaBrowseState(
     val refreshing: Boolean = false,
     val endReached: Boolean = false,
     val error: String? = null,
-    /** The error looks like a Cloudflare check that needs the in-app browser. */
-    val blocked: Boolean = false,
 ) {
     val initialLoading: Boolean get() = loading && items.isEmpty()
     val loadingMore: Boolean get() = loading && items.isNotEmpty()
@@ -150,7 +147,7 @@ class MangaBrowseViewModel(application: Application) : AndroidViewModel(applicat
     fun reload() {
         loadJob?.cancel()
         _state.update {
-            it.copy(items = emptyList(), page = 0, endReached = false, error = null, blocked = false)
+            it.copy(items = emptyList(), page = 0, endReached = false, error = null)
         }
         fetch(page = 1, append = false)
     }
@@ -161,7 +158,7 @@ class MangaBrowseViewModel(application: Application) : AndroidViewModel(applicat
         val text = _query.value.trim()
         loadJob?.cancel()
         loadJob = viewModelScope.launch {
-            _state.update { it.copy(loading = true, error = null, blocked = false) }
+            _state.update { it.copy(loading = true, error = null) }
             try {
                 val result = withContext(Dispatchers.IO) {
                     when {
@@ -191,12 +188,7 @@ class MangaBrowseViewModel(application: Application) : AndroidViewModel(applicat
                 throw e
             } catch (e: Throwable) {
                 _state.update {
-                    it.copy(
-                        loading = false,
-                        refreshing = false,
-                        error = rootMessage(e),
-                        blocked = isCloudflareBlock(e),
-                    )
+                    it.copy(loading = false, refreshing = false, error = rootMessage(e))
                 }
             }
         }

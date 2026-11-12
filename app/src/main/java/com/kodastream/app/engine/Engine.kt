@@ -29,6 +29,9 @@ object Engine {
     /** One home page: its lists and whether the provider has another page. */
     data class MainPageResult(val lists: List<HomePageList>, val hasNext: Boolean)
 
+    /** One search page: its items and whether the provider has another page. */
+    data class SearchResult(val items: List<SearchResponse>, val hasNext: Boolean)
+
     /**
      * Every provider that loaded successfully, in registration order.
      *
@@ -74,17 +77,6 @@ object Engine {
     /**
      * Fills in the owning provider on results that do not declare one, and drops results
      * that have no url (they could never be opened).
-     *
-     * A CloudStream extension builds its results either with the `MainAPI.new*SearchResponse`
-     * helpers, which set `apiName`, or with a direct constructor, which leaves it empty;
-     * many Arabic extensions do the latter. An empty `apiName` is not cosmetic: the details
-     * route resolves the provider from it, so such a card opened nothing, and related-title
-     * matching compared `""` with the real provider name and threw every candidate away.
-     *
-     * Stamping here, at the one boundary where extension code is called, makes the source
-     * unambiguous for every caller without touching a single extension. A non-blank
-     * `apiName` is left alone: a metaprovider legitimately points at sub-providers, which
-     * must keep their own name so their pages can still be loaded.
      */
     private fun <T : SearchResponse> stampSource(api: MainAPI, items: List<T>): List<T> =
         stampResults(api.name, items)
@@ -100,9 +92,10 @@ object Engine {
             MainPageResult(lists, response?.hasNext == true)
         }
 
-    suspend fun search(api: MainAPI, query: String): Result<List<SearchResponse>> =
+    suspend fun search(api: MainAPI, query: String, page: Int = 1): Result<SearchResult> =
         guarded(api.searchTimeoutMs) {
-            stampSource(api, api.search(query, 1)?.items ?: emptyList())
+            val response = api.search(query, page)
+            SearchResult(stampSource(api, response?.items.orEmpty()), response?.hasNext == true)
         }
 
     suspend fun load(api: MainAPI, url: String): Result<LoadResponse> =

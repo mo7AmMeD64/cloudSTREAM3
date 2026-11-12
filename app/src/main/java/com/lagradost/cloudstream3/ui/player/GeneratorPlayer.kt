@@ -2,6 +2,7 @@ package com.lagradost.cloudstream3.ui.player
 
 import android.animation.ValueAnimator
 import android.annotation.SuppressLint
+import android.app.Activity
 import android.app.Dialog
 import android.app.PendingIntent
 import android.content.Context
@@ -20,6 +21,8 @@ import android.widget.AbsListView
 import android.widget.ArrayAdapter
 import android.widget.ImageView
 import android.widget.LinearLayout
+import android.widget.ListView
+import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
 import androidx.annotation.MainThread
@@ -31,7 +34,18 @@ import androidx.core.text.toSpanned
 import androidx.core.view.isGone
 import androidx.core.view.isVisible
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewModelScope
+import com.google.android.material.bottomsheet.BottomSheetDialog
+import com.google.android.material.button.MaterialButton
+import com.kodastream.app.ui.details.castToWebVideoCaster
+import com.kodastream.app.ui.player.openInExternalPlayer
+import com.kodastream.app.ui.player.OnlineSubtitle
+import com.kodastream.app.ui.player.OnlineSubtitlesHelper
+import com.lagradost.cloudstream3.CommonActivity
+import com.lagradost.cloudstream3.SubtitleFile
+import com.lagradost.cloudstream3.newSubtitleFile
+import kotlinx.coroutines.launch
 import androidx.media3.common.Format.NO_VALUE
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
@@ -135,7 +149,7 @@ class GeneratorPlayer : FullScreenPlayer() {
             }
         }
 
-        const val subsProvidersIsActive = false
+        const val subsProvidersIsActive = true
     }
 
 
@@ -426,6 +440,7 @@ class GeneratorPlayer : FullScreenPlayer() {
         //  setEpisodes(viewModel.getAllMeta() ?: emptyList())
         setPlayerDimen(null)
         setTitle()
+        updateCastButtonVisibility()
         if (!sameEpisode)
             hasRequestedStamps = false
 
@@ -452,6 +467,8 @@ class GeneratorPlayer : FullScreenPlayer() {
 
         if (!sameEpisode) {
             player.addTimeStamps(emptyList()) // clear stamps
+            currentTimestamp = null
+            displayTimeStamp(false)
             // Resets subtitle delay, as we watch some other content
             player.setSubtitleOffset(0)
         }
@@ -618,6 +635,19 @@ class GeneratorPlayer : FullScreenPlayer() {
                 var subtitleOptionIndex = subtitleOptionIndexStart
 
                 subsArrayAdapter.addAll(subtitles)
+
+                if (subsProvidersIsActive) {
+                    val onlineSubsFooter = layoutInflater.inflate(
+                        R.layout.sort_bottom_footer_add_choice, null
+                    ) as TextView
+                    onlineSubsFooter.text = ctx.getString(R.string.player_load_subtitles_online)
+                    onlineSubsFooter.setOnClickListener {
+                        sourceDialog.dismissSafe(activity)
+                        selectSourceDialog = null
+                        openOnlineSubPicker(ctx, null) {}
+                    }
+                    subtitleList.addFooterView(onlineSubsFooter, null, false)
+                }
 
                 subtitleList.adapter = subsArrayAdapter
                 subtitleList.choiceMode = AbsListView.CHOICE_MODE_SINGLE
@@ -939,6 +969,120 @@ class GeneratorPlayer : FullScreenPlayer() {
         }
     }
 
+    override fun openOnlineSubPicker(
+        context: Context,
+        loadResponse: LoadResponse?,
+        dismissCallback: (() -> Unit)
+    ) {
+        val act = activity ?: (context as? Activity) ?: return
+        val dialog = BottomSheetDialog(act)
+
+        val rootLayout = LinearLayout(act).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(20.toPx, 16.toPx, 20.toPx, 20.toPx)
+        }
+
+        val titleView = TextView(act).apply {
+            text = act.getString(R.string.player_load_subtitles_online)
+            textSize = 18f
+            setTypeface(null, Typeface.BOLD)
+            setTextColor(act.colorFromAttribute(R.attr.textColor))
+        }
+        rootLayout.addView(titleView)
+
+        val progressBar = ProgressBar(act).apply {
+            isIndeterminate = true
+            setPadding(0, 24.toPx, 0, 24.toPx)
+        }
+        rootLayout.addView(progressBar)
+
+        val maxListHeight = (act.resources.displayMetrics.heightPixels * 0.5).toInt().coerceAtLeast(300.toPx)
+        val listView = ListView(act).apply {
+            visibility = View.GONE
+            dividerHeight = 1.toPx
+            layoutParams = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                maxListHeight
+            )
+        }
+        rootLayout.addView(listView)
+
+        dialog.setContentView(rootLayout)
+        dialog.setOnDismissListener {
+            dismissCallback()
+            activity?.hideSystemUI()
+        }
+        dialog.show()
+
+        val meta = getMetaData()
+        val response = loadResponse ?: viewModel.state.generatorState?.response
+        val title = meta.name ?: response?.name ?: getHeaderName() ?: ""
+        val imdbId = (loadResponse ?: response)?.syncData?.get("imdb") ?: meta.imdbId
+        val season = meta.season
+        val episode = meta.episode
+
+        lifecycleScope.launch {
+            try {
+                val results = OnlineSubtitlesHelper.searchSubtitles(imdbId, title, season, episode)
+                if (results.isEmpty()) {
+                    dialog.dismissSafe(act)
+                    CommonActivity.showToast("No subtitles found or network error")
+                    return@launch
+                }
+
+                progressBar.visibility = View.GONE
+                listView.visibility = View.VISIBLE
+
+                val adapter = object : ArrayAdapter<OnlineSubtitle>(act, R.layout.sort_bottom_single_choice, results) {
+                    override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
+                        val view = super.getView(position, convertView, parent) as TextView
+                        val item = getItem(position)
+                        if (item != null) {
+                            val langName = fromTagToLanguageName(item.language) ?: item.language.uppercase()
+                            view.text = "$langName • ${item.name}"
+                        }
+                        return view
+                    }
+                }
+                listView.adapter = adapter
+
+                listView.setOnItemClickListener { _, _, which, _ ->
+                    val selected = results.getOrNull(which) ?: return@setOnItemClickListener
+                    listView.isEnabled = false
+                    progressBar.visibility = View.VISIBLE
+                    listView.visibility = View.GONE
+
+                    lifecycleScope.launch {
+                        try {
+                            val file = OnlineSubtitlesHelper.downloadSubtitle(act, selected.url)
+                            val subFile = newSubtitleFile(selected.language, file.absolutePath)
+                            val langName = fromTagToLanguageName(selected.language) ?: selected.language.uppercase()
+                            val subData = PlayerSubtitleHelper.getSubtitleData(subFile).copy(
+                                origin = SubtitleOrigin.DOWNLOADED_FILE,
+                                originalName = "$langName - ${selected.name}"
+                            )
+                            viewModel.addSubtitles(setOf(subData))
+                            val requiresReload = setSubtitles(subData, true)
+                            if (requiresReload) {
+                                loadLink(currentSelectedLink, true)
+                            }
+                            dialog.dismissSafe(act)
+                            CommonActivity.showToast(act.getString(R.string.player_loaded_subtitles, subData.originalName))
+                        } catch (t: Throwable) {
+                            logError(t)
+                            dialog.dismissSafe(act)
+                            CommonActivity.showToast("No subtitles found or network error")
+                        }
+                    }
+                }
+            } catch (t: Throwable) {
+                logError(t)
+                dialog.dismissSafe(act)
+                CommonActivity.showToast("No subtitles found or network error")
+            }
+        }
+    }
+
     override fun playerError(exception: Throwable) {
         currentSelectedLink?.let { link ->
             viewModel.modifyState { this.addError(link) }
@@ -1106,6 +1250,12 @@ class GeneratorPlayer : FullScreenPlayer() {
         if ((currentMeta as? ResultEpisode)?.tvType == TvType.NSFW) return
 
         if (duration <= 0L) return // idk how you achieved this, but div by zero crash
+        currentTimestamp?.let { stamp ->
+            if (position < stamp.timestamp.startMs || position >= stamp.timestamp.endMs) {
+                currentTimestamp = null
+                displayTimeStamp(false)
+            }
+        }
         if (!hasRequestedStamps) {
             hasRequestedStamps = true
             val fetchStamps = context?.let { ctx ->
@@ -1115,8 +1265,12 @@ class GeneratorPlayer : FullScreenPlayer() {
                     true
                 )
             } ?: true
-            if (fetchStamps)
+            if (fetchStamps) {
+                Log.d("SkipIntro", "Fetching stamps for duration: $duration")
                 viewModel.loadStamps(duration)
+            } else {
+                Log.d("SkipIntro", "Skip intro disabled in settings")
+            }
         }
 
         val percentage = position * 100L / duration
@@ -1242,12 +1396,24 @@ class GeneratorPlayer : FullScreenPlayer() {
         }
     }
 
-    private fun getHeaderName(): String? {
-        return when (val meta = currentMeta) {
-            is ResultEpisode -> meta.headerName
-            is ExtractorUri -> meta.headerName
+    private val Any?.headerName: String?
+        get() = when (this) {
+            is ResultEpisode -> this.headerName
+            is ExtractorUri -> this.headerName
             else -> null
         }
+
+    private fun getHeaderName(): String? = currentMeta?.headerName
+
+    private fun updateCastButtonVisibility() {
+        val isHttp = currentSelectedLink?.first?.url?.startsWith("http", ignoreCase = true) == true
+        val playerCastBtt = view?.findViewById<MaterialButton>(R.id.player_cast_btt)
+            ?: playerBinding?.root?.findViewById(R.id.player_cast_btt)
+        playerCastBtt?.isVisible = isHttp
+
+        val playerExternalBtt = view?.findViewById<MaterialButton>(R.id.player_external_btt)
+            ?: playerBinding?.root?.findViewById(R.id.player_external_btt)
+        playerExternalBtt?.isVisible = isHttp
     }
 
     private fun getPlayerVideoTitle(): String {
@@ -1457,75 +1623,12 @@ class GeneratorPlayer : FullScreenPlayer() {
     override fun pickLayout(): Int =
         if (isLayout(TV or EMULATOR)) R.layout.fragment_player_tv else R.layout.fragment_player
 
-    var skipAnimator: ValueAnimator? = null
-    var skipIndex = 0
-
-    private fun displayTimeStamp(show: Boolean) {
-        if (timestampShowState == show) return
-        skipIndex++
-        timestampShowState = show
-        playerBinding?.skipChapterButton?.apply {
-            val showWidth = 170.toPx
-            val noShowWidth = 10.toPx
-            //if((show && width == showWidth) || (!show && width == noShowWidth)) {
-            //    return
-            //}
-            val to = if (show) showWidth else noShowWidth
-            val from = if (!show) showWidth else noShowWidth
-
-            skipAnimator?.cancel()
-            isVisible = true
-
-            /** Focus instantly to make the focus color appear instantly */
-            if (show && !isShowing) {
-                // Automatically request focus if the menu is not opened
-                playerBinding?.skipChapterButton?.requestFocus()
-            }
-
-            // just in case
-            val lay = layoutParams
-            lay.width = from
-            layoutParams = lay
-            skipAnimator = ValueAnimator.ofInt(
-                from, to
-            ).apply {
-                addListener(onEnd = {
-                    if (!show) {
-                        playerBinding?.skipChapterButton?.isVisible = false
-                        if (!isShowing) {
-                            // Automatically return focus to play pause
-                            playerBinding?.playerPausePlay?.requestFocus()
-                        }
-                    }
-                })
-                addUpdateListener { valueAnimator ->
-                    val value = valueAnimator.animatedValue as Int
-                    val layoutParams: ViewGroup.LayoutParams = layoutParams
-                    layoutParams.width = value
-                    setLayoutParams(layoutParams)
-                }
-                duration = 500
-                start()
-            }
-        }
-    }
-
     override fun onTimestampSkipped(timestamp: VideoSkipStamp) {
-        displayTimeStamp(false)
+        super.onTimestampSkipped(timestamp)
     }
 
     override fun onTimestamp(timestamp: VideoSkipStamp?) {
-        if (timestamp != null) {
-            playerBinding?.skipChapterButton?.setText(timestamp.uiText)
-            displayTimeStamp(true)
-            val currentIndex = skipIndex
-            playerBinding?.skipChapterButton?.handler?.postDelayed({
-                if (skipIndex == currentIndex)
-                    displayTimeStamp(false)
-            }, 6000)
-        } else {
-            displayTimeStamp(false)
-        }
+        super.onTimestamp(timestamp)
     }
 
     override fun isThereEpisodes(): Boolean =
@@ -1601,6 +1704,7 @@ class GeneratorPlayer : FullScreenPlayer() {
         binding?.playerLoadingOverlay?.isVisible = true
         viewModel.modifyState { setError(emptyList()) }
         uiReset()
+        updateCastButtonVisibility()
     }
 
     fun exitPlayer() {
@@ -1690,8 +1794,27 @@ class GeneratorPlayer : FullScreenPlayer() {
             }
         }
 
+        val playerCastBtt = binding.root.findViewById<MaterialButton?>(R.id.player_cast_btt)
+        playerCastBtt?.setOnClickListener {
+            castToWebVideoCaster(context, currentSelectedLink?.first, currentMeta?.headerName)
+        }
+
+        val playerExternalBtt = binding.root.findViewById<MaterialButton?>(R.id.player_external_btt)
+        playerExternalBtt?.setOnClickListener {
+            val ctx = context ?: return@setOnClickListener
+            val link = currentSelectedLink?.first ?: return@setOnClickListener
+            val title = getPlayerVideoTitle().ifBlank { link.name }
+            val position = player.getPosition() ?: 0L
+            openInExternalPlayer(ctx, link, title, position)
+        }
+        updateCastButtonVisibility()
+
         observe(viewModel.currentStamps) { (stamps, instance) ->
             if (instance != viewModel.state.instance) return@observe // Outdated observe
+            Log.d("SkipIntro", "Stamps returned: ${stamps.size}")
+            if (stamps.isEmpty()) {
+                Log.d("SkipIntro", "No skip data available for this content")
+            }
             player.addTimeStamps(stamps)
         }
 

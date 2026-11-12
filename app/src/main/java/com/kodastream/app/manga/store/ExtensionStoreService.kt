@@ -54,8 +54,8 @@ class ExtensionStoreService(
         etag: String?,
         lastModified: String?,
     ): StoreResult {
-        require(url.startsWith("https://")) {
-            "The URL must start with https://"
+        require(url.startsWith("http://") || url.startsWith("https://")) {
+            "The URL must start with http:// or https://"
         }
 
         if (url.endsWith("repo.json")) {

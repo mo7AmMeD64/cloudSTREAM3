@@ -7,9 +7,13 @@ import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.content.SharedPreferences
 import android.content.pm.ServiceInfo
-import android.net.Uri
 import android.net.ConnectivityManager
+import android.net.Network
+import android.net.NetworkCapabilities
+import android.net.NetworkRequest
+import android.net.Uri
 import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
@@ -18,10 +22,12 @@ import com.kodastream.app.data.AppPrefs
 import com.kodastream.app.data.DownloadLocations
 import com.kodastream.app.data.DownloadStore
 import com.kodastream.app.engine.Engine
+import android.util.Log
 import com.lagradost.cloudstream3.USER_AGENT
 import com.lagradost.cloudstream3.app
 import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.cloudstream3.utils.ExtractorLinkType
+import com.lagradost.cloudstream3.utils.HlsPlaylistParser
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -54,6 +60,7 @@ import javax.crypto.spec.SecretKeySpec
 class DownloadService : Service() {
 
     companion object {
+        private const val TAG = "DownloadService"
         private const val CHANNEL_ID = "downloads"
         private const val NOTIFICATION_ID = 10
 
@@ -83,6 +90,44 @@ class DownloadService : Service() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val active = HashMap<String, Job>()
     private lateinit var notifications: NotificationManager
+    private var connectivityManager: ConnectivityManager? = null
+    private var networkCallbackRegistered = false
+
+    private val networkCallback = object : ConnectivityManager.NetworkCallback() {
+        override fun onAvailable(network: Network) {
+            Log.d(TAG, "networkCallback.onAvailable: network=$network")
+            val wifiOnly = AppPrefs.downloadWifiOnly(this@DownloadService)
+            val caps = connectivityManager?.getNetworkCapabilities(network)
+            val hasWifi = caps?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true
+            if (shouldTriggerPumpOnNetworkEvent(wifiOnly, hasWifi)) {
+                pump()
+            }
+        }
+
+        override fun onCapabilitiesChanged(network: Network, networkCapabilities: NetworkCapabilities) {
+            val hasWifi = networkCapabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)
+            Log.d(
+                TAG,
+                "networkCallback.onCapabilitiesChanged: hasWifi=$hasWifi",
+            )
+            val wifiOnly = AppPrefs.downloadWifiOnly(this@DownloadService)
+            if (shouldTriggerPumpOnNetworkEvent(wifiOnly, hasWifi)) {
+                pump()
+            }
+        }
+
+        override fun onLost(network: Network) {
+            Log.d(TAG, "networkCallback.onLost: network=$network")
+            pump()
+        }
+    }
+
+    private val prefListener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+        if (key == AppPrefs.KEY_DL_WIFI || key == AppPrefs.KEY_DL_MAX) {
+            Log.d(TAG, "prefListener changed key=$key -> triggering pump()")
+            pump()
+        }
+    }
 
     /**
      * The same client the player would play this link through: the engine's
@@ -103,8 +148,8 @@ class DownloadService : Service() {
         return app.baseClient.newBuilder()
             .apply {
                 api?.getVideoInterceptor(link)?.let { addInterceptor(it) }
-                connectTimeout(Duration.ofSeconds(30))
-                readTimeout(Duration.ofSeconds(60))
+                connectTimeout(Duration.ofSeconds(60))
+                readTimeout(Duration.ofSeconds(120))
             }
             .build()
     }
@@ -124,56 +169,87 @@ class DownloadService : Service() {
             NotificationManager.IMPORTANCE_LOW,
         )
         notifications.createNotificationChannel(channel)
+
+        connectivityManager = getSystemService(ConnectivityManager::class.java)
+        try {
+            connectivityManager?.registerDefaultNetworkCallback(networkCallback)
+            networkCallbackRegistered = true
+        } catch (e: Exception) {
+            logWarning(TAG, "Failed to register default network callback: ${e.message}")
+            try {
+                val request = NetworkRequest.Builder().build()
+                connectivityManager?.registerNetworkCallback(request, networkCallback)
+                networkCallbackRegistered = true
+            } catch (e2: Exception) {
+                logWarning(TAG, "Failed to register network callback: ${e2.message}")
+            }
+        }
+
+        AppPrefs.prefs(this).registerOnSharedPreferenceChangeListener(prefListener)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         // Every entry point must promote the service to foreground fast.
         promote()
         val id = intent?.getStringExtra(EXTRA_ID)
+        Log.d(TAG, "onStartCommand action=${intent?.action}, id=$id")
         when (intent?.action) {
             ACTION_PAUSE -> {
-                active.remove(id)?.cancel()
-                id?.let { DownloadStore.update(this, it) { d -> d.copy(state = DownloadStore.STATE_PAUSED) } }
+                if (id != null) {
+                    DownloadStore.updateState(this, id, DownloadStore.STATE_PAUSED)
+                    val job = synchronized(active) { active.remove(id) }
+                    job?.cancel()
+                }
+                pump()
             }
 
             ACTION_RESUME -> {
                 id?.let {
-                    DownloadStore.update(this, it) { d ->
-                        d.copy(state = DownloadStore.STATE_QUEUED, error = null)
-                    }
+                    DownloadStore.updateState(this, it, DownloadStore.STATE_QUEUED)
                 }
                 pump()
             }
 
             ACTION_CANCEL -> {
-                active.remove(id)?.cancel()
                 if (id != null) {
+                    val job = synchronized(active) { active.remove(id) }
+                    job?.cancel()
                     DownloadStore.find(this, id)?.let { d ->
                         DownloadLocations.delete(this, d.fileUri)
                         DownloadLocations.delete(this, d.posterUri)
                     }
                     DownloadStore.remove(this, id)
                 }
+                pump()
             }
 
             ACTION_RETRY -> {
                 id?.let {
-                    DownloadStore.update(this, it) { d ->
-                        d.copy(state = DownloadStore.STATE_QUEUED, error = null)
-                    }
+                    DownloadStore.updateState(this, it, DownloadStore.STATE_QUEUED)
                 }
                 pump()
             }
 
             ACTION_PAUSE_ALL -> {
-                active.keys.toList().forEach { key ->
-                    active.remove(key)?.cancel()
-                    DownloadStore.update(this, key) { d -> d.copy(state = DownloadStore.STATE_PAUSED) }
+                val jobs = synchronized(active) {
+                    val list = active.values.toList()
+                    active.clear()
+                    list
                 }
+                jobs.forEach { it.cancel() }
+                DownloadStore.current(this)
+                    .filter { it.state == DownloadStore.STATE_DOWNLOADING || it.state == DownloadStore.STATE_QUEUED }
+                    .forEach { DownloadStore.updateState(this, it.id, DownloadStore.STATE_PAUSED) }
+                pump()
             }
 
             ACTION_CANCEL_ALL -> {
-                active.keys.toList().forEach { key -> active.remove(key)?.cancel() }
+                val jobs = synchronized(active) {
+                    val list = active.values.toList()
+                    active.clear()
+                    list
+                }
+                jobs.forEach { it.cancel() }
                 DownloadStore.current(this)
                     .filter { it.state != DownloadStore.STATE_DONE }
                     .forEach { d ->
@@ -181,6 +257,7 @@ class DownloadService : Service() {
                         DownloadLocations.delete(this, d.posterUri)
                         DownloadStore.remove(this, d.id)
                     }
+                pump()
             }
 
             // START and a sticky restart both fall through to the pump, which
@@ -191,6 +268,15 @@ class DownloadService : Service() {
     }
 
     override fun onDestroy() {
+        DownloadStore.flush(this)
+        AppPrefs.prefs(this).unregisterOnSharedPreferenceChangeListener(prefListener)
+        if (networkCallbackRegistered) {
+            try {
+                connectivityManager?.unregisterNetworkCallback(networkCallback)
+            } catch (_: Exception) {
+            }
+            networkCallbackRegistered = false
+        }
         scope.cancel()
         super.onDestroy()
     }
@@ -208,48 +294,83 @@ class DownloadService : Service() {
 
     /** Starts queued work up to the concurrency limit, then stops when idle. */
     private fun pump() {
-        // A service restart adopts records stuck mid-download.
-        DownloadStore.current(this)
-            .filter { it.state == DownloadStore.STATE_DOWNLOADING && it.id !in active }
-            .forEach { DownloadStore.update(this, it.id) { d -> d.copy(state = DownloadStore.STATE_QUEUED) } }
+        synchronized(active) {
+            // A service restart adopts records stuck mid-download.
+            DownloadStore.current(this)
+                .filter { it.state == DownloadStore.STATE_DOWNLOADING && it.id !in active }
+                .forEach { DownloadStore.updateState(this, it.id, DownloadStore.STATE_QUEUED) }
 
-        val wifiOnly = AppPrefs.downloadWifiOnly(this)
-        val max = AppPrefs.downloadMaxConcurrent(this)
-        val onWifi = isOnWifi()
+            val wifiOnly = AppPrefs.downloadWifiOnly(this)
+            val max = AppPrefs.downloadMaxConcurrent(this)
+            val onWifi = isOnWifi()
+            val queuedItems = DownloadStore.current(this).filter { it.state == DownloadStore.STATE_QUEUED }
 
-        DownloadStore.current(this)
-            .filter { it.state == DownloadStore.STATE_QUEUED }
-            .takeWhile { active.size < max && (!wifiOnly || onWifi) }
-            .forEach { download ->
-                active[download.id] = scope.launch {
-                    try {
-                        runDownload(download.id)
-                    } catch (e: CancellationException) {
-                        throw e
-                    } catch (t: Throwable) {
-                        DownloadStore.update(this@DownloadService, download.id) { d ->
-                            d.copy(state = DownloadStore.STATE_FAILED, error = t.message)
+            Log.d(
+                TAG,
+                "pump(): active=${active.size}, max=$max, wifiOnly=$wifiOnly, onWifi=$onWifi, queued=${queuedItems.size}",
+            )
+
+            if (wifiOnly && !onWifi) {
+                if (active.isNotEmpty()) {
+                    Log.d(TAG, "pump(): cancelling active downloads because Wi-Fi only is required and Wi-Fi is lost")
+                    active.values.toList().forEach { it.cancel() }
+                }
+                updateNotification()
+                return
+            }
+
+            val availableSlots = calculateAvailableSlots(max, active.size)
+            if (availableSlots > 0) {
+                val toStart = selectQueuedCandidates(
+                    queued = queuedItems,
+                    activeIds = active.keys,
+                    availableSlots = availableSlots,
+                )
+
+                for (download in toStart) {
+                    Log.d(TAG, "pump(): starting queued download id=${download.id}")
+                    DownloadStore.updateState(this, download.id, DownloadStore.STATE_DOWNLOADING)
+                    active[download.id] = scope.launch {
+                        try {
+                            runDownload(download.id)
+                        } catch (e: CancellationException) {
+                            Log.d(TAG, "Download cancelled for ${download.id}")
+                            throw e
+                        } catch (t: Throwable) {
+                            Log.e(TAG, "Download failed for ${download.id}: ${t.message}", t)
+                            DownloadStore.updateState(this@DownloadService, download.id, DownloadStore.STATE_FAILED, t.message)
+                        } finally {
+                            synchronized(active) {
+                                active.remove(download.id)
+                            }
+                            pump()
                         }
-                    } finally {
-                        active.remove(download.id)
-                        pump()
                     }
                 }
             }
 
-        updateNotification()
-        if (active.isEmpty()) {
             val anyQueued = DownloadStore.current(this).any { it.state == DownloadStore.STATE_QUEUED }
-            if (!anyQueued) {
+            if (active.isEmpty() && !anyQueued) {
+                Log.d(TAG, "pump(): idle and no queued items, stopping foreground service")
+                DownloadStore.flush(this)
                 stopForeground(STOP_FOREGROUND_REMOVE)
+                if (::notifications.isInitialized) {
+                    notifications.cancel(NOTIFICATION_ID)
+                }
                 stopSelf()
+            } else {
+                updateNotification()
             }
         }
     }
 
     private suspend fun runDownload(id: String) {
-        val record = DownloadStore.find(this, id) ?: return
-        DownloadStore.update(this, id) { it.copy(state = DownloadStore.STATE_DOWNLOADING, error = null) }
+        val record = DownloadStore.find(this, id) ?: run {
+            Log.d(TAG, "runDownload(): record not found for id=$id")
+            return
+        }
+        Log.d(TAG, "runDownload(): starting id=$id, type=${record.streamType}")
+        DownloadStore.updateState(this, id, DownloadStore.STATE_DOWNLOADING)
 
         // One folder per title: resolved once (reusing a sibling episode's
         // folder when there is one) and kept on the record from then on.
@@ -268,6 +389,10 @@ class DownloadService : Service() {
         // Transient failures retry quietly; the user only sees "failed" after
         // several attempts. State changes made meanwhile end the run.
         var attempt = 0
+        var overloadAttempt = 0
+        var lastReceivedBytes = record.receivedBytes
+        var lastHlsSegment = record.hlsSegment
+
         while (true) {
             try {
                 coroutineScope {
@@ -280,34 +405,78 @@ class DownloadService : Service() {
                 if (record.posterUrl != null && DownloadStore.find(this, id)?.posterUri == null) {
                     downloadPoster(id)
                 }
-                DownloadStore.update(this, id) { it.copy(state = DownloadStore.STATE_DONE, error = null) }
+                Log.d(TAG, "runDownload(): completed successfully id=$id")
+                DownloadStore.updateState(this, id, DownloadStore.STATE_DONE)
                 updateNotification()
                 return
             } catch (e: CancellationException) {
+                Log.d(TAG, "runDownload(): cancelled id=$id")
                 throw e
             } catch (e: NotEnoughSpaceException) {
-                DownloadStore.update(this, id) { d ->
-                    d.copy(state = DownloadStore.STATE_FAILED, error = getString(R.string.download_error_space))
-                }
+                Log.e(TAG, "runDownload(): not enough space for id=$id", e)
+                DownloadStore.updateState(this, id, DownloadStore.STATE_FAILED, getString(R.string.download_error_space))
                 updateNotification()
                 return
+            } catch (e: ServerOverloadException) {
+                val current = DownloadStore.find(this, id)
+                val currentBytes = current?.receivedBytes ?: 0L
+                val currentSegment = current?.hlsSegment ?: 0
+                if (currentBytes > lastReceivedBytes || currentSegment > lastHlsSegment) {
+                    overloadAttempt = 0
+                    lastReceivedBytes = currentBytes
+                    lastHlsSegment = currentSegment
+                }
+
+                if (overloadAttempt >= 3) {
+                    Log.e(TAG, "runDownload(): max overload retries reached for id=$id", e)
+                    DownloadStore.updateState(
+                        this,
+                        id,
+                        DownloadStore.STATE_FAILED,
+                        serverOverloadErrorMessage(e.code),
+                    )
+                    updateNotification()
+                    return
+                }
+
+                overloadAttempt++
+                val waitSec = serverOverloadBackoffDelaySeconds(overloadAttempt)
+                Log.w(TAG, "Server overloaded (HTTP ${e.code}), retrying in $waitSec seconds...")
+                delay(waitSec * 1_000L)
+
+                // Re-read: the user may have paused or cancelled meanwhile.
+                if (DownloadStore.find(this, id)?.state != DownloadStore.STATE_DOWNLOADING) {
+                    Log.d(TAG, "runDownload(): state changed while backing off for id=$id, aborting")
+                    return
+                }
             } catch (t: Throwable) {
+                Log.w(TAG, "runDownload(): attempt $attempt failed for id=$id: ${t.message}")
+                if (AppPrefs.downloadWifiOnly(this) && !isOnWifi()) {
+                    Log.d(TAG, "runDownload(): Wi-Fi lost for id=$id, re-queuing")
+                    DownloadStore.updateState(this, id, DownloadStore.STATE_QUEUED)
+                    updateNotification()
+                    return
+                }
                 attempt++
                 if (attempt >= 5) {
-                    DownloadStore.update(this, id) { d ->
-                        d.copy(state = DownloadStore.STATE_FAILED, error = t.message ?: t.javaClass.simpleName)
-                    }
+                    Log.e(TAG, "runDownload(): max attempts reached for id=$id", t)
+                    DownloadStore.updateState(this, id, DownloadStore.STATE_FAILED, t.message ?: t.javaClass.simpleName)
                     updateNotification()
                     return
                 }
                 delay(5_000)
                 // Re-read: the user may have paused or cancelled meanwhile.
-                if (DownloadStore.find(this, id)?.state != DownloadStore.STATE_DOWNLOADING) return
+                if (DownloadStore.find(this, id)?.state != DownloadStore.STATE_DOWNLOADING) {
+                    Log.d(TAG, "runDownload(): state changed while backing off for id=$id, aborting")
+                    return
+                }
             }
         }
     }
 
     private class NotEnoughSpaceException : IOException("Not enough free space")
+
+    internal class ServerOverloadException(val code: Int) : IOException("Server overloaded (HTTP $code)")
 
     private fun checkAlive(job: Job?) {
         if (job != null && !job.isActive) throw CancellationException("download stopped")
@@ -317,9 +486,9 @@ class DownloadService : Service() {
     private fun downloadDirect(id: String, job: Job?) {
         val record = DownloadStore.find(this, id) ?: return
         val resume = record.receivedBytes > 0
-        val uri = DownloadLocations.ensureTarget(this, record, fresh = !resume)
+        var uri = DownloadLocations.ensureTarget(this, record, fresh = !resume)
             ?: throw IOException("Cannot create the target file")
-        val startOffset = if (resume) DownloadLocations.fileLength(this, uri) else 0L
+        var startOffset = if (resume) DownloadLocations.fileLength(this, uri) else 0L
 
         val headers = safeHeaders(record.headers)
         val request = Request.Builder()
@@ -334,7 +503,18 @@ class DownloadService : Service() {
             .build()
 
         clientFor(record).newCall(request).execute().use { response ->
-            if (!response.isSuccessful) throw IOException("HTTP ${response.code}")
+            if (isServerOverload(response.code)) throw ServerOverloadException(response.code)
+            val decision = resumeDecision(startOffset, response.code)
+            if (decision == ResumeAction.ERROR) throw IOException("HTTP ${response.code}")
+
+            if (decision == ResumeAction.RESTART_FROM_ZERO) {
+                logWarning("DownloadService", "Server ignored Range, restarting from 0")
+                DownloadLocations.delete(this, uri)
+                uri = DownloadLocations.ensureTarget(this, record, fresh = true)
+                    ?: throw IOException("Cannot create the target file")
+                startOffset = 0L
+            }
+
             val contentLength = response.body?.contentLength() ?: -1L
             val partial = response.code == 206
             val total = when {
@@ -347,7 +527,7 @@ class DownloadService : Service() {
             // Enough room? When the size is unknown, demand a 100MB cushion.
             val free = DownloadLocations.freeBytes(this)
             val remaining = if (total > 0) total - startOffset else 100L * 1024 * 1024
-            if (free in 0 until remaining) throw NotEnoughSpaceException()
+            if (DownloadLocations.shouldBlockForSpace(free, remaining)) throw NotEnoughSpaceException()
 
             DownloadStore.update(this, id) { d ->
                 d.copy(fileUri = uri, receivedBytes = startOffset, totalBytes = total)
@@ -357,7 +537,7 @@ class DownloadService : Service() {
             var received = startOffset
             var lastPublish = 0L
             DownloadLocations.openOutput(this, uri, append = startOffset > 0).use { output ->
-                val buffer = ByteArray(64 * 1024)
+                val buffer = ByteArray(512 * 1024)
                 while (true) {
                     checkAlive(job)
                     val read = input.read(buffer)
@@ -367,15 +547,13 @@ class DownloadService : Service() {
                     val now = System.currentTimeMillis()
                     if (now - lastPublish > 900) {
                         lastPublish = now
-                        DownloadStore.update(this, id) { d ->
-                            d.copy(receivedBytes = received, totalBytes = total)
-                        }
+                        DownloadStore.updateProgress(this, id, received, total)
                         updateNotification()
                     }
                 }
                 output.flush()
             }
-            DownloadStore.update(this, id) { d -> d.copy(receivedBytes = received, totalBytes = total) }
+            DownloadStore.updateProgress(this, id, received, total)
         }
     }
 
@@ -384,27 +562,18 @@ class DownloadService : Service() {
     /** An HLS stream: fetch the playlist, download every segment (AES-128 aware), append to one .ts file. */
     private fun downloadHls(id: String, job: Job?) {
         val record = DownloadStore.find(this, id) ?: return
-        val resume = record.hlsSegment > 0
+        val resume = record.hlsSegment > 0 || record.hlsInitWritten
         val uri = DownloadLocations.ensureTarget(this, record, fresh = !resume)
             ?: throw IOException("Cannot create the target file")
 
         val playlistUrl = record.linkUrl
         var text = fetchText(playlistUrl, record)
+        var mediaPlaylistUrl = playlistUrl
         if (text.contains("#EXT-X-STREAM-INF")) {
-            // Master playlist: follow the widest-bandwidth variant.
-            val lines = text.lines().filter { it.isNotBlank() }
-            var best: Pair<Long, String>? = null
-            for (i in lines.indices) {
-                val line = lines[i]
-                if (line.startsWith("#EXT-X-STREAM-INF")) {
-                    val variant = lines.getOrNull(i + 1) ?: continue
-                    if (variant.startsWith("#")) continue
-                    val bandwidth = Regex("BANDWIDTH=(\\d+)").find(line)?.groupValues?.get(1)?.toLongOrNull() ?: 0
-                    if (best == null || bandwidth > best.first) best = bandwidth to variant
-                }
-            }
-            val variant = best?.second ?: throw IOException("No variant in the master playlist")
-            text = fetchText(absolute(playlistUrl, variant), record)
+            val variantUrl = selectDownloadVariant(text, playlistUrl)
+                ?: throw IOException("No variant in the master playlist")
+            mediaPlaylistUrl = variantUrl
+            text = fetchText(variantUrl, record)
         }
 
         var mediaSequence = 0L
@@ -422,21 +591,41 @@ class DownloadService : Service() {
                     }
                     val keyUri = Regex("URI=\"([^\"]+)\"").find(trimmed)?.groupValues?.get(1) ?: ""
                     val iv = Regex("IV=0[xX]([0-9a-fA-F]+)").find(trimmed)?.groupValues?.get(1) ?: ""
-                    currentKey = absolute(playlistUrl, keyUri) to iv
+                    currentKey = absolute(mediaPlaylistUrl, keyUri) to iv
                 }
 
                 trimmed.isNotEmpty() && !trimmed.startsWith("#") ->
-                    segments.add(Segment(absolute(playlistUrl, trimmed), currentKey))
+                    segments.add(Segment(absolute(mediaPlaylistUrl, trimmed), currentKey))
             }
         }
         if (segments.isEmpty()) throw IOException("No segments in the playlist")
 
-        if (DownloadLocations.freeBytes(this) in 0 until 50L * 1024 * 1024) throw NotEnoughSpaceException()
+        val mapUri = extractMapUri(text)
+        val initUrl = mapUri?.let { absolute(mediaPlaylistUrl, it) }
+
+        val free = DownloadLocations.freeBytes(this)
+        if (DownloadLocations.shouldBlockForSpace(free, 50L * 1024 * 1024)) throw NotEnoughSpaceException()
 
         DownloadStore.update(this, id) { d -> d.copy(fileUri = uri, hlsTotal = segments.size) }
 
-        var index = if (resume) record.hlsSegment else 0
+        var index = if (record.hlsSegment > 0) record.hlsSegment else 0
+        var receivedBytes = record.receivedBytes
         DownloadLocations.openOutput(this, uri, append = resume).use { output ->
+            if (initUrl != null && !record.hlsInitWritten && record.hlsSegment == 0) {
+                checkAlive(job)
+                val initBytes = fetchBytes(initUrl, record)
+                output.write(initBytes)
+                output.flush()
+                receivedBytes += initBytes.size
+                DownloadStore.updateProgress(
+                    context = this,
+                    id = id,
+                    bytes = receivedBytes,
+                    total = 0L,
+                    hlsInitWritten = true,
+                )
+            }
+
             while (index < segments.size) {
                 checkAlive(job)
                 val segment = segments[index]
@@ -461,9 +650,14 @@ class DownloadService : Service() {
                 }
                 output.write(bytes)
                 index++
-                DownloadStore.update(this, id) { d ->
-                    d.copy(hlsSegment = index, receivedBytes = d.receivedBytes + bytes.size)
-                }
+                receivedBytes += bytes.size
+                DownloadStore.updateProgress(
+                    context = this,
+                    id = id,
+                    bytes = receivedBytes,
+                    total = 0L,
+                    hlsSegment = index,
+                )
                 updateNotification()
             }
             output.flush()
@@ -544,12 +738,14 @@ class DownloadService : Service() {
 
     private fun fetchText(url: String, record: DownloadStore.Download): String =
         clientFor(record).newCall(requestFor(url, clientFor(record), record.headers)).execute().use { response ->
+            if (isServerOverload(response.code)) throw ServerOverloadException(response.code)
             if (!response.isSuccessful) throw IOException("HTTP ${response.code}")
             response.body?.string() ?: throw IOException("Empty body")
         }
 
     private fun fetchBytes(url: String, record: DownloadStore.Download): ByteArray =
         clientFor(record).newCall(requestFor(url, clientFor(record), record.headers)).execute().use { response ->
+            if (isServerOverload(response.code)) throw ServerOverloadException(response.code)
             if (!response.isSuccessful) throw IOException("HTTP ${response.code}")
             response.body?.bytes() ?: throw IOException("Empty body")
         }
@@ -563,9 +759,17 @@ class DownloadService : Service() {
     private fun isOnWifi(): Boolean {
         val manager = getSystemService(ConnectivityManager::class.java) ?: return true
         val network = manager.activeNetwork ?: return false
-        return manager.getNetworkCapabilities(network)?.hasTransport(
-            android.net.NetworkCapabilities.TRANSPORT_WIFI,
-        ) == true
+        val caps = manager.getNetworkCapabilities(network) ?: return false
+        if (caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)) return true
+        if (caps.hasTransport(NetworkCapabilities.TRANSPORT_VPN)) {
+            return manager.allNetworks.any { net ->
+                val netCaps = manager.getNetworkCapabilities(net)
+                netCaps != null &&
+                    netCaps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) &&
+                    netCaps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+            }
+        }
+        return false
     }
 
     private fun actionPending(action: String, titleRes: Int, icon: Int): NotificationCompat.Action =
@@ -591,15 +795,36 @@ class DownloadService : Service() {
             .setOngoing(true)
             .setContentTitle(getString(R.string.download_notification_channel))
 
-        if (running.isEmpty()) {
-            builder.setContentText(getString(R.string.download_queued))
-        } else {
-            val first = running.first()
-            val fraction = first.progressFraction
-            builder.setContentTitle(first.title)
-                .setProgress(100, (fraction.coerceAtLeast(0f) * 100).toInt(), fraction < 0f)
-                .setContentText(getString(R.string.download_notification_count, running.size + queued))
+        val wifiOnly = AppPrefs.downloadWifiOnly(this)
+        val onWifi = isOnWifi()
+        val notifState = resolveDownloadNotificationState(
+            hasRunning = running.isNotEmpty(),
+            hasQueued = queued > 0,
+            wifiOnly = wifiOnly,
+            onWifi = onWifi,
+        )
+
+        when (notifState) {
+            DownloadNotificationState.WAITING_FOR_WIFI -> {
+                val first = running.firstOrNull() ?: all.firstOrNull { it.state == DownloadStore.STATE_QUEUED }
+                if (first != null) {
+                    builder.setContentTitle(first.title)
+                }
+                builder.setContentText(getString(R.string.download_waiting_wifi))
+            }
+            DownloadNotificationState.DOWNLOADING -> {
+                val first = running.first()
+                val fraction = first.progressFraction
+                builder.setContentTitle(first.title)
+                    .setProgress(100, (fraction.coerceAtLeast(0f) * 100).toInt(), fraction < 0f)
+                    .setContentText(getString(R.string.download_notification_count, running.size + queued))
+            }
+            DownloadNotificationState.QUEUED,
+            DownloadNotificationState.IDLE -> {
+                builder.setContentText(getString(R.string.download_queued))
+            }
         }
+
         if (running.isNotEmpty() || queued > 0) {
             builder.addAction(
                 actionPending(
@@ -627,3 +852,211 @@ class DownloadService : Service() {
         }
     }
 }
+
+enum class ResumeAction {
+    APPEND,
+    RESTART_FROM_ZERO,
+    ERROR
+}
+
+/**
+ * Pure helper for deciding how to resume or start a direct download based on the
+ * initial file offset and the server's HTTP response code.
+ */
+internal fun resumeDecision(startOffset: Long, responseCode: Int): ResumeAction {
+    if (startOffset < 0L) return ResumeAction.ERROR
+    return when {
+        startOffset == 0L && (responseCode == 200 || responseCode == 206) -> ResumeAction.APPEND
+        startOffset > 0L && responseCode == 206 -> ResumeAction.APPEND
+        startOffset > 0L && responseCode == 200 -> ResumeAction.RESTART_FROM_ZERO
+        else -> ResumeAction.ERROR
+    }
+}
+
+/**
+ * Extracts the URI attribute from the first #EXT-X-MAP tag in the playlist.
+ * Used for fMP4 HLS streams that require an initialization segment before media segments.
+ * Returns null if no #EXT-X-MAP tag or valid URI attribute is found.
+ */
+internal fun extractMapUri(playlistText: String): String? {
+    for (line in playlistText.lineSequence()) {
+        val trimmed = line.trim()
+        if (trimmed.startsWith("#EXT-X-MAP")) {
+            val uri = Regex("""\bURI\s*=\s*"([^"]+)"""").find(trimmed)?.groupValues?.get(1)
+            if (!uri.isNullOrEmpty()) {
+                return uri
+            }
+        }
+    }
+    return null
+}
+
+/**
+ * Pure helper for selecting the best HLS variant to download.
+ * Filters for standalone-playable variants (declares or muxes audio, non-trickplay),
+ * selecting the highest resolution tie-broken by averageBitrate (then peakBitrate).
+ * If no standalone variant is found, falls back to the highest bandwidth variant and logs a warning.
+ * Returns null if the playlist is not a master playlist.
+ */
+internal fun selectDownloadVariant(playlistText: String, baseUrl: String): String? {
+    val parsed = try {
+        HlsPlaylistParser.parse(baseUrl, playlistText)
+    } catch (_: Throwable) {
+        null
+    }
+
+    if (parsed != null && parsed.variants.isNotEmpty()) {
+        val standalone = parsed.variants.filter { it.isPlayableStandalone(parsed) }
+        val chosen = if (standalone.isNotEmpty()) {
+            standalone.maxWithOrNull(
+                compareBy<HlsPlaylistParser.Variant>(
+                    { v ->
+                        if (v.format.width > 0 && v.format.height > 0) {
+                            v.format.width.toLong() * v.format.height.toLong()
+                        } else {
+                            0L
+                        }
+                    },
+                    { it.format.averageBitrate },
+                    { it.format.peakBitrate }
+                )
+            )
+        } else {
+            logWarning("DownloadService", "No standalone-playable HLS variant found; falling back to highest bandwidth")
+            parsed.variants.maxByOrNull { it.format.peakBitrate }
+        }
+        return chosen?.let { extractVariantUrl(it) }
+    }
+
+    if (playlistText.contains("#EXT-X-STREAM-INF")) {
+        logWarning("DownloadService", "HlsPlaylistParser found no variants; falling back to regex highest bandwidth")
+        val lines = playlistText.lines().filter { it.isNotBlank() }
+        var best: Pair<Long, String>? = null
+        for (i in lines.indices) {
+            val line = lines[i]
+            if (line.startsWith("#EXT-X-STREAM-INF")) {
+                val variant = lines.getOrNull(i + 1) ?: continue
+                if (variant.startsWith("#")) continue
+                val bandwidth = Regex("BANDWIDTH=(\\d+)").find(line)?.groupValues?.get(1)?.toLongOrNull() ?: 0L
+                if (best == null || bandwidth > best.first) best = bandwidth to variant
+            }
+        }
+        return best?.second?.let {
+            try {
+                URI(baseUrl).resolve(it).toString()
+            } catch (_: Throwable) {
+                it
+            }
+        }
+    }
+
+    return null
+}
+
+private fun logWarning(tag: String, message: String) {
+    try {
+        Log.w(tag, message)
+    } catch (_: Throwable) {
+        println("WARNING $tag: $message")
+    }
+}
+
+private fun extractVariantUrl(variant: HlsPlaylistParser.Variant): String? {
+    try {
+        val method = variant.javaClass.methods.firstOrNull { it.name == "getUrl" }
+        val result = method?.invoke(variant)?.toString()
+        if (!result.isNullOrBlank()) return result
+    } catch (_: Throwable) {
+    }
+    return Regex("""url=([^,\)]+)""").find(variant.toString())?.groupValues?.get(1)
+}
+
+enum class DownloadNotificationState {
+    IDLE,
+    WAITING_FOR_WIFI,
+    DOWNLOADING,
+    QUEUED,
+}
+
+/**
+ * Pure helper to resolve the foreground notification display state based on running/queued counts
+ * and Wi-Fi gating conditions.
+ */
+internal fun resolveDownloadNotificationState(
+    hasRunning: Boolean,
+    hasQueued: Boolean,
+    wifiOnly: Boolean,
+    onWifi: Boolean,
+): DownloadNotificationState {
+    if (wifiOnly && !onWifi && (hasRunning || hasQueued)) {
+        return DownloadNotificationState.WAITING_FOR_WIFI
+    }
+    if (hasRunning) {
+        return DownloadNotificationState.DOWNLOADING
+    }
+    if (hasQueued) {
+        return DownloadNotificationState.QUEUED
+    }
+    return DownloadNotificationState.IDLE
+}
+
+/**
+ * Pure helper to check if downloads should be blocked waiting for Wi-Fi.
+ */
+internal fun shouldBlockForWifi(wifiOnly: Boolean, onWifi: Boolean): Boolean =
+    wifiOnly && !onWifi
+
+/**
+ * Pure helper deciding if a network availability/capability change event should trigger pump().
+ * If wifiOnly is true, only networks with TRANSPORT_WIFI trigger pump().
+ * If wifiOnly is false, any active network event triggers pump().
+ */
+internal fun shouldTriggerPumpOnNetworkEvent(wifiOnly: Boolean, hasWifi: Boolean): Boolean =
+    !wifiOnly || hasWifi
+
+/**
+ * Pure helper calculating how many downloads can be started given the concurrency limit
+ * and currently active job count.
+ */
+internal fun calculateAvailableSlots(maxConcurrent: Int, activeCount: Int): Int =
+    (maxConcurrent - activeCount).coerceAtLeast(0)
+
+/**
+ * Pure helper filtering queued downloads to pick candidates ready to start:
+ * only items with STATE_QUEUED and not already in the active jobs set,
+ * limited to availableSlots.
+ */
+internal fun selectQueuedCandidates(
+    queued: List<DownloadStore.Download>,
+    activeIds: Set<String>,
+    availableSlots: Int,
+): List<DownloadStore.Download> {
+    if (availableSlots <= 0) return emptyList()
+    return queued
+        .filter { it.state == DownloadStore.STATE_QUEUED && it.id !in activeIds }
+        .take(availableSlots)
+}
+
+/**
+ * Pure helper to determine if an HTTP status code indicates server overload / rate limiting.
+ */
+internal fun isServerOverload(code: Int): Boolean = code == 502 || code == 503 || code == 429
+
+/**
+ * Pure helper for exponential backoff delay (in seconds) based on overload retry attempt.
+ * Retry 1: 5s, Retry 2: 10s, Retry 3: 20s.
+ */
+internal fun serverOverloadBackoffDelaySeconds(attempt: Int): Int = when (attempt) {
+    1 -> 5
+    2 -> 10
+    3 -> 20
+    else -> 20
+}
+
+/**
+ * Pure helper for the error message shown when server overload retries are exhausted.
+ */
+internal fun serverOverloadErrorMessage(code: Int): String =
+    "Server busy (HTTP $code). Please lower 'Max concurrent downloads' in Settings."
+
+

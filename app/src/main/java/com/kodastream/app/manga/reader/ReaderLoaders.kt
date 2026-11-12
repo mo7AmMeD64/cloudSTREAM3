@@ -4,14 +4,11 @@ import android.content.Context
 import com.kodastream.app.manga.CachedPage
 import com.kodastream.app.manga.MangaPageCache
 import com.kodastream.app.manga.MangaPageListStore
-import com.kodastream.app.manga.pageListKey
 import com.kodastream.app.manga.PageFetchInfo
 import com.kodastream.app.manga.isAnimatedImage
 import com.kodastream.app.manga.rootMessage
 import com.kodastream.app.ui.manga.toSChapter
-import com.kodastream.app.manga.MangaChapter
 import eu.kanade.tachiyomi.network.HttpException
-import eu.kanade.tachiyomi.network.await
 import eu.kanade.tachiyomi.source.model.Page
 import eu.kanade.tachiyomi.source.online.HttpSource
 import kotlinx.coroutines.CancellationException
@@ -24,9 +21,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import kotlinx.coroutines.withTimeout
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
-import okhttp3.Request
 import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 
@@ -124,11 +119,10 @@ class HttpPageLoader(
     override suspend fun getPages(): List<ReaderPage> {
         val chapterUrl = chapter.chapter.url
         try {
-            val cacheKey = chapter.chapter.pageListKey()
-            val cached = store.pageList(source.id, cacheKey)
+            val cached = store.pageList(source.id, chapterUrl)
             val pages = cached?.map { CachedPageReader(it.url, it.imageUrl) }
                 ?: source.getPageList(chapter.chapter.toSChapter()).also {
-                    store.savePageList(source.id, cacheKey, it)
+                    store.savePageList(source.id, chapterUrl, it)
                 }.map { CachedPageReader(it.url, it.imageUrl) }
 
             return pages.mapIndexed { index, page ->
@@ -207,9 +201,9 @@ class HttpPageLoader(
         chapter.pages?.let { pages ->
             val snapshot = pages.map { Page(it.index, it.url, it.imageUrl) }
             val sourceId = source.id
-            val cacheKey = chapter.chapter.pageListKey()
+            val chapterUrl = chapter.chapter.url
             pageListSaveScope.launch {
-                runCatching { store.savePageList(sourceId, cacheKey, snapshot) }
+                runCatching { store.savePageList(sourceId, chapterUrl, snapshot) }
             }
         }
     }
@@ -330,7 +324,7 @@ class HttpPageLoader(
                     if (e.code != 401 && e.code != 403) throw e
                     // Cached page lists keep signed image URLs that expire.
                     // One fresh page-list pass gives the next attempt a new one.
-                    store.invalidatePageList(source.id, page.chapter.chapter.pageListKey())
+                    store.invalidatePageList(source.id, page.chapter.chapter.url)
                     page.imageUrl = source.getImageUrl(page)
                     store.file(
                         source = source,
@@ -411,71 +405,7 @@ private const val LIMITED_PAGES_AHEAD = 4
 private val pageListSaveScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
 /** The source answered, but with an empty page list. */
-class EmptyChapterException(
-    /** What the chapter page looked like when fetched again, to tell a block from a real gap. */
-    val detail: String? = null,
-) : Exception("The source returned no pages for this chapter")
-
-/**
- * Fetches the chapter's own web page twice and summarises both in a few lines.
- * An empty page list has several causes that look the same from outside: a
- * Cloudflare check, a lock page, a redirect to the home page, or markup the
- * extension no longer reads. The first request uses the source's own headers;
- * the second adds the headers a browser sends, so a site that turns away plain
- * clients shows up as a difference between the two. Never throws.
- */
-internal suspend fun probeChapterPage(source: HttpSource, chapter: MangaChapter): String? = try {
-    val url = source.getChapterUrl(chapter.toSChapter())
-    val origin = url.toHttpUrlOrNull()?.let { "${it.scheme}://${it.host}/" }
-    val browser = source.headers.newBuilder()
-        .set("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
-        .set("Sec-Fetch-Dest", "document")
-        .set("Sec-Fetch-Mode", "navigate")
-        .set("Sec-Fetch-Site", "same-origin")
-        .set("Upgrade-Insecure-Requests", "1")
-        .apply { if (origin != null) set("Referer", origin) }
-        .build()
-    buildString {
-        append("asked: ").append(url.toHttpUrlOrNull()?.encodedPath ?: url)
-        append("\nplain: ").append(probeOnce(source, url, source.headers))
-        append("\nbrowser: ").append(probeOnce(source, url, browser))
-    }
-} catch (e: CancellationException) {
-    throw e
-} catch (e: Throwable) {
-    "probe failed: ${rootMessage(e)}"
-}
-
-private suspend fun probeOnce(source: HttpSource, url: String, headers: okhttp3.Headers): String = try {
-    val request = Request.Builder().url(url).headers(headers).build()
-    withTimeout(PROBE_TIMEOUT_MS) { source.client.newCall(request).await() }.use { response ->
-        val html = response.body.string().take(PROBE_MAX_CHARS)
-        val title = Regex("<title[^>]*>(.*?)</title>", setOf(RegexOption.DOT_MATCHES_ALL, RegexOption.IGNORE_CASE))
-            .find(html)?.groupValues?.get(1)?.trim()?.replace(Regex("\\s+"), " ")?.take(40)
-        val images = Regex("<img\\b", RegexOption.IGNORE_CASE).findAll(html).count()
-        val challenge = response.header("cf-mitigated") != null ||
-            listOf("Just a moment", "cf_chl_opt", "cf-chl-").any { html.contains(it, ignoreCase = true) }
-        val finalPath = response.request.url.encodedPath
-        buildString {
-            append(response.code)
-            if (response.request.url.toString() != url) append(" -> ").append(finalPath)
-            append(", img ").append(images)
-            append(", reading ").append(if (html.contains("reading-content")) "yes" else "no")
-            append(", wp-img ").append(if (html.contains("wp-manga-chapter-img")) "yes" else "no")
-            append(", protector ").append(if (html.contains("chapter-protector-data")) "yes" else "no")
-            append(", challenge ").append(if (challenge) "yes" else "no")
-            append(", ").append(html.length / 1024).append(" KB")
-            append(", title ").append(title ?: "none")
-        }
-    }
-} catch (e: CancellationException) {
-    throw e
-} catch (e: Throwable) {
-    "failed: ${rootMessage(e)}"
-}
-
-private const val PROBE_TIMEOUT_MS = 15_000L
-private const val PROBE_MAX_CHARS = 2_000_000
+class EmptyChapterException : Exception("The source returned no pages for this chapter")
 
 /**
  * Ported from Mihon's `loader/ChapterLoader.kt`, online sources only.
@@ -496,15 +426,7 @@ class ChapterLoader(
                 chapter.pageLoader = loader
                 val pages = loader.getPages().onEach { it.chapter = chapter }
                 if (pages.isEmpty()) {
-                    val detail = probeChapterPage(source, chapter.chapter)
-                    ReaderDiagnostics.record(
-                        ReaderDiagnosticEvent(
-                            chapterUrl = chapter.chapter.url,
-                            state = "empty page list",
-                            message = detail,
-                        ),
-                    )
-                    throw EmptyChapterException(detail)
+                    throw EmptyChapterException()
                 }
                 chapter.requestedPage = requestedPage
                 chapter.state = ReaderChapter.State.Loaded(pages)

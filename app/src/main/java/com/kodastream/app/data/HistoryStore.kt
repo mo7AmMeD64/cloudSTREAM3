@@ -60,11 +60,25 @@ object HistoryStore {
     @Volatile
     private var loaded = false
 
+    @Volatile
+    private var appContext: Context? = null
+
     // Serialization of the whole list happens here, never on the main thread.
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
+    private val debouncer = Debouncer(delayMs = 15_000L, scope = scope) {
+        val list = _entries.value.orEmpty()
+        appContext?.let { ctx ->
+            ctx.setKey(STORE_KEY, list)
+        }
+    }
+
+    val isDirty: Boolean
+        get() = debouncer.isDirty
+
     /** The history, newest first. Loads from disk on the first call, then serves from memory. */
     fun current(context: Context): List<HistoryEntry> {
+        appContext = context.applicationContext
         if (!loaded) {
             loaded = true
             val stored = context.getKey<List<HistoryEntry>>(STORE_KEY) ?: emptyList()
@@ -89,6 +103,7 @@ object HistoryStore {
 
     /** Progress while playing, and on pause/stop/close/background. Order is kept as-is. */
     fun updateProgress(context: Context, key: String, positionMs: Long, durationMs: Long) {
+        appContext = context.applicationContext
         val now = System.currentTimeMillis()
         val next = current(context).map { entry ->
             if (entry.key == key) {
@@ -97,7 +112,8 @@ object HistoryStore {
                 entry
             }
         }
-        publish(context, next)
+        _entries.value = next
+        debouncer.schedule()
     }
 
     fun remove(context: Context, key: String) {
@@ -124,7 +140,20 @@ object HistoryStore {
         publish(context, emptyList())
     }
 
+    /** Replaces the full history list (data import). */
+    fun restore(context: Context, entries: List<HistoryEntry>) {
+        publish(context, entries)
+    }
+
+    /** Flushes any pending debounced progress updates synchronously to disk if dirty. */
+    fun flush(context: Context) {
+        appContext = context.applicationContext
+        debouncer.flush()
+    }
+
     private fun publish(context: Context, next: List<HistoryEntry>) {
+        appContext = context.applicationContext
+        debouncer.cancel()
         _entries.value = next
         scope.launch { context.setKey(STORE_KEY, next) }
     }

@@ -111,6 +111,19 @@ object FavoriteCategoryStore {
         LibraryStore.notifyChanged()
     }
 
+    /** Replaces or merges categories and mappings during data import. */
+    fun restoreAll(context: Context, categories: List<FavoriteCategory>, mappings: Map<String, String>, replace: Boolean = false) {
+        if (replace) {
+            context.getKeys(CATEGORIES).forEach { context.removeKey(it) }
+            context.getKeys(MAPPINGS).forEach { context.removeKey(it) }
+        }
+        writeCategories(context, categories)
+        mappings.forEach { (key, catId) ->
+            context.setKey(MAPPINGS, key, catId)
+        }
+        LibraryStore.notifyChanged()
+    }
+
     /** Removes one mapping without a revision bump; the caller already bumps. */
     internal fun forget(context: Context, key: String) {
         context.removeKey(MAPPINGS, key)
