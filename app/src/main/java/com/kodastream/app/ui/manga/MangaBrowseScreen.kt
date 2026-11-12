@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -26,10 +27,12 @@ import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Dns
 import androidx.compose.material.icons.rounded.ExpandMore
+import androidx.compose.material.icons.rounded.Language
 import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -49,6 +52,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
@@ -57,6 +61,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.kodastream.app.R
 import com.kodastream.app.data.posterMinWidth
 import com.kodastream.app.manga.FilterSnapshot
+import com.kodastream.app.manga.MangaLanguageFilter
 import com.kodastream.app.manga.MangaPrefs
 import com.kodastream.app.manga.MangaRef
 import com.kodastream.app.manga.MangaLibraryStore
@@ -96,6 +101,8 @@ fun MangaBrowseScreen(
     val viewModel: MangaBrowseViewModel = viewModel()
 
     val sources by viewModel.sources.collectAsState()
+    val allSources by viewModel.allSources.collectAsState()
+    val languageFilter by viewModel.language.collectAsState()
     val loadingSources by viewModel.loadingSources.collectAsState()
     val selected by viewModel.selected.collectAsState()
     val state by viewModel.state.collectAsState()
@@ -126,6 +133,14 @@ fun MangaBrowseScreen(
 
     val catalog by MangaStoreRepository.get(context).available.collectAsState()
     val iconByPackage = remember(catalog) { catalog.associate { it.pkgName to it.iconUrl } }
+
+    val locale = LocalConfiguration.current.locales[0]
+    val languageCodes = remember(allSources, locale) {
+        mangaSourceLanguages(allSources.map { it.language })
+            .sortedBy { mangaLanguageSortKey(it, locale) }
+    }
+
+    LaunchedEffect(Unit) { viewModel.reloadLanguageFilter() }
 
     val catalogue = selected?.source as? CatalogueSource
     val emptySource = sources.isEmpty() && !loadingSources
@@ -215,6 +230,56 @@ fun MangaBrowseScreen(
                     },
                     maxLines = 1,
                 )
+            }
+        }
+
+        if (languageCodes.isNotEmpty()) {
+            LazyRow(
+                contentPadding = PaddingValues(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                item(key = "label") {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            Icons.Rounded.Language,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp),
+                        )
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            text = stringResource(R.string.manga_library_filter_language),
+                            style = MaterialTheme.typography.labelLarge,
+                        )
+                    }
+                }
+                item(key = "all") {
+                    FilterChip(
+                        selected = languageFilter.all,
+                        onClick = {
+                            viewModel.setLanguageFilter(languageFilter.copy(all = true))
+                        },
+                        label = { Text(stringResource(R.string.manga_language_all)) },
+                    )
+                }
+                items(languageCodes.size, key = { languageCodes[it] }) { index ->
+                    val code = languageCodes[index]
+                    val onlyThis = !languageFilter.all && languageFilter.languages == setOf(code)
+                    FilterChip(
+                        selected = !languageFilter.all && code in languageFilter.languages,
+                        onClick = {
+                            // A quick tap narrows to one language; tap it again for all.
+                            viewModel.setLanguageFilter(
+                                if (onlyThis) {
+                                    MangaLanguageFilter(all = true, languages = languageFilter.languages)
+                                } else {
+                                    MangaLanguageFilter(all = false, languages = setOf(code))
+                                },
+                            )
+                        },
+                        label = { Text(mangaLanguageName(code)) },
+                    )
+                }
             }
         }
 

@@ -317,8 +317,12 @@ fun MangaExtensionsScreen(
                 FilterChip(
                     selected = !allLanguages && code in languages,
                     onClick = {
-                        val next = if (code in languages) languages - code else languages + code
-                        if (next.isNotEmpty()) changeLanguages(next, false)
+                        // A quick tap narrows to one language; tap it again for all.
+                        if (!allLanguages && languages == setOf(code)) {
+                            changeLanguages(languages, true)
+                        } else {
+                            changeLanguages(setOf(code), false)
+                        }
                     },
                     label = { Text(mangaLanguageName(code)) },
                 )

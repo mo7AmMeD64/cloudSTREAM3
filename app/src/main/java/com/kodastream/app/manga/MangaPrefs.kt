@@ -78,6 +78,15 @@ object MangaPrefs {
         prefs(context).edit { putStringSet(KEY_LANGUAGES, languages) }
     }
 
+    /** A single snapshot of the two language keys, for screens that filter sources. */
+    fun languageFilter(context: Context): MangaLanguageFilter =
+        MangaLanguageFilter(allLanguages(context), languages(context))
+
+    fun setLanguageFilter(context: Context, filter: MangaLanguageFilter) {
+        setAllLanguages(context, filter.all)
+        setLanguages(context, filter.languages)
+    }
+
     /** Master switch for the manga mode; on until the owner turns it off. */
     fun mangaSectionEnabled(context: Context): Boolean =
         prefs(context).getBoolean(KEY_SECTION, true)

@@ -5,6 +5,7 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.kodastream.app.manga.FilterSnapshot
+import com.kodastream.app.manga.MangaLanguageFilter
 import com.kodastream.app.manga.MangaPrefs
 import com.kodastream.app.manga.activeFilterCount
 import com.kodastream.app.manga.extension.LoadedSource
@@ -61,7 +62,17 @@ class MangaBrowseViewModel(application: Application) : AndroidViewModel(applicat
 
     private val savedId = MutableStateFlow(MangaPrefs.selectedSourceId(app))
 
-    val sources: StateFlow<List<LoadedSource>> = manager.sources
+    /** Every loaded source, before the language filter; feeds the filter chips. */
+    val allSources: StateFlow<List<LoadedSource>> = manager.sources
+
+    private val _language = MutableStateFlow(MangaPrefs.languageFilter(app))
+    val language: StateFlow<MangaLanguageFilter> = _language.asStateFlow()
+
+    val sources: StateFlow<List<LoadedSource>> =
+        combine(manager.sources, _language) { list, filter ->
+            list.filter { filter.matches(it.language) }
+        }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
     val loadingSources: StateFlow<Boolean> = manager.loading
 
     val selected: StateFlow<LoadedSource?> = combine(sources, savedId) { list, saved ->
@@ -105,6 +116,18 @@ class MangaBrowseViewModel(application: Application) : AndroidViewModel(applicat
     fun selectSource(id: Long) {
         MangaPrefs.setSelectedSourceId(app, id)
         savedId.value = id
+    }
+
+    fun setLanguageFilter(filter: MangaLanguageFilter) {
+        if (filter == _language.value) return
+        MangaPrefs.setLanguageFilter(app, filter)
+        _language.value = filter
+    }
+
+    /** Picks up a change made on the Extensions screen when this screen is shown again. */
+    fun reloadLanguageFilter() {
+        val saved = MangaPrefs.languageFilter(app)
+        if (saved != _language.value) _language.value = saved
     }
 
     fun setTab(index: Int) {
