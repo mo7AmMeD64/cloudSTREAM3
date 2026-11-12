@@ -16,6 +16,7 @@ sealed interface MangaExtension {
     val contentWarning: ContentWarning
     val store: ExtensionStore?
     val signatures: List<String>
+    val isShared: Boolean
 
     sealed interface Installed : MangaExtension {
         fun findUpdate(available: List<com.kodastream.app.manga.store.AvailableExtension>): com.kodastream.app.manga.store.AvailableExtension?
@@ -31,15 +32,10 @@ sealed interface MangaExtension {
         override val contentWarning: ContentWarning,
         override val store: ExtensionStore?,
         override val signatures: List<String>,
+        override val isShared: Boolean,
         val sources: List<Source>,
         val factoryClassName: String?,
-        val linkFailure: LinkFailure? = null,
     ) : Installed {
-
-        data class LinkFailure(
-            val message: String,
-            val stackTrace: String,
-        )
 
         val isConfigurable: Boolean
             get() = sources.any { it is eu.kanade.tachiyomi.source.ConfigurableSource }
@@ -69,6 +65,7 @@ sealed interface MangaExtension {
         override val contentWarning: ContentWarning,
         override val store: ExtensionStore?,
         override val signatures: List<String>,
+        override val isShared: Boolean,
         val reason: Reason,
     ) : Installed {
         override fun findUpdate(

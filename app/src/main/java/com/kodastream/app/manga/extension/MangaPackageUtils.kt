@@ -37,6 +37,28 @@ internal object MangaPackageUtils {
     fun isExtension(packageInfo: PackageInfo): Boolean =
         packageInfo.reqFeatures.orEmpty().any { it.name == EXTENSION_FEATURE }
 
+    /** All system-installed packages, so shared extensions from other Tachiyomi forks are found. */
+    fun installedPackages(context: Context): List<PackageInfo> {
+        val manager = context.packageManager
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            manager.getInstalledPackages(PackageManager.PackageInfoFlags.of(PACKAGE_FLAGS.toLong()))
+        } else {
+            manager.getInstalledPackages(PACKAGE_FLAGS)
+        }
+    }
+
+    /** The system package for [pkgName], or null when it isn't installed. */
+    fun installedPackage(context: Context, pkgName: String): PackageInfo? = try {
+        val manager = context.packageManager
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            manager.getPackageInfo(pkgName, PackageManager.PackageInfoFlags.of(PACKAGE_FLAGS.toLong()))
+        } else {
+            manager.getPackageInfo(pkgName, PACKAGE_FLAGS)
+        }
+    } catch (_: PackageManager.NameNotFoundException) {
+        null
+    }
+
     fun versionCode(packageInfo: PackageInfo): Long =
         PackageInfoCompat.getLongVersionCode(packageInfo)
 

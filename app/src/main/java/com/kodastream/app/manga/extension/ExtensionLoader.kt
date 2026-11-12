@@ -1,6 +1,7 @@
 package com.kodastream.app.manga.extension
 
 import android.content.Context
+import android.content.pm.PackageInfo
 import com.kodastream.app.manga.isSupportedLib
 import com.kodastream.app.manga.rootMessage
 import com.kodastream.app.manga.signatureMatches
@@ -15,15 +16,15 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
-import kotlinx.coroutines.withTimeoutOrNull
 import mihon.data.dalvik.DelegateLastClassLoaderCompat
 import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 
 /**
- * Private-extension loader, a port of Mihon's loader without the shared-package scan.
- * Each APK is isolated: a bad one becomes [MangaExtension.NotLoaded] and never blocks
- * the others.
+ * Port of Mihon's extension loader. Two kinds of extensions are supported:
+ * shared ones installed by the system (usable by every Tachiyomi fork) and
+ * private `.ext` files inside the app's data directory. When both exist under
+ * one package name the higher version code wins, shared on a tie.
  */
 class ExtensionLoader(private val context: Context) {
     private val appContext = context.applicationContext
@@ -31,25 +32,43 @@ class ExtensionLoader(private val context: Context) {
     private val semaphore = Semaphore(4)
     private val trustStore = MangaTrustStore(appContext)
 
-    private companion object {
-        const val LINK_PROBE_TIMEOUT_MS = 3_000L
-    }
-
     suspend fun loadAll(
         stores: List<ExtensionStore>,
         alreadyLoaded: Map<String, MangaExtension.Loaded> = cache,
     ): List<MangaExtension.Installed> = withContext(Dispatchers.IO) {
-        val files = MangaPackageUtils.extensionDir(appContext)
+        val privatePackages = MangaPackageUtils.extensionDir(appContext)
             .listFiles()
+            ?.asSequence()
             ?.filter { it.isFile && it.extension == MangaPackageUtils.PRIVATE_EXTENSION_EXTENSION }
+            ?.mapNotNull { file ->
+                // Android 14+ requires private extension files to be read-only.
+                if (file.canWrite()) file.setReadOnly()
+                MangaPackageUtils.archivePackageInfo(appContext, file)
+                    ?.takeIf { MangaPackageUtils.isExtension(it) }
+                    ?.let { ExtensionPackage(it, isShared = false) }
+            }
+            ?.toList()
             .orEmpty()
-        if (files.isEmpty()) return@withContext emptyList()
+        val privateByName = privatePackages.groupBy { it.packageInfo.packageName }
+
+        val sharedPackages = MangaPackageUtils.installedPackages(appContext)
+            .asSequence()
+            .filter { MangaPackageUtils.isExtension(it) }
+            .map { ExtensionPackage(it, isShared = true) }
+
+        val packages = (sharedPackages + privatePackages)
+            .distinctBy { it.packageInfo.packageName }
+            .mapNotNull { packageInfo ->
+                selectPackage(packageInfo, privateByName[packageInfo.packageInfo.packageName]?.singleOrNull())
+            }
+            .toList()
+        if (packages.isEmpty()) return@withContext emptyList()
 
         coroutineScope {
-            files.map { file ->
+            packages.map { packageInfo ->
                 async {
                     semaphore.withPermit {
-                        loadFile(file, stores, alreadyLoaded)
+                        loadPackage(packageInfo, stores, alreadyLoaded)
                     }
                 }
             }.awaitAll()
@@ -58,34 +77,20 @@ class ExtensionLoader(private val context: Context) {
 
     fun cached(): Map<String, MangaExtension.Loaded> = cache.toMap()
 
-    /** Loads one file, used right after install so the row appears without a full reload. */
-    suspend fun loadOne(file: File, stores: List<ExtensionStore>): MangaExtension.Installed =
-        loadFile(file, stores, cache)
+    /** Loads one package after install, so the row appears without a full reload. */
+    suspend fun loadPackage(pkgName: String, stores: List<ExtensionStore>): MangaExtension.Installed? =
+        resolvePackage(pkgName)?.let { loadPackage(it, stores, cache) }
 
     fun clearCache() {
         cache.clear()
     }
 
-    private suspend fun loadFile(
-        file: File,
+    private suspend fun loadPackage(
+        extensionPackage: ExtensionPackage,
         stores: List<ExtensionStore>,
         alreadyLoaded: Map<String, MangaExtension.Loaded>,
     ): MangaExtension.Installed {
-        val packageInfo = try {
-            MangaPackageUtils.archivePackageInfo(appContext, file)
-        } catch (e: Throwable) {
-            null
-        } ?: return notLoaded(
-            name = file.name.substringBefore("."),
-            pkgName = file.name.substringBefore("."),
-            versionName = "",
-            versionCode = 0,
-            libVersion = null,
-            signatures = emptyList(),
-            store = null,
-            reason = MangaExtension.NotLoaded.Reason.Malformed,
-        )
-
+        val packageInfo = extensionPackage.packageInfo
         val pkgName = packageInfo.packageName
         val versionCode = MangaPackageUtils.versionCode(packageInfo)
         val signatures = MangaPackageUtils.signatureSha256(packageInfo)
@@ -108,11 +113,11 @@ class ExtensionLoader(private val context: Context) {
             libVersion = libVersion,
             signatures = signatures,
             store = store,
+            isShared = extensionPackage.isShared,
             reason = reason,
             contentWarning = contentWarning,
         )
 
-        if (!MangaPackageUtils.isExtension(packageInfo)) return failed(MangaExtension.NotLoaded.Reason.Malformed)
         if (packageInfo.versionName.isNullOrEmpty()) return failed(MangaExtension.NotLoaded.Reason.Malformed)
 
         val libVersion = MangaPackageUtils.libVersion(packageInfo)
@@ -125,7 +130,11 @@ class ExtensionLoader(private val context: Context) {
         }
 
         alreadyLoaded[pkgName]?.let { loaded ->
-            if (loaded.versionCode == versionCode && loaded.signatures == signatures) {
+            if (
+                loaded.versionCode == versionCode &&
+                loaded.signatures == signatures &&
+                loaded.isShared == extensionPackage.isShared
+            ) {
                 return loaded.copy(store = store)
             }
         }
@@ -171,11 +180,6 @@ class ExtensionLoader(private val context: Context) {
             else -> "all"
         }
 
-        // Cheap proof that the extension's bridge can build its HTTP client in this build.
-        val linkFailure = withTimeoutOrNull(LINK_PROBE_TIMEOUT_MS) {
-            sources.firstNotNullOfOrNull { MangaLinkProbe.probe(it) }
-        }
-
         val loaded = MangaExtension.Loaded(
             name = name,
             pkgName = pkgName,
@@ -186,13 +190,48 @@ class ExtensionLoader(private val context: Context) {
             contentWarning = contentWarning,
             store = store,
             signatures = signatures,
+            isShared = extensionPackage.isShared,
             sources = sources,
             factoryClassName = metadata.getString(MangaPackageUtils.METADATA_SOURCE_FACTORY),
-            linkFailure = linkFailure,
         )
         cache[pkgName] = loaded
         return loaded
     }
+
+    private fun resolvePackage(pkgName: String): ExtensionPackage? {
+        val privateFile = File(
+            MangaPackageUtils.extensionDir(appContext),
+            "$pkgName.${MangaPackageUtils.PRIVATE_EXTENSION_EXTENSION}",
+        )
+        val privatePackage = if (privateFile.isFile) {
+            MangaPackageUtils.archivePackageInfo(appContext, privateFile)
+                ?.takeIf { MangaPackageUtils.isExtension(it) }
+                ?.let { ExtensionPackage(it, isShared = false) }
+        } else {
+            null
+        }
+        val sharedPackage = MangaPackageUtils.installedPackage(appContext, pkgName)
+            ?.takeIf { MangaPackageUtils.isExtension(it) }
+            ?.let { ExtensionPackage(it, isShared = true) }
+        return selectPackage(sharedPackage, privatePackage)
+    }
+
+    private fun selectPackage(shared: ExtensionPackage?, private: ExtensionPackage?): ExtensionPackage? =
+        when {
+            private == null && shared != null -> shared
+            shared == null && private != null -> private
+            shared == null && private == null -> null
+            else -> if (
+                preferShared(
+                    sharedVersionCode = MangaPackageUtils.versionCode(shared!!.packageInfo),
+                    privateVersionCode = MangaPackageUtils.versionCode(private!!.packageInfo),
+                )
+            ) {
+                shared
+            } else {
+                private
+            }
+        }
 
     private fun notLoaded(
         name: String,
@@ -202,6 +241,7 @@ class ExtensionLoader(private val context: Context) {
         libVersion: Double?,
         signatures: List<String>,
         store: ExtensionStore?,
+        isShared: Boolean,
         reason: MangaExtension.NotLoaded.Reason,
         contentWarning: ContentWarning = ContentWarning.SAFE,
     ) = MangaExtension.NotLoaded(
@@ -214,6 +254,16 @@ class ExtensionLoader(private val context: Context) {
         contentWarning = contentWarning,
         store = store,
         signatures = signatures,
+        isShared = isShared,
         reason = reason,
     ).also { cache.remove(pkgName) }
+
+    private data class ExtensionPackage(
+        val packageInfo: PackageInfo,
+        val isShared: Boolean,
+    )
 }
+
+/** Mihon's rule when both variants exist: higher version code wins, shared on a tie. */
+internal fun preferShared(sharedVersionCode: Long, privateVersionCode: Long): Boolean =
+    sharedVersionCode >= privateVersionCode

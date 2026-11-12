@@ -54,6 +54,8 @@ dependencies {
     api(libs.kotlinx.serialization.json)
     api(libs.kotlinx.serialization.json.okio)
     api(libs.kotlinx.serialization.protobuf)
+    api(libs.xmlutil.core)
+    api(libs.xmlutil.serialization)
     api(libs.rxjava)
     api(libs.injekt)
     api(libs.preference.ktx)

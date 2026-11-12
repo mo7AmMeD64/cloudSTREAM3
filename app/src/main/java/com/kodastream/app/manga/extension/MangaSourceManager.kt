@@ -1,6 +1,8 @@
 package com.kodastream.app.manga.extension
 
 import android.content.Context
+import android.content.Intent
+import android.net.Uri
 import com.kodastream.app.manga.rootMessage
 import com.kodastream.app.manga.store.ExtensionStore
 import eu.kanade.tachiyomi.compat.MangaEngine
@@ -12,14 +14,16 @@ import eu.kanade.tachiyomi.source.model.Page
 import eu.kanade.tachiyomi.source.model.SChapter
 import eu.kanade.tachiyomi.source.model.SManga
 import eu.kanade.tachiyomi.source.model.SMangaUpdate
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
-import java.io.File
 import java.util.concurrent.atomic.AtomicBoolean
 
 /** Single owner of loaded extensions and their sources. Part 11 reads [sources]. */
@@ -29,6 +33,11 @@ class MangaSourceManager private constructor(context: Context) {
     private val installer = ExtensionInstaller(appContext)
     private val started = AtomicBoolean(false)
     private val loadMutex = Mutex()
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    /** The stores used by the last load, so package broadcasts can reload without a provider. */
+    @Volatile
+    private var lastStores: List<ExtensionStore> = emptyList()
 
     private val _extensions = MutableStateFlow<List<MangaExtension.Installed>>(emptyList())
     val extensions: StateFlow<List<MangaExtension.Installed>> = _extensions.asStateFlow()
@@ -51,6 +60,7 @@ class MangaSourceManager private constructor(context: Context) {
     }
 
     suspend fun reload(stores: List<ExtensionStore>) = withContext(Dispatchers.IO) {
+        lastStores = stores
         _loading.value = true
         _error.value = null
         try {
@@ -69,20 +79,28 @@ class MangaSourceManager private constructor(context: Context) {
     /** Reloads one package after install, so the Installed tab updates without a restart. */
     suspend fun reloadPackage(pkgName: String, stores: List<ExtensionStore>) =
         withContext(Dispatchers.IO) {
-            val file = File(
-                MangaPackageUtils.extensionDir(appContext),
-                "$pkgName.${MangaPackageUtils.PRIVATE_EXTENSION_EXTENSION}",
-            )
-            if (!file.isFile) {
+            lastStores = stores
+            // Injekt must exist before the loader touches an HttpSource.client.
+            MangaEngine.get(appContext)
+            val installed = loader.loadPackage(pkgName, stores)
+            if (installed == null) {
                 reload(stores)
                 return@withContext
             }
-            // Injekt must exist before the loader touches an HttpSource.client.
-            MangaEngine.get(appContext)
-            val installed = loader.loadOne(file, stores)
             publish(_extensions.value.filterNot { it.pkgName == pkgName } + installed)
             started.set(true)
         }
+
+    /** A shared extension was installed, updated or removed by the system. */
+    fun onPackageChanged(pkgName: String) {
+        if (!started.get()) return
+        val known = loader.cached().containsKey(pkgName) ||
+            _extensions.value.any { it.pkgName == pkgName }
+        val installed = MangaPackageUtils.installedPackage(appContext, pkgName)
+            ?.let { MangaPackageUtils.isExtension(it) } == true
+        if (!known && !installed) return
+        scope.launch { reload(lastStores) }
+    }
 
     private fun publish(installedExtensions: List<MangaExtension.Installed>) {
         _extensions.value = installedExtensions.sortedBy { it.name.lowercase() }
@@ -101,6 +119,15 @@ class MangaSourceManager private constructor(context: Context) {
     }
 
     suspend fun uninstall(pkgName: String, stores: List<ExtensionStore>) {
+        val extension = _extensions.value.firstOrNull { it.pkgName == pkgName }
+        if (extension?.isShared == true) {
+            // Shared extensions belong to the system, like in Mihon.
+            appContext.startActivity(
+                Intent(Intent.ACTION_UNINSTALL_PACKAGE, Uri.parse("package:$pkgName"))
+                    .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+            )
+            return
+        }
         installer.uninstall(pkgName)
         reload(stores)
     }

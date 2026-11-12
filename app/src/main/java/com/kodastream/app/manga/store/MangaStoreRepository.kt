@@ -54,7 +54,7 @@ class MangaStoreRepository private constructor(context: Context) {
                     indexUrl = KEIYOUSHI_URL,
                     name = "Keiyoushi",
                     badgeLabel = "Keiyoushi",
-                    signingKey = "",
+                    signingKey = KEIYOUSHI_SIGNING_KEY,
                 ),
             )
             saveStores(_stores.value)
@@ -157,9 +157,20 @@ class MangaStoreRepository private constructor(context: Context) {
 
     private fun loadStores(): List<ExtensionStore> {
         val raw = prefs.getString(KEY_STORES, null) ?: return emptyList()
-        return runCatching {
+        val stores = runCatching {
             json.decodeFromString(ListSerializer(ExtensionStore.serializer()), raw)
         }.getOrDefault(emptyList())
+        // Older builds created the default store without its key, which made
+        // shared extensions installed by Mihon look untrusted until a refresh.
+        val fixed = stores.map {
+            if (it.indexUrl == KEIYOUSHI_URL && it.signingKey.isBlank()) {
+                it.copy(signingKey = KEIYOUSHI_SIGNING_KEY)
+            } else {
+                it
+            }
+        }
+        if (fixed != stores) saveStores(fixed)
+        return fixed
     }
 
     private fun saveStores(stores: List<ExtensionStore>) {
@@ -181,6 +192,8 @@ class MangaStoreRepository private constructor(context: Context) {
 
     companion object {
         const val KEIYOUSHI_URL = "https://raw.githubusercontent.com/keiyoushi/extensions/repo/index.pb"
+        private const val KEIYOUSHI_SIGNING_KEY =
+            "9add655a78e96c4ec7a53ef89dccb557cb5d767489fac5e785d671a5a75d4da2"
         private const val KEY_STORES = "stores"
         private const val REFRESH_INTERVAL_MS = 6L * 60 * 60 * 1000
 

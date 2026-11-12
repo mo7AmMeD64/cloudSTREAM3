@@ -146,7 +146,6 @@ fun MangaExtensionsScreen(
     var installFailure by remember { mutableStateOf<InstallFailureTarget?>(null) }
     var testState by remember { mutableStateOf<MangaSourceTestState?>(null) }
     var testSourceName by remember { mutableStateOf("") }
-    var testLinkFailure by remember { mutableStateOf<MangaExtension.Loaded.LinkFailure?>(null) }
 
     val changeLanguages: (Set<String>, Boolean) -> Unit = { selected, all ->
         allLanguages = all
@@ -198,11 +197,9 @@ fun MangaExtensionsScreen(
     LaunchedEffect(testingSourceId) {
         val id = testingSourceId ?: return@LaunchedEffect
         testState = null
-        testLinkFailure = null
         val loadedSource = sources.firstOrNull { it.source.id == id }
         val source = loadedSource?.source
         testSourceName = source?.name.orEmpty()
-        testLinkFailure = loadedSource?.extension?.linkFailure
         val flow = if (source != null) viewModel.test(source.id) else null
         if (flow == null) {
             testState = MangaSourceTestState(
@@ -446,13 +443,11 @@ fun MangaExtensionsScreen(
     if (testingSourceId != null) {
         MangaSourceTestDialog(
             sourceName = testSourceName,
-            linkFailure = testLinkFailure,
             state = testState,
             onCopy = { copyToClipboard(context, it) },
             onDismiss = {
                 viewModel.stopTest()
                 testState = null
-                testLinkFailure = null
             },
         )
     }
@@ -857,9 +852,7 @@ private fun AvailableExtensionCard(
 @Composable
 private fun ExtensionStateChip(extension: MangaExtension.Installed, hasUpdate: Boolean) {
     val failed = extension is MangaExtension.NotLoaded
-    val incompatible = (extension as? MangaExtension.Loaded)?.linkFailure != null
     val text = when {
-        incompatible -> stringResource(R.string.manga_state_incompatible)
         failed -> when ((extension as MangaExtension.NotLoaded).reason) {
             is MangaExtension.NotLoaded.Reason.Untrusted ->
                 stringResource(R.string.manga_state_untrusted)
@@ -878,12 +871,12 @@ private fun ExtensionStateChip(extension: MangaExtension.Installed, hasUpdate: B
         else -> stringResource(R.string.manga_state_ok)
     }
     val container = when {
-        failed || incompatible -> MaterialTheme.colorScheme.errorContainer
+        failed -> MaterialTheme.colorScheme.errorContainer
         hasUpdate -> MaterialTheme.colorScheme.secondaryContainer
         else -> MaterialTheme.colorScheme.surfaceContainerHighest
     }
     val content = when {
-        failed || incompatible -> MaterialTheme.colorScheme.onErrorContainer
+        failed -> MaterialTheme.colorScheme.onErrorContainer
         hasUpdate -> MaterialTheme.colorScheme.onSecondaryContainer
         else -> MaterialTheme.colorScheme.onSurfaceVariant
     }
@@ -1105,17 +1098,6 @@ private fun installErrorDetails(error: InstallStep.Error): String = buildString 
     if (error.stackTrace.isNotBlank()) appendLine().append(error.stackTrace)
 }
 
-private fun linkFailureDetails(
-    extension: MangaExtension.Loaded,
-    failure: MangaExtension.Loaded.LinkFailure,
-): String = buildString {
-    appendLine("Package: ${extension.pkgName}")
-    appendLine("Version: ${extension.versionName}")
-    appendLine()
-    appendLine(failure.message)
-    append(failure.stackTrace)
-}
-
 @Composable
 private fun ExtensionSkeletonList(bottomPadding: androidx.compose.ui.unit.Dp) {
     SkeletonPulseProvider {
@@ -1248,7 +1230,6 @@ private fun MangaExtensionDetailsSheet(
 ) {
     val loadedExtension = extension as? MangaExtension.Loaded
     val loadedSources = loadedExtension?.sources.orEmpty()
-    val linkFailure = loadedExtension?.linkFailure
     val sources = remember(listing, loadedSources) {
         if (listing != null) {
             listing.sources.map {
@@ -1324,29 +1305,6 @@ private fun MangaExtensionDetailsSheet(
                     TextButton(onClick = it, modifier = Modifier.heightIn(min = 48.dp)) {
                         Text(stringResource(R.string.manga_trust))
                     }
-                }
-            }
-            if (linkFailure != null && loadedExtension != null) {
-                DetailLine(
-                    label = stringResource(R.string.manga_details_reason),
-                    value = stringResource(
-                        R.string.manga_state_incompatible_reason,
-                        linkFailure.message,
-                    ),
-                )
-                Text(
-                    text = linkFailure.stackTrace,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 12,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                TextButton(
-                    onClick = { onCopy(linkFailureDetails(loadedExtension, linkFailure)) },
-                    modifier = Modifier.heightIn(min = 48.dp),
-                ) {
-                    Text(stringResource(R.string.manga_details_copy))
                 }
             }
             DetailLine(
@@ -1546,7 +1504,6 @@ private fun MangaTrustDialog(
 @Composable
 private fun MangaSourceTestDialog(
     sourceName: String,
-    linkFailure: MangaExtension.Loaded.LinkFailure?,
     state: MangaSourceTestState?,
     onCopy: (String) -> Unit,
     onDismiss: () -> Unit,
@@ -1567,27 +1524,7 @@ private fun MangaSourceTestDialog(
                         modifier = Modifier.padding(bottom = 8.dp),
                     )
                 }
-                if (linkFailure != null) {
-                    Surface(
-                        color = MaterialTheme.colorScheme.errorContainer,
-                        contentColor = MaterialTheme.colorScheme.onErrorContainer,
-                        shape = MaterialTheme.shapes.small,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(bottom = 8.dp),
-                    ) {
-                        Text(
-                            text = stringResource(
-                                R.string.manga_state_incompatible_reason,
-                                linkFailure.message,
-                            ),
-                            style = MaterialTheme.typography.bodySmall,
-                            modifier = Modifier.padding(8.dp),
-                        )
-                    }
-                }
-                if (state == null) {
-                    Row(
+                if (state == null) {                    Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {

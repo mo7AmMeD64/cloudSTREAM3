@@ -134,8 +134,12 @@ class MangaExtensionsViewModel(application: Application) : AndroidViewModel(appl
                 .map { it.source.id }
             manager.uninstall(extension.pkgName, storeRepository.stores.value)
             _installing.update { it - extension.pkgName }
-            if (clearData) sourceIds.forEach { clearMangaSourcePreferences(context, it) }
-            if (clearData) toast(R.string.manga_extension_data_cleared)
+            // A shared extension is removed by the system installer, which the
+            // user can still cancel; only private data is ours to clear now.
+            if (clearData && !extension.isShared) {
+                sourceIds.forEach { clearMangaSourcePreferences(context, it) }
+                toast(R.string.manga_extension_data_cleared)
+            }
         }
     }
 
