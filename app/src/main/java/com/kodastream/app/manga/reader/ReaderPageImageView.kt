@@ -141,11 +141,11 @@ open class ReaderPageImageView @JvmOverloads constructor(
     private fun pan(fn: (PointF, SubsamplingScaleImageView) -> PointF) {
         (pageView as? SubsamplingScaleImageView)?.let { view ->
             val target = fn(view.center ?: return, view)
-            view.animateCenter(target)!!
-                .withEasing(EASE_OUT_QUAD)
-                .withDuration(250)
-                .withInterruptible(true)
-                .start()
+            view.animateCenter(target)
+                ?.withEasing(EASE_OUT_QUAD)
+                ?.withDuration(250)
+                ?.withInterruptible(true)
+                ?.start()
         }
     }
 
@@ -200,11 +200,11 @@ open class ReaderPageImageView @JvmOverloads constructor(
                 ZoomStartPosition.CENTER -> center
             }
             val targetScale = height.toFloat() / sHeight.toFloat()
-            animateScaleAndCenter(targetScale, point)!!
-                .withDuration(500)
-                .withEasing(EASE_IN_OUT_QUAD)
-                .withInterruptible(true)
-                .start()
+            animateScaleAndCenter(targetScale, point)
+                ?.withDuration(500)
+                ?.withEasing(EASE_IN_OUT_QUAD)
+                ?.withInterruptible(true)
+                ?.start()
         }, 500)
     }
 

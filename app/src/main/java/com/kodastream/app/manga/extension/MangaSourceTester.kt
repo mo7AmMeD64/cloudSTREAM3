@@ -148,7 +148,8 @@ class MangaSourceTester(
         state = state.copy(pages = pages)
         publish()
         val firstPage = page
-        if (firstPage == null || imageUrl.isNullOrBlank()) {
+        val firstImageUrl = imageUrl
+        if (firstPage == null || firstImageUrl.isNullOrBlank()) {
             state = state.copy(
                 image = TestStep.Fail("The first page has no image URL"),
                 running = false,
@@ -161,11 +162,12 @@ class MangaSourceTester(
             val response = if (source is HttpSource) {
                 withTimeout(TIMEOUT_MS) { source.getImage(firstPage) }
             } else {
+                val network = checkNotNull(engine.network) { "Network not initialized" }
                 val request = Request.Builder()
-                    .url(imageUrl!!)
-                    .header("User-Agent", engine.network?.defaultUserAgentProvider().orEmpty())
+                    .url(firstImageUrl)
+                    .header("User-Agent", network.defaultUserAgentProvider().orEmpty())
                     .build()
-                withTimeout(TIMEOUT_MS) { engine.network!!.client.newCall(request).await() }
+                withTimeout(TIMEOUT_MS) { network.client.newCall(request).await() }
             }
             response.use {
                 TestStep.Pass(
