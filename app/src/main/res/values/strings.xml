@@ -784,6 +784,9 @@
     <string name="manga_reader_bookmark_remove">Remove bookmark</string>
     <string name="manga_reader_retry">Retry</string>
     <string name="manga_reader_open_webview">Open in app browser</string>
+    <string name="manga_cloudflare_blocked">This site asks for a Cloudflare check. Open it in the app browser, finish the check, then come back.</string>
+    <string name="manga_webview_done">Done</string>
+    <string name="manga_webview_solved">Check passed. Press Done to go back.</string>
     <string name="manga_reader_no_pages_title">No pages returned</string>
     <string name="manga_reader_no_pages_hint">The source returned an empty chapter. It may be behind a Cloudflare check: open it in the in-app browser, finish the check, then retry.</string>
     <string name="manga_reader_chapter_failed">Could not load this chapter</string>

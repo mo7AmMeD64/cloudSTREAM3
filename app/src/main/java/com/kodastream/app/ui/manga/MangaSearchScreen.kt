@@ -1,5 +1,10 @@
 package com.kodastream.app.ui.manga
 
+import eu.kanade.tachiyomi.source.online.HttpSource
+import com.kodastream.app.manga.reader.MangaWebViewActivity
+import com.kodastream.app.manga.extension.MangaSourceManager
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -67,6 +72,11 @@ fun MangaSearchScreen(
     val searching by viewModel.searching.collectAsState()
     val searched by viewModel.searched.collectAsState()
     val history by viewModel.history.collectAsState()
+
+    // A source behind a Cloudflare check: solve it in the in-app browser, then search again.
+    val webViewLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult(),
+    ) { viewModel.searchAgain() }
 
     var query by rememberSaveable { mutableStateOf("") }
     var confirmAll by remember { mutableStateOf(false) }
@@ -196,12 +206,37 @@ fun MangaSearchScreen(
                                     contentAlignment = Alignment.Center,
                                 ) { LoadingIndicator(Modifier.size(28.dp)) }
 
-                                shelf.error != null -> Text(
-                                    text = shelf.error ?: "",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.error,
-                                    modifier = Modifier.padding(horizontal = 16.dp),
-                                )
+                                shelf.error != null -> Row(
+                                    modifier = Modifier.padding(start = 16.dp, end = 8.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    Text(
+                                        text = if (shelf.blocked) {
+                                            stringResource(R.string.manga_cloudflare_blocked)
+                                        } else {
+                                            shelf.error ?: ""
+                                        },
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.error,
+                                        modifier = Modifier.weight(1f),
+                                    )
+                                    val http = if (shelf.blocked) {
+                                        MangaSourceManager.get(context).sourceById(shelf.sourceId) as? HttpSource
+                                    } else {
+                                        null
+                                    }
+                                    if (http != null) {
+                                        TextButton(
+                                            onClick = {
+                                                webViewLauncher.launch(
+                                                    MangaWebViewActivity.intent(context, http.baseUrl, http.id),
+                                                )
+                                            },
+                                        ) {
+                                            Text(stringResource(R.string.manga_reader_open_webview))
+                                        }
+                                    }
+                                }
 
                                 shelf.items.isEmpty() -> Text(
                                     text = stringResource(R.string.nothing_found),

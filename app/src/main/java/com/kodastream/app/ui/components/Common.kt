@@ -346,6 +346,8 @@ fun ErrorBox(
     modifier: Modifier = Modifier,
     onRetry: (() -> Unit)? = null,
     retryLabel: String = stringResource(R.string.retry),
+    secondaryLabel: String? = null,
+    onSecondary: (() -> Unit)? = null,
 ) {
     Column(
         modifier = modifier
@@ -370,6 +372,10 @@ fun ErrorBox(
         if (onRetry != null) {
             Spacer(Modifier.height(16.dp))
             FilledTonalButton(onClick = onRetry) { Text(retryLabel) }
+        }
+        if (onSecondary != null && secondaryLabel != null) {
+            Spacer(Modifier.height(8.dp))
+            TextButton(onClick = onSecondary) { Text(secondaryLabel) }
         }
     }
 }

@@ -1,0 +1,1011 @@
+diff --git a/app/build.gradle.kts b/app/build.gradle.kts
+index f89891f..b657559 100644
+--- a/app/build.gradle.kts
++++ b/app/build.gradle.kts
+@@ -21,8 +21,8 @@ android {
+         // desugaring enabled below on anything older than API 33.
+         minSdk = 26
+         targetSdk = libs.versions.targetSdk.get().toInt()
+-        versionCode = 18
+-        versionName = "0.12.1"
++        versionCode = 19
++        versionName = "0.12.2"
+     }
+ 
+     // CI decodes the stable release keystore from secrets; without it (local
+diff --git a/app/src/main/java/com/kodastream/app/manga/MangaErrors.kt b/app/src/main/java/com/kodastream/app/manga/MangaErrors.kt
+index e246f80..5341575 100644
+--- a/app/src/main/java/com/kodastream/app/manga/MangaErrors.kt
++++ b/app/src/main/java/com/kodastream/app/manga/MangaErrors.kt
+@@ -9,3 +9,21 @@ internal fun rootMessage(error: Throwable): String {
+     }
+     return current.message?.takeIf { it.isNotBlank() } ?: current.javaClass.simpleName
+ }
++
++/**
++ * True when the failure looks like a Cloudflare check the user has to pass in a
++ * browser: the interceptor gave up on it, or the site answered 403 or 503 (what
++ * it sends once the interceptor has stopped trying for a minute).
++ */
++internal fun isCloudflareBlock(error: Throwable): Boolean {
++    var current: Throwable? = error
++    val seen = mutableSetOf<Throwable>()
++    while (current != null && seen.add(current)) {
++        if (current is eu.kanade.tachiyomi.network.interceptor.CloudflareBypassException) return true
++        if (current is eu.kanade.tachiyomi.network.HttpException &&
++            (current.code == 403 || current.code == 503)
++        ) return true
++        current = current.cause
++    }
++    return false
++}
+diff --git a/app/src/main/java/com/kodastream/app/manga/MangaImageLoader.kt b/app/src/main/java/com/kodastream/app/manga/MangaImageLoader.kt
+index c2c0888..b7847f1 100644
+--- a/app/src/main/java/com/kodastream/app/manga/MangaImageLoader.kt
++++ b/app/src/main/java/com/kodastream/app/manga/MangaImageLoader.kt
+@@ -15,6 +15,8 @@ import coil.memory.MemoryCache
+ import coil.request.Options
+ import com.kodastream.app.manga.extension.MangaSourceManager
+ import eu.kanade.tachiyomi.compat.MangaEngine
++import eu.kanade.tachiyomi.network.HttpException
++import eu.kanade.tachiyomi.network.await
+ import eu.kanade.tachiyomi.source.online.HttpSource
+ import kotlinx.coroutines.sync.Mutex
+ import kotlinx.coroutines.sync.withLock
+@@ -46,7 +48,7 @@ object MangaImageLoader {
+         return ImageLoader.Builder(context)
+             .memoryCache {
+                 MemoryCache.Builder(context)
+-                    .maxSizePercent(0.15)
++                    .maxSizePercent(0.25)
+                     .build()
+             }
+             .diskCache {
+@@ -61,7 +63,7 @@ object MangaImageLoader {
+                 add(GifDecoder.Factory())
+                 add(ImageDecoderDecoder.Factory())
+                 add(MangaCoverKeyer())
+-                add(MangaCoverFetcher.Factory(manager, context))
++                add(MangaCoverFetcher.Factory(manager))
+                 add(MangaPageKeyer())
+                 add(MangaPageFetcher.Factory(manager, context))
+                 add(ExtensionIconKeyer())
+@@ -71,28 +73,17 @@ object MangaImageLoader {
+     }
+ }
+ 
+-/** Concurrent identical cover requests share one network call. */
+-private object CoverRequests {
+-    private val inFlight = HashMap<String, kotlinx.coroutines.CompletableDeferred<ByteArray>>()
+-    private val lock = Mutex()
+-
+-    suspend fun load(key: String, block: suspend () -> ByteArray): ByteArray {
+-        val mine = kotlinx.coroutines.CompletableDeferred<ByteArray>()
+-        val existing = lock.withLock {
+-            val current = inFlight[key]
+-            if (current == null) inFlight[key] = mine
+-            current
+-        }
+-        if (existing != null) return existing.await()
+-        return try {
+-            block().also { mine.complete(it) }
+-        } catch (e: Throwable) {
+-            mine.completeExceptionally(e)
+-            throw e
+-        } finally {
+-            lock.withLock { inFlight.remove(key) }
+-        }
+-    }
++/**
++ * One download per cover at a time. The lock is held across the cache check and
++ * the download, so identical requests wait here and then read the finished file
++ * from the disk cache instead of downloading it again. Waiting is cancellable,
++ * so a card scrolled off screen drops out of the queue.
++ */
++private object CoverLocks {
++    private val stripes = Array(32) { Mutex() }
++
++    suspend fun <T> withLock(key: String, block: suspend () -> T): T =
++        stripes[(key.hashCode() and Int.MAX_VALUE) % stripes.size].withLock { block() }
+ }
+ 
+ class MangaCoverKeyer : Keyer<MangaCover> {
+@@ -100,36 +91,87 @@ class MangaCoverKeyer : Keyer<MangaCover> {
+         "manga-cover:${data.sourceId}:${data.url}"
+ }
+ 
++/**
++ * Covers go through the source's own client, like Mihon's. Unlike a plain
++ * Coil fetcher, the bytes are kept in Coil's disk cache, so a cover is
++ * downloaded once and a later visit (or a new app start) shows it at once.
++ * The call is cancellable: leaving the screen cancels covers still in flight
++ * instead of leaving them to block the source's rate limiter.
++ */
+ class MangaCoverFetcher(
+-    private val context: Context,
+     private val data: MangaCover,
+     private val source: HttpSource,
++    private val options: Options,
++    private val diskCache: DiskCache?,
+ ) : Fetcher {
++    private val cacheKey = "manga-cover:${data.sourceId}:${data.url}"
++
+     override suspend fun fetch(): FetchResult {
+-        val bytes = CoverRequests.load("${data.sourceId}:${data.url}") {
+-            val request = Request.Builder()
+-                .url(data.url)
+-                .headers(source.headers)
+-                .build()
+-            source.client.newCall(request).execute().use { response ->
+-                if (!response.isSuccessful) throw IOException("HTTP ${response.code}")
+-                response.body?.bytes() ?: throw IOException("Empty cover response")
++        val policy = options.diskCachePolicy
++        val cache = diskCache
++        if (cache != null && policy.readEnabled) {
++            cache.openSnapshot(cacheKey)?.let { return fromSnapshot(cache, it) }
++        }
++        return CoverLocks.withLock(cacheKey) {
++            if (cache != null && policy.readEnabled) {
++                cache.openSnapshot(cacheKey)?.let { return@withLock fromSnapshot(cache, it) }
+             }
++            download(cache, policy.writeEnabled)
+         }
+-        return SourceResult(
+-            source = ImageSource(Buffer().write(bytes), context),
++    }
++
++    private suspend fun download(cache: DiskCache?, write: Boolean): FetchResult {
++        val request = Request.Builder()
++            .url(data.url)
++            .headers(source.headers)
++            .build()
++        return source.client.newCall(request).await().use { response ->
++            if (!response.isSuccessful) throw HttpException(response.code)
++            val body = response.body ?: throw IOException("Empty cover response")
++            if (cache != null && write) {
++                val editor = cache.openEditor(cacheKey)
++                if (editor != null) {
++                    try {
++                        cache.fileSystem.write(editor.data) { writeAll(body.source()) }
++                        // The body is spent once it is written, so the cache entry is
++                        // the only copy left to return.
++                        val snapshot = editor.commitAndOpenSnapshot()
++                            ?: cache.openSnapshot(cacheKey)
++                            ?: throw IOException("Cover cache write failed")
++                        return@use fromSnapshot(cache, snapshot)
++                    } catch (e: Throwable) {
++                        runCatching { editor.abort() }
++                        throw e
++                    }
++                }
++            }
++            // No usable disk cache: hand the bytes over from memory.
++            SourceResult(
++                source = ImageSource(Buffer().write(body.bytes()), options.context),
++                mimeType = null,
++                dataSource = DataSource.NETWORK,
++            )
++        }
++    }
++
++    private fun fromSnapshot(cache: DiskCache, snapshot: DiskCache.Snapshot): FetchResult =
++        SourceResult(
++            source = ImageSource(
++                file = snapshot.data,
++                fileSystem = cache.fileSystem,
++                diskCacheKey = cacheKey,
++                closeable = snapshot,
++            ),
+             mimeType = null,
+-            dataSource = DataSource.NETWORK,
++            dataSource = DataSource.DISK,
+         )
+-    }
+ 
+     class Factory(
+         private val manager: MangaSourceManager,
+-        private val context: Context,
+     ) : Fetcher.Factory<MangaCover> {
+         override fun create(data: MangaCover, options: Options, imageLoader: ImageLoader): Fetcher? {
+             val source = manager.sourceById(data.sourceId) as? HttpSource ?: return null
+-            return MangaCoverFetcher(context, data, source)
++            return MangaCoverFetcher(data, source, options, imageLoader.diskCache)
+         }
+     }
+ }
+diff --git a/app/src/main/java/com/kodastream/app/manga/reader/MangaReaderActivity.kt b/app/src/main/java/com/kodastream/app/manga/reader/MangaReaderActivity.kt
+index d362a66..0df7633 100644
+--- a/app/src/main/java/com/kodastream/app/manga/reader/MangaReaderActivity.kt
++++ b/app/src/main/java/com/kodastream/app/manga/reader/MangaReaderActivity.kt
+@@ -330,7 +330,7 @@ class MangaReaderActivity : AppCompatActivity(), ReaderViewerHost {
+ 
+     override fun openInWebView() {
+         val url = readerModel.chapterWebUrl() ?: readerModel.mangaWebUrl() ?: return
+-        startActivity(MangaWebViewActivity.intent(this, url))
++        startActivity(MangaWebViewActivity.intent(this, url, ref.sourceId))
+     }
+ 
+     private fun createViewer() {
+diff --git a/app/src/main/java/com/kodastream/app/manga/reader/MangaWebViewActivity.kt b/app/src/main/java/com/kodastream/app/manga/reader/MangaWebViewActivity.kt
+index 6c8d1ad..ce503dc 100644
+--- a/app/src/main/java/com/kodastream/app/manga/reader/MangaWebViewActivity.kt
++++ b/app/src/main/java/com/kodastream/app/manga/reader/MangaWebViewActivity.kt
+@@ -1,34 +1,61 @@
+ package com.kodastream.app.manga.reader
+ 
++import android.app.Activity
+ import android.content.Context
+ import android.content.Intent
+ import android.graphics.Bitmap
+ import android.os.Bundle
++import android.util.TypedValue
++import android.view.Gravity
++import android.view.View
+ import android.view.ViewGroup
+ import android.webkit.CookieManager
++import android.webkit.WebChromeClient
+ import android.webkit.WebView
+ import android.webkit.WebViewClient
++import android.widget.Button
+ import android.widget.FrameLayout
++import android.widget.ImageButton
++import android.widget.LinearLayout
+ import android.widget.ProgressBar
++import android.widget.TextView
++import android.widget.Toast
+ import androidx.activity.addCallback
+ import androidx.appcompat.app.AppCompatActivity
++import androidx.core.view.ViewCompat
++import androidx.core.view.WindowInsetsCompat
+ import com.kodastream.app.R
++import com.kodastream.app.manga.extension.MangaSourceManager
++import eu.kanade.tachiyomi.compat.MangaEngine
++import eu.kanade.tachiyomi.source.online.HttpSource
++import eu.kanade.tachiyomi.util.system.setDefaultSettings
++import eu.kanade.tachiyomi.util.system.setUserAgent
++import eu.kanade.tachiyomi.util.system.toWebViewHeaders
+ 
+ /**
+- * The in-app browser used when a source chapter needs a Cloudflare check.
+- * Cookies land in the same CookieManager that the source client reads, so
+- * solving the check here unblocks the next page-list request.
++ * The in-app browser for a source that needs a Cloudflare check, like Mihon's.
++ *
++ * Cloudflare ties its `cf_clearance` cookie to the User-Agent that earned it, so
++ * this page presents the same User-Agent and headers as the source's own client.
++ * With any other agent the check would pass here and still be refused on the
++ * next request. Cookies land in the CookieManager that the source client reads;
++ * the caller gets RESULT_OK back and reloads.
+  */
+ class MangaWebViewActivity : AppCompatActivity() {
+ 
+     companion object {
+         private const val EXTRA_URL = "url"
++        private const val EXTRA_SOURCE_ID = "source_id"
++        private const val CLEARANCE = "cf_clearance"
+ 
+-        fun intent(context: Context, url: String): Intent =
+-            Intent(context, MangaWebViewActivity::class.java).putExtra(EXTRA_URL, url)
++        fun intent(context: Context, url: String, sourceId: Long = 0L): Intent =
++            Intent(context, MangaWebViewActivity::class.java)
++                .putExtra(EXTRA_URL, url)
++                .putExtra(EXTRA_SOURCE_ID, sourceId)
+     }
+ 
+-    private lateinit var webView: WebView
++    private var webView: WebView? = null
++    private var announcedSolved = false
+ 
+     override fun onCreate(savedInstanceState: Bundle?) {
+         super.onCreate(savedInstanceState)
+@@ -37,49 +64,163 @@ class MangaWebViewActivity : AppCompatActivity() {
+             finish()
+             return
+         }
+-        val progress = ProgressBar(this)
+-        webView = WebView(this).apply {
+-            layoutParams = FrameLayout.LayoutParams(
+-                ViewGroup.LayoutParams.MATCH_PARENT,
++        val source = MangaSourceManager.get(this)
++            .sourceById(intent.getLongExtra(EXTRA_SOURCE_ID, 0L)) as? HttpSource
++        val userAgent = source?.headers?.get("User-Agent")?.takeIf { it.isNotBlank() }
++            ?: MangaEngine.get(this).network?.defaultUserAgentProvider()?.takeIf { it.isNotBlank() }
++        val initialClearance = clearance(url)
++
++        val density = resources.displayMetrics.density
++        fun dp(value: Int) = (value * density).toInt()
++
++        val progress = ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply {
++            isIndeterminate = false
++            max = 100
++            visibility = View.GONE
++        }
++        val title = TextView(this).apply {
++            maxLines = 1
++            ellipsize = android.text.TextUtils.TruncateAt.END
++            setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
++            text = android.net.Uri.parse(url).host.orEmpty()
++        }
++        val web = WebView(this).also { webView = it }.apply {
++            layoutParams = LinearLayout.LayoutParams(
+                 ViewGroup.LayoutParams.MATCH_PARENT,
++                0,
++                1f,
+             )
+-            settings.javaScriptEnabled = true
+-            settings.domStorageEnabled = true
++            setDefaultSettings()
+             settings.databaseEnabled = true
+-            settings.loadWithOverviewMode = true
+-            settings.useWideViewPort = true
+             settings.mediaPlaybackRequiresUserGesture = false
++            if (userAgent != null) setUserAgent(userAgent)
+             CookieManager.getInstance().setAcceptThirdPartyCookies(this, true)
++            webChromeClient = object : WebChromeClient() {
++                override fun onProgressChanged(view: WebView?, newProgress: Int) {
++                    progress.progress = newProgress
++                    progress.visibility = if (newProgress in 1..99) View.VISIBLE else View.GONE
++                }
++
++                override fun onReceivedTitle(view: WebView?, pageTitle: String?) {
++                    if (!pageTitle.isNullOrBlank()) title.text = pageTitle
++                }
++            }
+             webViewClient = object : WebViewClient() {
+-                override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
+-                    progress.visibility = android.view.View.VISIBLE
++                override fun onPageStarted(view: WebView?, pageUrl: String?, favicon: Bitmap?) {
++                    progress.visibility = View.VISIBLE
+                 }
+ 
+-                override fun onPageFinished(view: WebView?, url: String?) {
+-                    progress.visibility = android.view.View.GONE
++                override fun onPageFinished(view: WebView?, pageUrl: String?) {
++                    progress.visibility = View.GONE
++                    val now = clearance(pageUrl ?: url)
++                    if (!announcedSolved && !now.isNullOrBlank() && now != initialClearance) {
++                        announcedSolved = true
++                        CookieManager.getInstance().flush()
++                        Toast.makeText(
++                            this@MangaWebViewActivity,
++                            R.string.manga_webview_solved,
++                            Toast.LENGTH_LONG,
++                        ).show()
++                    }
+                 }
+             }
+-            loadUrl(url)
+         }
+-        val root = FrameLayout(this).apply {
+-            addView(webView)
++
++        val bar = LinearLayout(this).apply {
++            orientation = LinearLayout.HORIZONTAL
++            gravity = Gravity.CENTER_VERTICAL
++            setPadding(dp(4), 0, dp(4), 0)
++            addView(
++                ImageButton(this@MangaWebViewActivity).apply {
++                    setImageResource(android.R.drawable.ic_menu_close_clear_cancel)
++                    setBackgroundColor(0)
++                    contentDescription = getString(R.string.back)
++                    setOnClickListener { finishWithResult() }
++                },
++                LinearLayout.LayoutParams(dp(48), dp(48)),
++            )
++            addView(
++                title,
++                LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f),
++            )
++            addView(
++                ImageButton(this@MangaWebViewActivity).apply {
++                    setImageResource(android.R.drawable.ic_menu_rotate)
++                    setBackgroundColor(0)
++                    contentDescription = getString(R.string.manga_refresh)
++                    setOnClickListener { web.reload() }
++                },
++                LinearLayout.LayoutParams(dp(48), dp(48)),
++            )
++            addView(
++                Button(this@MangaWebViewActivity).apply {
++                    text = getString(R.string.manga_webview_done)
++                    setOnClickListener { finishWithResult() }
++                },
++                LinearLayout.LayoutParams(
++                    ViewGroup.LayoutParams.WRAP_CONTENT,
++                    ViewGroup.LayoutParams.WRAP_CONTENT,
++                ),
++            )
++        }
++
++        val background = TypedValue().also {
++            theme.resolveAttribute(android.R.attr.colorBackground, it, true)
++        }.data
++        val column = LinearLayout(this).apply {
++            orientation = LinearLayout.VERTICAL
++            setBackgroundColor(background)
++            addView(bar, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(56)))
+             addView(
+                 progress,
++                LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(3)),
++            )
++            addView(web)
++        }
++        val root = FrameLayout(this).apply {
++            setBackgroundColor(background)
++            addView(
++                column,
+                 FrameLayout.LayoutParams(
+-                    (40 * resources.displayMetrics.density).toInt(),
+-                    (40 * resources.displayMetrics.density).toInt(),
+-                    android.view.Gravity.CENTER,
++                    ViewGroup.LayoutParams.MATCH_PARENT,
++                    ViewGroup.LayoutParams.MATCH_PARENT,
+                 ),
+             )
+         }
++        // Edge-to-edge: keep the bar and the page clear of the system bars.
++        ViewCompat.setOnApplyWindowInsetsListener(root) { view, insets ->
++            val bars = insets.getInsets(
++                WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout(),
++            )
++            view.setPadding(bars.left, bars.top, bars.right, bars.bottom)
++            insets
++        }
+         setContentView(root)
++
+         onBackPressedDispatcher.addCallback(this) {
+-            if (webView.canGoBack()) webView.goBack() else finish()
++            if (web.canGoBack()) web.goBack() else finishWithResult()
+         }
++
++        val headers = source?.headers?.toWebViewHeaders().orEmpty()
++        web.loadUrl(url, headers)
++    }
++
++    private fun clearance(url: String): String? =
++        CookieManager.getInstance().getCookie(url)
++            ?.split(";")
++            ?.map { it.trim() }
++            ?.firstOrNull { it.startsWith("$CLEARANCE=") }
++            ?.substringAfter('=')
++
++    private fun finishWithResult() {
++        CookieManager.getInstance().flush()
++        setResult(Activity.RESULT_OK)
++        finish()
+     }
+ 
+     override fun onDestroy() {
+-        webView.destroy()
++        webView?.destroy()
++        webView = null
+         super.onDestroy()
+     }
+ }
+diff --git a/app/src/main/java/com/kodastream/app/ui/components/Common.kt b/app/src/main/java/com/kodastream/app/ui/components/Common.kt
+index 994b5c1..e0bc442 100644
+--- a/app/src/main/java/com/kodastream/app/ui/components/Common.kt
++++ b/app/src/main/java/com/kodastream/app/ui/components/Common.kt
+@@ -346,6 +346,8 @@ fun ErrorBox(
+     modifier: Modifier = Modifier,
+     onRetry: (() -> Unit)? = null,
+     retryLabel: String = stringResource(R.string.retry),
++    secondaryLabel: String? = null,
++    onSecondary: (() -> Unit)? = null,
+ ) {
+     Column(
+         modifier = modifier
+@@ -371,6 +373,10 @@ fun ErrorBox(
+             Spacer(Modifier.height(16.dp))
+             FilledTonalButton(onClick = onRetry) { Text(retryLabel) }
+         }
++        if (onSecondary != null && secondaryLabel != null) {
++            Spacer(Modifier.height(8.dp))
++            TextButton(onClick = onSecondary) { Text(secondaryLabel) }
++        }
+     }
+ }
+ 
+diff --git a/app/src/main/java/com/kodastream/app/ui/manga/MangaBrowseScreen.kt b/app/src/main/java/com/kodastream/app/ui/manga/MangaBrowseScreen.kt
+index d2644eb..7c2d25b 100644
+--- a/app/src/main/java/com/kodastream/app/ui/manga/MangaBrowseScreen.kt
++++ b/app/src/main/java/com/kodastream/app/ui/manga/MangaBrowseScreen.kt
+@@ -1,5 +1,11 @@
+ package com.kodastream.app.ui.manga
+ 
++import eu.kanade.tachiyomi.source.online.HttpSource
++import com.kodastream.app.manga.reader.MangaWebViewActivity
++import androidx.compose.material3.IconButton
++import androidx.compose.material.icons.rounded.Public
++import androidx.activity.result.contract.ActivityResultContracts
++import androidx.activity.compose.rememberLauncherForActivityResult
+ import androidx.compose.foundation.layout.Arrangement
+ import androidx.compose.foundation.layout.Box
+ import androidx.compose.foundation.layout.Column
+@@ -97,6 +103,16 @@ fun MangaBrowseScreen(
+     val query by viewModel.query.collectAsState()
+     val filterCount by viewModel.activeFilterCount.collectAsState()
+ 
++    // The in-app browser for a Cloudflare check; coming back reloads the list
++    // with the cookie the check just earned.
++    val webViewLauncher = rememberLauncherForActivityResult(
++        ActivityResultContracts.StartActivityForResult(),
++    ) { viewModel.reload() }
++    val httpSource = selected?.source as? HttpSource
++    val openWebView: (() -> Unit)? = httpSource?.let { http ->
++        { webViewLauncher.launch(MangaWebViewActivity.intent(context, http.baseUrl, http.id)) }
++    }
++
+     var posterStep by rememberSaveable { mutableStateOf(MangaPrefs.browsePosterStep(context)) }
+     var showSources by rememberSaveable { mutableStateOf(false) }
+     var showFilters by rememberSaveable { mutableStateOf(false) }
+@@ -137,6 +153,14 @@ fun MangaBrowseScreen(
+                 style = MaterialTheme.typography.headlineSmall,
+                 modifier = Modifier.weight(1f),
+             )
++            if (openWebView != null) {
++                IconButton(onClick = openWebView) {
++                    Icon(
++                        Icons.Rounded.Public,
++                        contentDescription = stringResource(R.string.manga_reader_open_webview),
++                    )
++                }
++            }
+             PosterSizeButton(
+                 step = posterStep,
+                 onStepChange = {
+@@ -231,8 +255,18 @@ fun MangaBrowseScreen(
+ 
+                 state.initialLoading -> MangaGridSkeleton(posterStep)
+                 state.error != null && state.items.isEmpty() -> ErrorBox(
+-                    message = state.error ?: "",
++                    message = if (state.blocked) {
++                        stringResource(R.string.manga_cloudflare_blocked)
++                    } else {
++                        state.error ?: ""
++                    },
+                     onRetry = viewModel::retry,
++                    secondaryLabel = if (state.blocked && openWebView != null) {
++                        stringResource(R.string.manga_reader_open_webview)
++                    } else {
++                        null
++                    },
++                    onSecondary = if (state.blocked) openWebView else null,
+                 )
+ 
+                 state.items.isEmpty() && !state.loading -> EmptyBox(
+diff --git a/app/src/main/java/com/kodastream/app/ui/manga/MangaBrowseViewModel.kt b/app/src/main/java/com/kodastream/app/ui/manga/MangaBrowseViewModel.kt
+index 6d605ff..5e57d1f 100644
+--- a/app/src/main/java/com/kodastream/app/ui/manga/MangaBrowseViewModel.kt
++++ b/app/src/main/java/com/kodastream/app/ui/manga/MangaBrowseViewModel.kt
+@@ -1,5 +1,6 @@
+ package com.kodastream.app.ui.manga
+ 
++import com.kodastream.app.manga.isCloudflareBlock
+ import android.app.Application
+ import androidx.lifecycle.AndroidViewModel
+ import androidx.lifecycle.viewModelScope
+@@ -42,6 +43,8 @@ data class MangaBrowseState(
+     val refreshing: Boolean = false,
+     val endReached: Boolean = false,
+     val error: String? = null,
++    /** The error looks like a Cloudflare check that needs the in-app browser. */
++    val blocked: Boolean = false,
+ ) {
+     val initialLoading: Boolean get() = loading && items.isEmpty()
+     val loadingMore: Boolean get() = loading && items.isNotEmpty()
+@@ -147,7 +150,7 @@ class MangaBrowseViewModel(application: Application) : AndroidViewModel(applicat
+     fun reload() {
+         loadJob?.cancel()
+         _state.update {
+-            it.copy(items = emptyList(), page = 0, endReached = false, error = null)
++            it.copy(items = emptyList(), page = 0, endReached = false, error = null, blocked = false)
+         }
+         fetch(page = 1, append = false)
+     }
+@@ -158,7 +161,7 @@ class MangaBrowseViewModel(application: Application) : AndroidViewModel(applicat
+         val text = _query.value.trim()
+         loadJob?.cancel()
+         loadJob = viewModelScope.launch {
+-            _state.update { it.copy(loading = true, error = null) }
++            _state.update { it.copy(loading = true, error = null, blocked = false) }
+             try {
+                 val result = withContext(Dispatchers.IO) {
+                     when {
+@@ -188,7 +191,12 @@ class MangaBrowseViewModel(application: Application) : AndroidViewModel(applicat
+                 throw e
+             } catch (e: Throwable) {
+                 _state.update {
+-                    it.copy(loading = false, refreshing = false, error = rootMessage(e))
++                    it.copy(
++                        loading = false,
++                        refreshing = false,
++                        error = rootMessage(e),
++                        blocked = isCloudflareBlock(e),
++                    )
+                 }
+             }
+         }
+diff --git a/app/src/main/java/com/kodastream/app/ui/manga/MangaDetailsScreen.kt b/app/src/main/java/com/kodastream/app/ui/manga/MangaDetailsScreen.kt
+index 28b0f9d..bfc0ff2 100644
+--- a/app/src/main/java/com/kodastream/app/ui/manga/MangaDetailsScreen.kt
++++ b/app/src/main/java/com/kodastream/app/ui/manga/MangaDetailsScreen.kt
+@@ -1,5 +1,8 @@
+ package com.kodastream.app.ui.manga
+ 
++import com.kodastream.app.manga.reader.MangaWebViewActivity
++import androidx.activity.result.contract.ActivityResultContracts
++import androidx.activity.compose.rememberLauncherForActivityResult
+ import android.app.Application
+ import android.content.Intent
+ import android.net.Uri
+@@ -148,6 +151,14 @@ fun MangaDetailsScreen(
+ 
+     val shareUrl = remember(state.entry, state.favorite) { viewModel.shareUrl() }
+ 
++    // The in-app browser for a Cloudflare check; coming back refreshes with the new cookie.
++    val webViewLauncher = rememberLauncherForActivityResult(
++        ActivityResultContracts.StartActivityForResult(),
++    ) { viewModel.refresh() }
++    val openInAppBrowser: (() -> Unit)? = shareUrl?.let { url ->
++        { webViewLauncher.launch(MangaWebViewActivity.intent(context, url, viewModel.sourceId)) }
++    }
++
+     fun openBrowser() {
+         val url = shareUrl ?: return
+         context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+@@ -231,6 +242,7 @@ fun MangaDetailsScreen(
+             onRefresh = viewModel::refresh,
+             onShare = ::share,
+             onOpenBrowser = ::openBrowser,
++            onOpenInApp = openInAppBrowser,
+             onMoveToCategory = if (state.favorite) {
+                 {
+                     categories = MangaCategoryStore.categories(context)
+@@ -271,6 +283,11 @@ fun MangaDetailsScreen(
+                         style = MaterialTheme.typography.bodySmall,
+                         modifier = Modifier.weight(1f),
+                     )
++                    if (state.blocked && openInAppBrowser != null) {
++                        TextButton(onClick = openInAppBrowser) {
++                            Text(stringResource(R.string.manga_reader_open_webview))
++                        }
++                    }
+                     TextButton(onClick = viewModel::refresh) {
+                         Text(stringResource(R.string.retry))
+                     }
+@@ -477,6 +494,7 @@ private fun MangaToolbar(
+     onRefresh: () -> Unit,
+     onShare: () -> Unit,
+     onOpenBrowser: () -> Unit,
++    onOpenInApp: (() -> Unit)?,
+     onMoveToCategory: (() -> Unit)?,
+     shareEnabled: Boolean,
+     sourceAvailable: Boolean,
+@@ -532,6 +550,16 @@ private fun MangaToolbar(
+                         onOpenBrowser()
+                     },
+                 )
++                if (onOpenInApp != null) {
++                    DropdownMenuItem(
++                        text = { Text(stringResource(R.string.manga_reader_open_webview)) },
++                        leadingIcon = { Icon(Icons.Rounded.Public, contentDescription = null) },
++                        onClick = {
++                            menu = false
++                            onOpenInApp()
++                        },
++                    )
++                }
+                 if (onMoveToCategory != null) {
+                     DropdownMenuItem(
+                         text = { Text(stringResource(R.string.manga_move_to_category)) },
+diff --git a/app/src/main/java/com/kodastream/app/ui/manga/MangaDetailsViewModel.kt b/app/src/main/java/com/kodastream/app/ui/manga/MangaDetailsViewModel.kt
+index ca47a6f..5f29d9e 100644
+--- a/app/src/main/java/com/kodastream/app/ui/manga/MangaDetailsViewModel.kt
++++ b/app/src/main/java/com/kodastream/app/ui/manga/MangaDetailsViewModel.kt
+@@ -1,5 +1,6 @@
+ package com.kodastream.app.ui.manga
+ 
++import com.kodastream.app.manga.isCloudflareBlock
+ import android.app.Application
+ import androidx.lifecycle.AndroidViewModel
+ import androidx.lifecycle.viewModelScope
+@@ -45,6 +46,8 @@ data class MangaDetailsState(
+     val loading: Boolean = false,
+     val refreshing: Boolean = false,
+     val error: String? = null,
++    /** The error looks like a Cloudflare check that needs the in-app browser. */
++    val blocked: Boolean = false,
+     val sourceAvailable: Boolean = true,
+ )
+ 
+@@ -117,6 +120,7 @@ class MangaDetailsViewModel(
+                 loading = first && it.chapters.isEmpty(),
+                 refreshing = true,
+                 error = null,
++                blocked = false,
+             )
+         }
+         val before = _state.value
+@@ -134,7 +138,12 @@ class MangaDetailsViewModel(
+             throw e
+         } catch (e: Throwable) {
+             _state.update {
+-                it.copy(loading = false, refreshing = false, error = rootMessage(e))
++                it.copy(
++                    loading = false,
++                    refreshing = false,
++                    error = rootMessage(e),
++                    blocked = isCloudflareBlock(e),
++                )
+             }
+             return
+         }
+@@ -162,7 +171,7 @@ class MangaDetailsViewModel(
+         } catch (e: CancellationException) {
+             throw e
+         } catch (e: Throwable) {
+-            _state.update { it.copy(error = rootMessage(e)) }
++            _state.update { it.copy(error = rootMessage(e), blocked = isCloudflareBlock(e)) }
+         }
+ 
+         try {
+@@ -259,6 +268,8 @@ class MangaDetailsViewModel(
+     fun sourceName(): String =
+         _state.value.entry.sourceName.ifBlank { loaded?.source?.name.orEmpty() }
+ 
++    val sourceId: Long get() = ref.sourceId
++
+     fun shareUrl(): String? {
+         val http = source as? HttpSource ?: return null
+         return runCatching { http.getMangaUrl(_state.value.entry.toSManga()) }.getOrNull()
+diff --git a/app/src/main/java/com/kodastream/app/ui/manga/MangaSearchScreen.kt b/app/src/main/java/com/kodastream/app/ui/manga/MangaSearchScreen.kt
+index bfcd30b..70d1bcd 100644
+--- a/app/src/main/java/com/kodastream/app/ui/manga/MangaSearchScreen.kt
++++ b/app/src/main/java/com/kodastream/app/ui/manga/MangaSearchScreen.kt
+@@ -1,5 +1,10 @@
+ package com.kodastream.app.ui.manga
+ 
++import eu.kanade.tachiyomi.source.online.HttpSource
++import com.kodastream.app.manga.reader.MangaWebViewActivity
++import com.kodastream.app.manga.extension.MangaSourceManager
++import androidx.activity.result.contract.ActivityResultContracts
++import androidx.activity.compose.rememberLauncherForActivityResult
+ import androidx.compose.foundation.clickable
+ import androidx.compose.foundation.layout.Arrangement
+ import androidx.compose.foundation.layout.Box
+@@ -68,6 +73,11 @@ fun MangaSearchScreen(
+     val searched by viewModel.searched.collectAsState()
+     val history by viewModel.history.collectAsState()
+ 
++    // A source behind a Cloudflare check: solve it in the in-app browser, then search again.
++    val webViewLauncher = rememberLauncherForActivityResult(
++        ActivityResultContracts.StartActivityForResult(),
++    ) { viewModel.searchAgain() }
++
+     var query by rememberSaveable { mutableStateOf("") }
+     var confirmAll by remember { mutableStateOf(false) }
+ 
+@@ -196,12 +206,37 @@ fun MangaSearchScreen(
+                                     contentAlignment = Alignment.Center,
+                                 ) { LoadingIndicator(Modifier.size(28.dp)) }
+ 
+-                                shelf.error != null -> Text(
+-                                    text = shelf.error ?: "",
+-                                    style = MaterialTheme.typography.bodySmall,
+-                                    color = MaterialTheme.colorScheme.error,
+-                                    modifier = Modifier.padding(horizontal = 16.dp),
+-                                )
++                                shelf.error != null -> Row(
++                                    modifier = Modifier.padding(start = 16.dp, end = 8.dp),
++                                    verticalAlignment = Alignment.CenterVertically,
++                                ) {
++                                    Text(
++                                        text = if (shelf.blocked) {
++                                            stringResource(R.string.manga_cloudflare_blocked)
++                                        } else {
++                                            shelf.error ?: ""
++                                        },
++                                        style = MaterialTheme.typography.bodySmall,
++                                        color = MaterialTheme.colorScheme.error,
++                                        modifier = Modifier.weight(1f),
++                                    )
++                                    val http = if (shelf.blocked) {
++                                        MangaSourceManager.get(context).sourceById(shelf.sourceId) as? HttpSource
++                                    } else {
++                                        null
++                                    }
++                                    if (http != null) {
++                                        TextButton(
++                                            onClick = {
++                                                webViewLauncher.launch(
++                                                    MangaWebViewActivity.intent(context, http.baseUrl, http.id),
++                                                )
++                                            },
++                                        ) {
++                                            Text(stringResource(R.string.manga_reader_open_webview))
++                                        }
++                                    }
++                                }
+ 
+                                 shelf.items.isEmpty() -> Text(
+                                     text = stringResource(R.string.nothing_found),
+diff --git a/app/src/main/java/com/kodastream/app/ui/manga/MangaSearchViewModel.kt b/app/src/main/java/com/kodastream/app/ui/manga/MangaSearchViewModel.kt
+index a72bd3d..3f41c3c 100644
+--- a/app/src/main/java/com/kodastream/app/ui/manga/MangaSearchViewModel.kt
++++ b/app/src/main/java/com/kodastream/app/ui/manga/MangaSearchViewModel.kt
+@@ -1,5 +1,6 @@
+ package com.kodastream.app.ui.manga
+ 
++import com.kodastream.app.manga.isCloudflareBlock
+ import android.app.Application
+ import androidx.lifecycle.AndroidViewModel
+ import androidx.lifecycle.viewModelScope
+@@ -31,6 +32,7 @@ data class MangaSearchShelf(
+     val sourceName: String,
+     val loading: Boolean = true,
+     val error: String? = null,
++    val blocked: Boolean = false,
+     val items: List<SManga> = emptyList(),
+ ) {
+     val isEmpty: Boolean get() = !loading && error == null && items.isEmpty()
+@@ -82,9 +84,20 @@ class MangaSearchViewModel(application: Application) : AndroidViewModel(applicat
+         return visible.filter { it.source.id == selected?.id }
+     }
+ 
++    private var lastQuery: String? = null
++    private var lastAllSources = false
++
++    /** Runs the last search again, after a Cloudflare check was passed in the in-app browser. */
++    fun searchAgain() {
++        val text = lastQuery ?: return
++        submit(text, lastAllSources)
++    }
++
+     fun submit(query: String, allSources: Boolean = false) {
+         val text = query.trim()
+         if (text.isEmpty()) return
++        lastQuery = text
++        lastAllSources = allSources
+         MangaSearchHistoryStore.add(app, text)
+         val targets = if (allSources) visibleSources() else defaultTargets()
+         job?.cancel()
+@@ -122,7 +135,7 @@ class MangaSearchViewModel(application: Application) : AndroidViewModel(applicat
+                                 throw e
+                             } catch (e: Throwable) {
+                                 update(entry.source.id) {
+-                                    it.copy(loading = false, error = rootMessage(e))
++                                    it.copy(loading = false, error = rootMessage(e), blocked = isCloudflareBlock(e))
+                                 }
+                             }
+                         }
+diff --git a/app/src/main/res/values-ar/strings.xml b/app/src/main/res/values-ar/strings.xml
+index d000797..3439eaf 100644
+--- a/app/src/main/res/values-ar/strings.xml
++++ b/app/src/main/res/values-ar/strings.xml
+@@ -664,6 +664,9 @@
+     <string name="manga_reader_bookmark_remove">إزالة الفصل من العلامات</string>
+     <string name="manga_reader_retry">إعادة المحاولة</string>
+     <string name="manga_reader_open_webview">فتح في متصفح التطبيق</string>
++    <string name="manga_cloudflare_blocked">يطلب هذا الموقع فحص Cloudflare. افتحه في متصفح التطبيق وأكمل الفحص ثم ارجع.</string>
++    <string name="manga_webview_done">تم</string>
++    <string name="manga_webview_solved">تم اجتياز الفحص. اضغط «تم» للرجوع.</string>
+     <string name="manga_reader_no_pages_title">لم تُرجع أي صفحات</string>
+     <string name="manga_reader_no_pages_hint">أرجع المصدر فصلًا فارغًا. قد يكون محميًا بفحص Cloudflare: افتحه في متصفح التطبيق، وأكمل الفحص، ثم أعد المحاولة.</string>
+     <string name="manga_reader_chapter_failed">تعذّر تحميل هذا الفصل</string>
+diff --git a/app/src/main/res/values/strings.xml b/app/src/main/res/values/strings.xml
+index 9c95cdc..e8a0658 100644
+--- a/app/src/main/res/values/strings.xml
++++ b/app/src/main/res/values/strings.xml
+@@ -774,6 +774,9 @@
+     <string name="manga_reader_bookmark_remove">Remove bookmark</string>
+     <string name="manga_reader_retry">Retry</string>
+     <string name="manga_reader_open_webview">Open in app browser</string>
++    <string name="manga_cloudflare_blocked">This site asks for a Cloudflare check. Open it in the app browser, finish the check, then come back.</string>
++    <string name="manga_webview_done">Done</string>
++    <string name="manga_webview_solved">Check passed. Press Done to go back.</string>
+     <string name="manga_reader_no_pages_title">No pages returned</string>
+     <string name="manga_reader_no_pages_hint">The source returned an empty chapter. It may be behind a Cloudflare check: open it in the in-app browser, finish the check, then retry.</string>
+     <string name="manga_reader_chapter_failed">Could not load this chapter</string>
+diff --git a/app/src/test/java/com/kodastream/app/manga/MangaCloudflareErrorTest.kt b/app/src/test/java/com/kodastream/app/manga/MangaCloudflareErrorTest.kt
+new file mode 100644
+index 0000000..0e1de0e
+--- /dev/null
++++ b/app/src/test/java/com/kodastream/app/manga/MangaCloudflareErrorTest.kt
+@@ -0,0 +1,45 @@
++package com.kodastream.app.manga
++
++import eu.kanade.tachiyomi.network.HttpException
++import eu.kanade.tachiyomi.network.interceptor.CloudflareBypassException
++import java.io.IOException
++import org.junit.Assert.assertFalse
++import org.junit.Assert.assertTrue
++import org.junit.Test
++
++class MangaCloudflareErrorTest {
++    @Test
++    fun interceptorGivingUpIsABlock() {
++        // The interceptor wraps its own exception in an IOException.
++        val error = IOException("Could not pass the Cloudflare check", CloudflareBypassException())
++        assertTrue(isCloudflareBlock(error))
++    }
++
++    @Test
++    fun blockIsFoundDeepInTheCauseChain() {
++        val error = IllegalStateException("outer", RuntimeException("mid", CloudflareBypassException()))
++        assertTrue(isCloudflareBlock(error))
++    }
++
++    @Test
++    fun forbiddenAndUnavailableAreBlocks() {
++        // After a failed bypass the interceptor answers fast with the site's own 403.
++        assertTrue(isCloudflareBlock(HttpException(403)))
++        assertTrue(isCloudflareBlock(IOException("x", HttpException(503))))
++    }
++
++    @Test
++    fun otherFailuresAreNot() {
++        assertFalse(isCloudflareBlock(HttpException(404)))
++        assertFalse(isCloudflareBlock(HttpException(500)))
++        assertFalse(isCloudflareBlock(IOException("timeout")))
++    }
++
++    @Test
++    fun aCauseLoopDoesNotHang() {
++        val a = RuntimeException("a")
++        val b = RuntimeException("b", a)
++        a.initCause(b)
++        assertFalse(isCloudflareBlock(a))
++    }
++}
+diff --git a/mihon-compat/src/main/kotlin/eu/kanade/tachiyomi/network/interceptor/CloudflareInterceptor.kt b/mihon-compat/src/main/kotlin/eu/kanade/tachiyomi/network/interceptor/CloudflareInterceptor.kt
+index 96ef8cc..fcc73cb 100644
+--- a/mihon-compat/src/main/kotlin/eu/kanade/tachiyomi/network/interceptor/CloudflareInterceptor.kt
++++ b/mihon-compat/src/main/kotlin/eu/kanade/tachiyomi/network/interceptor/CloudflareInterceptor.kt
+@@ -2,6 +2,7 @@ package eu.kanade.tachiyomi.network.interceptor
+ 
+ import android.annotation.SuppressLint
+ import android.content.Context
++import android.os.SystemClock
+ import android.util.Log
+ import android.webkit.JavascriptInterface
+ import android.webkit.RenderProcessGoneDetail
+@@ -40,6 +41,11 @@ class CloudflareInterceptor(
+     // one WebView instead of each opening their own
+     private val hostLocks = ConcurrentHashMap<String, ReentrantReadWriteLock>()
+ 
++    // A host whose challenge could not be solved fails fast for a while instead of making every queued request
++    // (covers, pages, searches) wait its own turn at the WebView. Solving the check by hand in the in-app browser
++    // sets a new clearance, which is checked before this, so it ends the window at once.
++    private val failedUntil = ConcurrentHashMap<String, Long>()
++
+     private val listenerScript = """
+         addEventListener("message", ({data}) => {
+             if (data?.source === "cloudflare-challenge") {
+@@ -72,8 +78,16 @@ class CloudflareInterceptor(
+             if (isCleared(request.url, clearance)) {
+                 response.close()
+             } else {
++                val blockedUntil = failedUntil[request.url.host]
++                if (blockedUntil != null && SystemClock.elapsedRealtime() < blockedUntil) return response
+                 if (!prepareWebView()) return response
+-                solve(request, response, clearance)
++                try {
++                    solve(request, response, clearance)
++                } catch (e: IOException) {
++                    failedUntil[request.url.host] = SystemClock.elapsedRealtime() + FAIL_FAST_MS
++                    throw e
++                }
++                failedUntil.remove(request.url.host)
+             }
+         }
+ 
+@@ -245,4 +259,7 @@ private fun HttpUrl.origin(): String {
+ private val SERVER_CHECK = arrayOf("cloudflare-nginx", "cloudflare")
+ private val COOKIE_NAMES = listOf("cf_clearance")
+ 
+-private class CloudflareBypassException : Exception()
++private const val FAIL_FAST_MS = 60_000L
++
++/** The check could not be passed without the user; the app offers its in-app browser when it sees this. */
++class CloudflareBypassException : Exception()
