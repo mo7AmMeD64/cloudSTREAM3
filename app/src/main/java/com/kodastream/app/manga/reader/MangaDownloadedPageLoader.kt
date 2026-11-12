@@ -31,11 +31,22 @@ class MangaDownloadedPageLoader(
             .apply { mkdirs() }
 
     override suspend fun getPages(): List<ReaderPage> = withContext(Dispatchers.IO) {
-        if (chapterDir.isFile) pagesFromArchive() else pagesFromDirectory()
+        if (chapterDir.isDirectory) pagesFromDirectory() else pagesFromArchive()
     }
 
+    /**
+     * A folder chosen through SAF has a filesystem path that the app may not be
+     * allowed to read, so only a plain file path is used directly; everything
+     * else goes through the content resolver.
+     */
+    private val canUseFilePath: Boolean
+        get() = chapterDir.uri.scheme == "file"
+
     private fun pagesFromDirectory(): List<ReaderPage> {
-        val direct = chapterDir.filePath?.let(::File)?.takeIf { it.isDirectory }
+        val direct = chapterDir.filePath
+            ?.takeIf { canUseFilePath }
+            ?.let(::File)
+            ?.takeIf { it.isDirectory }
         return chapterDir.listFiles().orEmpty()
             .filter { MangaDiskUtil.isImageName(it.name) }
             .sortedBy { it.name }
@@ -95,17 +106,29 @@ class MangaDownloadedPageLoader(
 
     private fun openArchive(): ZipFile? {
         archive?.let { return it }
-        val direct = chapterDir.filePath?.let(::File)?.takeIf { it.isFile }
-        val file = direct ?: run {
-            val cached = File(context.cacheDir, "manga_downloads/${MangaDiskUtil.md5(chapterDir.uri.toString())}.cbz")
-            if (!cached.isFile || cached.length() == 0L) {
-                chapterDir.openInputStream().use { input ->
-                    cached.outputStream().use { input.copyTo(it) }
-                }
+
+        // The direct path is only usable for a real file; a SAF document has a
+        // filesystem-looking path that the app has no permission to open.
+        if (canUseFilePath) {
+            val direct = chapterDir.filePath?.let(::File)?.takeIf { it.isFile }
+            val zip = direct?.let { runCatching { ZipFile(it) }.getOrNull() }
+            if (zip != null) {
+                archive = zip
+                return zip
             }
-            cached.takeIf { it.isFile && it.length() > 0L }
-        } ?: return null
-        return runCatching { ZipFile(file) }.getOrNull()?.also { archive = it }
+        }
+
+        // Archives are opened from the content resolver's stream, then cached.
+        val dir = File(context.cacheDir, "manga_downloads").apply { mkdirs() }
+        val cached = File(dir, "${MangaDiskUtil.md5(chapterDir.uri.toString())}.cbz")
+        if (!cached.isFile || cached.length() == 0L) {
+            chapterDir.openInputStream().use { input ->
+                cached.outputStream().use { input.copyTo(it) }
+            }
+        }
+        return cached.takeIf { it.isFile && it.length() > 0L }
+            ?.let { runCatching { ZipFile(it) }.getOrNull() }
+            ?.also { archive = it }
     }
 
     override fun recycle() {

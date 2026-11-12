@@ -35,6 +35,7 @@ import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.io.BufferedOutputStream
+import java.io.IOException
 import java.util.Locale
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
@@ -306,13 +307,18 @@ class MangaDownloader(
 
             if (!isDownloadSuccessful(download, tmpDir)) {
                 download.status = MangaDownload.State.ERROR
+                val pageError = download.pages
+                    ?.firstNotNullOfOrNull { (it.status as? Page.State.Error)?.error }
+                notifier.onError(pageError?.message)
                 return
             }
 
+            // Gallery apps should not index the loose page images.
+            MangaDiskUtil.createNoMediaFile(tmpDir, context)
             if (MangaPrefs.saveChaptersAsCBZ(context)) {
                 archiveChapter(mangaDir, chapterDirName, tmpDir)
-            } else {
-                tmpDir.renameTo(chapterDirName)
+            } else if (!tmpDir.renameTo(chapterDirName)) {
+                throw IOException(context.getString(com.kodastream.app.R.string.manga_download_storage_error))
             }
             MangaDownloadCache.add(download.manga, download.chapter.url)
             download.status = MangaDownload.State.DOWNLOADED
@@ -347,7 +353,14 @@ class MangaDownloader(
         if (download.status != MangaDownload.State.DOWNLOADING) return
         if (page.imageUrl.isNullOrBlank()) {
             page.status = Page.State.LoadPage
-            page.imageUrl = runCatching { download.source.getImageUrl(page) }.getOrNull()
+            try {
+                page.imageUrl = download.source.getImageUrl(page)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Throwable) {
+                page.status = Page.State.Error(e)
+                return
+            }
         }
         val imageUrl = page.imageUrl ?: return
 
@@ -408,10 +421,12 @@ class MangaDownloader(
                 return
             } catch (e: CancellationException) {
                 throw e
-            } catch (e: HttpException) {
-                if (e.code == 416) tmpDir.findFile("$filename.tmp")?.delete()
-                throw e
             } catch (e: Throwable) {
+                // Match Mihon: a 416 means the partial file is unusable, and an
+                // HTTP failure is worth the same retries as a dropped socket.
+                if (e is HttpException && e.code == 416) {
+                    tmpDir.findFile("$filename.tmp")?.delete()
+                }
                 if (attempt >= MAX_RETRIES) throw e
                 delay(RETRY_BASE_MS shl attempt)
                 attempt++
@@ -438,18 +453,27 @@ class MangaDownloader(
 
     private fun archiveChapter(mangaDir: UniFile, chapterDirName: String, tmpDir: UniFile) {
         val archive = mangaDir.createFile("$chapterDirName.cbz$TMP_SUFFIX")
-            ?: throw IllegalStateException("Could not create the chapter archive")
-        ZipOutputStream(BufferedOutputStream(archive.openOutputStream())).use { zip ->
-            tmpDir.listFiles().orEmpty()
-                .filter { it.name != null && it.name != MangaDiskUtil.NOMEDIA_FILE }
-                .sortedBy { it.name }
-                .forEach { file ->
-                    zip.putNextEntry(ZipEntry(file.name!!))
-                    file.openInputStream().use { it.copyTo(zip) }
-                    zip.closeEntry()
-                }
+            ?: throw IOException(context.getString(com.kodastream.app.R.string.manga_download_storage_error))
+        try {
+            ZipOutputStream(BufferedOutputStream(archive.openOutputStream())).use { zip ->
+                tmpDir.listFiles().orEmpty()
+                    .filter { it.name != null && it.name != MangaDiskUtil.NOMEDIA_FILE }
+                    .sortedBy { it.name }
+                    .forEach { file ->
+                        zip.putNextEntry(ZipEntry(file.name!!))
+                        file.openInputStream().use { it.copyTo(zip) }
+                        zip.closeEntry()
+                    }
+            }
+            // Without this the page folder is removed even though no archive
+            // exists, and the chapter would have to be downloaded again.
+            if (!archive.renameTo("$chapterDirName.cbz")) {
+                throw IOException(context.getString(com.kodastream.app.R.string.manga_download_storage_error))
+            }
+        } catch (e: Throwable) {
+            archive.delete()
+            throw e
         }
-        archive.renameTo("$chapterDirName.cbz")
         tmpDir.delete()
     }
 

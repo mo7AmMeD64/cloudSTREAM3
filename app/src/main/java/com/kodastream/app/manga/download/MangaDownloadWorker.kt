@@ -18,8 +18,6 @@ import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import com.kodastream.app.R
 import com.kodastream.app.manga.MangaPrefs
-import com.kodastream.app.manga.extension.MangaSourceManager
-import com.kodastream.app.manga.store.MangaStoreRepository
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -34,15 +32,6 @@ class MangaDownloadWorker(
     override suspend fun doWork(): Result {
         val appContext = applicationContext
         val manager = MangaDownloadManager.get(appContext)
-
-        // The queue can hold chapters from extensions that are not loaded yet
-        // after a process restart, exactly like reopening the reader.
-        val sources = MangaSourceManager.get(appContext)
-        if (sources.sources.value.isEmpty()) {
-            val stores = MangaStoreRepository.get(appContext)
-            stores.ensureDefaultStore()
-            sources.ensureLoaded { stores.stores.value }
-        }
         manager.restoreQueue()
 
         var issue = networkIssue()
@@ -51,7 +40,11 @@ class MangaDownloadWorker(
             return Result.retry()
         }
 
-        if (!manager.startDirect()) return Result.success()
+        if (!manager.startDirect()) {
+            // Another worker may still own a running downloader; let it stop
+            // before taking over instead of leaving the queue paused.
+            return if (manager.isRunning.value) Result.retry() else Result.success()
+        }
 
         try {
             setForeground(foregroundInfo())

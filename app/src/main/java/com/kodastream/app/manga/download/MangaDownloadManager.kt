@@ -8,9 +8,13 @@ import com.kodastream.app.manga.MangaChapter
 import com.kodastream.app.manga.MangaEntry
 import com.kodastream.app.manga.extension.MangaSourceManager
 import com.kodastream.app.manga.key
+import com.kodastream.app.manga.store.MangaStoreRepository
 import eu.kanade.tachiyomi.source.online.HttpSource
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /**
@@ -26,6 +30,11 @@ class MangaDownloadManager private constructor(context: Context) {
     val queue: StateFlow<List<MangaDownload>> = downloader.queue
     val queueInfo: StateFlow<Map<String, MangaDownloadInfo>> = downloader.queueInfo
     val isRunning: StateFlow<Boolean> = downloader.isRunning
+
+    init {
+        // A paused queue must still be visible after the process restarts.
+        CoroutineScope(SupervisorJob() + Dispatchers.IO).launch { restoreQueue() }
+    }
 
     /** Adds the given chapters to the queue and starts the worker. */
     suspend fun queueChapters(
@@ -97,11 +106,16 @@ class MangaDownloadManager private constructor(context: Context) {
         MangaDownloadCache.invalidate(manga)
     }
 
-    /** Restores the persisted queue once the extensions are loaded. */
+    /** Restores the persisted queue; the extensions must be loaded to rebuild it. */
     suspend fun restoreQueue() {
         val records = MangaDownloadStore.restore(app)
         if (records.isEmpty()) return
         val sources = MangaSourceManager.get(app)
+        if (sources.sources.value.isEmpty()) {
+            val stores = MangaStoreRepository.get(app)
+            stores.ensureDefaultStore()
+            sources.ensureLoaded { stores.stores.value }
+        }
         val downloads = records.mapNotNull { record ->
             val source = sources.sourceById(record.sourceId) as? HttpSource ?: return@mapNotNull null
             MangaDownload(source, record.toManga(), record.toChapter(), record.queuedAt)

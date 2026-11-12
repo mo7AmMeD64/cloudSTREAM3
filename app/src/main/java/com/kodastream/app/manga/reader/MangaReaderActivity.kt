@@ -62,6 +62,10 @@ class MangaReaderActivity : AppCompatActivity(), ReaderViewerHost {
 
     companion object {
         private const val EXTRA_REF = "manga_ref"
+        private const val EXTRA_SOURCE_ID = "manga_source_id"
+        private const val EXTRA_MANGA_URL = "manga_url"
+        private const val EXTRA_TITLE = "manga_title"
+        private const val EXTRA_THUMBNAIL = "manga_thumbnail"
         private const val EXTRA_CHAPTER = "chapter_url"
         private const val EXTRA_PAGE = "page"
 
@@ -71,7 +75,13 @@ class MangaReaderActivity : AppCompatActivity(), ReaderViewerHost {
             chapterUrl: String,
             page: Int = 0,
         ): Intent = Intent(context, MangaReaderActivity::class.java)
+            // Keep the title itself in the intent: NavArgs lives in memory, so a
+            // reader restored after process death would otherwise close.
             .putExtra(EXTRA_REF, NavArgs.put(ref))
+            .putExtra(EXTRA_SOURCE_ID, ref.sourceId)
+            .putExtra(EXTRA_MANGA_URL, ref.url)
+            .putExtra(EXTRA_TITLE, ref.title)
+            .putExtra(EXTRA_THUMBNAIL, ref.thumbnailUrl)
             .putExtra(EXTRA_CHAPTER, chapterUrl)
             .putExtra(EXTRA_PAGE, page)
     }
@@ -80,6 +90,17 @@ class MangaReaderActivity : AppCompatActivity(), ReaderViewerHost {
     private lateinit var readerModel: MangaReaderViewModel
     private lateinit var viewerHost: FrameLayout
     private lateinit var readerRoot: FrameLayout
+
+    private fun Intent.mangaRefOrNull(): MangaRef? {
+        val url = getStringExtra(EXTRA_MANGA_URL)?.takeIf { it.isNotBlank() } ?: return null
+        val title = getStringExtra(EXTRA_TITLE)?.takeIf { it.isNotBlank() } ?: return null
+        return MangaRef(
+            sourceId = getLongExtra(EXTRA_SOURCE_ID, 0L),
+            url = url,
+            title = title,
+            thumbnailUrl = getStringExtra(EXTRA_THUMBNAIL),
+        )
+    }
 
     @Volatile
     override var settings: MangaReaderSettings = MangaReaderSettings()
@@ -98,9 +119,9 @@ class MangaReaderActivity : AppCompatActivity(), ReaderViewerHost {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val refId = intent.getIntExtra(EXTRA_REF, -1)
-        val loadedRef = NavArgs.manga(refId)
+        val loadedRef = NavArgs.manga(refId) ?: intent.mangaRefOrNull()
         if (loadedRef == null) {
-            // Process death clears NavArgs; the caller goes back to details.
+            // Process death clears NavArgs; the title in the intent is the fallback.
             finish()
             return
         }
