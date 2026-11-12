@@ -31,6 +31,7 @@ import eu.kanade.tachiyomi.source.online.HttpSource
 import eu.kanade.tachiyomi.util.system.setDefaultSettings
 import eu.kanade.tachiyomi.util.system.setUserAgent
 import eu.kanade.tachiyomi.util.system.toWebViewHeaders
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 
 /**
  * The in-app browser for a source that needs a Cloudflare check, like Mihon's.
@@ -149,6 +150,26 @@ class MangaWebViewActivity : AppCompatActivity() {
                     setBackgroundColor(0)
                     contentDescription = getString(R.string.manga_refresh)
                     setOnClickListener { web.reload() }
+                },
+                LinearLayout.LayoutParams(dp(48), dp(48)),
+            )
+            addView(
+                ImageButton(this@MangaWebViewActivity).apply {
+                    setImageResource(android.R.drawable.ic_menu_delete)
+                    setBackgroundColor(0)
+                    contentDescription = getString(R.string.settings_manga_clear_cookies)
+                    setOnClickListener {
+                        val current = (web.url ?: url).toHttpUrlOrNull()
+                        if (current != null) {
+                            MangaEngine.get(this@MangaWebViewActivity).network?.cookieJar?.remove(current)
+                            Toast.makeText(
+                                this@MangaWebViewActivity,
+                                R.string.settings_manga_cookies_cleared,
+                                Toast.LENGTH_SHORT,
+                            ).show()
+                            web.reload()
+                        }
+                    }
                 },
                 LinearLayout.LayoutParams(dp(48), dp(48)),
             )

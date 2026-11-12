@@ -28,6 +28,7 @@ class NetworkHelper(
         cacheDirectory = File(appContext.cacheDir, "network_cache"),
         cookieJar = cookieJar,
         userAgent = ::defaultUserAgentProvider,
+        dohProvider = preferences.dohProvider,
     ).apply {
         if (preferences.verboseLogging) {
             // Logging is intentionally not wired to okhttp-logging: it is not a
@@ -55,17 +56,37 @@ internal fun mihonClientBuilder(
     cacheDirectory: File,
     cookieJar: okhttp3.CookieJar,
     userAgent: () -> String,
-): OkHttpClient.Builder = OkHttpClient.Builder()
-    .cookieJar(cookieJar)
-    .connectTimeout(30, TimeUnit.SECONDS)
-    .readTimeout(30, TimeUnit.SECONDS)
-    .callTimeout(2, TimeUnit.MINUTES)
-    .cache(
-        Cache(
-            directory = cacheDirectory,
-            maxSize = 5L * 1024 * 1024,
-        ),
-    )
-    .addInterceptor(UncaughtExceptionInterceptor())
-    .addInterceptor(UserAgentInterceptor(userAgent))
+    dohProvider: Int = -1,
+): OkHttpClient.Builder {
+    val builder = OkHttpClient.Builder()
+        .cookieJar(cookieJar)
+        .connectTimeout(30, TimeUnit.SECONDS)
+        .readTimeout(30, TimeUnit.SECONDS)
+        .callTimeout(2, TimeUnit.MINUTES)
+        .cache(
+            Cache(
+                directory = cacheDirectory,
+                maxSize = 5L * 1024 * 1024,
+            ),
+        )
+        .addInterceptor(UncaughtExceptionInterceptor())
+        .addInterceptor(UserAgentInterceptor(userAgent))
 
+    // Same providers and order as Mihon: applied after the base interceptors, before Cloudflare's.
+    when (dohProvider) {
+        PREF_DOH_CLOUDFLARE -> builder.dohCloudflare()
+        PREF_DOH_GOOGLE -> builder.dohGoogle()
+        PREF_DOH_ADGUARD -> builder.dohAdGuard()
+        PREF_DOH_QUAD9 -> builder.dohQuad9()
+        PREF_DOH_ALIDNS -> builder.dohAliDNS()
+        PREF_DOH_DNSPOD -> builder.dohDNSPod()
+        PREF_DOH_360 -> builder.doh360()
+        PREF_DOH_QUAD101 -> builder.dohQuad101()
+        PREF_DOH_MULLVAD -> builder.dohMullvad()
+        PREF_DOH_CONTROLD -> builder.dohControlD()
+        PREF_DOH_NJALLA -> builder.dohNajalla()
+        PREF_DOH_SHECAN -> builder.dohShecan()
+        else -> builder
+    }
+    return builder
+}
