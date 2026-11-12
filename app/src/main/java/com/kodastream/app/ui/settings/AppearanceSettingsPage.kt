@@ -16,15 +16,19 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.AspectRatio
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Contrast
 import androidx.compose.material.icons.rounded.DarkMode
+import androidx.compose.material.icons.rounded.Height
 import androidx.compose.material.icons.rounded.Palette
+import androidx.compose.material.icons.rounded.PhotoSizeSelectLarge
 import androidx.compose.material.icons.rounded.Style
 import androidx.compose.material.icons.rounded.Translate
 import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material.icons.rounded.ViewCarousel
 import androidx.compose.material.icons.rounded.ViewSidebar
+import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItemDefaults
@@ -55,6 +59,7 @@ import com.kodastream.app.ui.theme.PaletteStyle
 import com.kodastream.app.ui.theme.ThemeMode
 import com.kodastream.app.ui.theme.ThemeViewModel
 import com.kodastream.app.ui.theme.contrastInk
+import kotlin.math.roundToInt
 
 @Composable
 internal fun AppearanceSettingsPage(
@@ -63,6 +68,11 @@ internal fun AppearanceSettingsPage(
 ) {
     val context = LocalContext.current
     var navPosition by remember { mutableStateOf(AppPrefs.navPosition(context)) }
+    var navBarStyle by remember { mutableStateOf(AppPrefs.navBarStyle(context)) }
+    var hideStatusBar by remember { mutableStateOf(AppPrefs.hideStatusBar(context)) }
+    var navBarIconSize by remember { mutableStateOf(AppPrefs.navBarIconSize(context)) }
+    var navBarWidth by remember { mutableStateOf(AppPrefs.navBarWidth(context)) }
+    var navBarHeight by remember { mutableStateOf(AppPrefs.navBarHeight(context)) }
     var uiStyle by remember { mutableStateOf(AppPrefs.uiStyle(context)) }
     var appLanguage by remember { mutableStateOf(AppPrefs.appLanguage(context)) }
     var languageDialog by remember { mutableStateOf(false) }
@@ -83,7 +93,7 @@ internal fun AppearanceSettingsPage(
         onBack = onBack,
     ) {
         item(key = "appearance") {
-            val count = 5 + if (resolvedDark) 1 else 0
+            val count = 7 + if (resolvedDark) 1 else 0
             SettingsGroup(stringResource(R.string.settings_group_general)) {
                 ChoiceRow(
                     index = 0,
@@ -103,8 +113,20 @@ internal fun AppearanceSettingsPage(
                     },
                     onSelect = themeViewModel::updateMode,
                 )
-                NavigationRow(
+                SwitchRow(
                     index = 1,
+                    count = count,
+                    icon = Icons.Rounded.VisibilityOff,
+                    title = stringResource(R.string.settings_hide_status_bar),
+                    supporting = stringResource(R.string.settings_hide_status_bar_summary),
+                    checked = hideStatusBar,
+                    onCheckedChange = { checked ->
+                        AppPrefs.setHideStatusBar(context, checked)
+                        hideStatusBar = checked
+                    },
+                )
+                NavigationRow(
+                    index = 2,
                     count = count,
                     icon = Icons.Rounded.Translate,
                     title = stringResource(R.string.setup_language_title),
@@ -113,65 +135,135 @@ internal fun AppearanceSettingsPage(
                 )
                 if (resolvedDark) {
                     SwitchRow(
-                    index = 2,
+                        index = 3,
+                        count = count,
+                        icon = Icons.Rounded.Contrast,
+                        title = stringResource(R.string.settings_amoled),
+                        supporting = stringResource(R.string.settings_amoled_summary),
+                        checked = themeViewModel.amoled,
+                        onCheckedChange = themeViewModel::updateAmoled,
+                    )
+                }
+                ChoiceRow(
+                    index = if (resolvedDark) 4 else 3,
                     count = count,
-                    icon = Icons.Rounded.Contrast,
-                    title = stringResource(R.string.settings_amoled),
-                    supporting = stringResource(R.string.settings_amoled_summary),
-                    checked = themeViewModel.amoled,
-                    onCheckedChange = themeViewModel::updateAmoled,
+                    icon = Icons.Rounded.ViewSidebar,
+                    title = stringResource(R.string.settings_navigation),
+                    options = listOf(AppPrefs.NAV_SIDE, AppPrefs.NAV_BOTTOM),
+                    selected = navPosition,
+                    label = { position ->
+                        stringResource(
+                            if (position == AppPrefs.NAV_SIDE) {
+                                R.string.nav_position_side
+                            } else {
+                                R.string.nav_position_bottom
+                            }
+                        )
+                    },
+                    onSelect = { position ->
+                        AppPrefs.setNavPosition(context, position)
+                        navPosition = position
+                    },
+                )
+                ChoiceRow(
+                    index = if (resolvedDark) 5 else 4,
+                    count = count,
+                    icon = Icons.Rounded.Style,
+                    title = stringResource(R.string.settings_ui_style),
+                    options = listOf(AppPrefs.UI_STYLE_MATERIAL, AppPrefs.UI_STYLE_GLASS),
+                    selected = uiStyle,
+                    label = { style ->
+                        if (style == AppPrefs.UI_STYLE_GLASS) {
+                            stringResource(R.string.settings_ui_style_glass)
+                        } else {
+                            stringResource(R.string.settings_ui_style_material)
+                        }
+                    },
+                    onSelect = { style ->
+                        AppPrefs.setUiStyle(context, style)
+                        uiStyle = style
+                    },
+                )
+                ChoiceRow(
+                    index = if (resolvedDark) 6 else 5,
+                    count = count,
+                    icon = Icons.Rounded.Style,
+                    title = stringResource(R.string.settings_nav_bar_style),
+                    options = listOf(AppPrefs.NAV_BAR_CLOUD, AppPrefs.NAV_BAR_NUVIO),
+                    selected = navBarStyle,
+                    label = { style ->
+                        stringResource(
+                            if (style == AppPrefs.NAV_BAR_NUVIO) {
+                                R.string.nav_bar_style_nuvio
+                            } else {
+                                R.string.nav_bar_style_cloud
+                            }
+                        )
+                    },
+                    onSelect = { style ->
+                        AppPrefs.setNavBarStyle(context, style)
+                        navBarStyle = style
+                    },
+                )
+                NavigationRow(
+                    index = if (resolvedDark) 7 else 6,
+                    count = count,
+                    icon = Icons.Rounded.ViewCarousel,
+                    title = stringResource(R.string.settings_home_hero),
+                    supporting = stringResource(heroStyle.labelRes),
+                    onClick = { heroDialog = true },
                 )
             }
-            ChoiceRow(
-                index = if (resolvedDark) 3 else 2,
-                count = count,
-                icon = Icons.Rounded.ViewSidebar,
-                title = stringResource(R.string.settings_navigation),
-                options = listOf(AppPrefs.NAV_SIDE, AppPrefs.NAV_BOTTOM),
-                selected = navPosition,
-                label = { position ->
-                    stringResource(
-                        if (position == AppPrefs.NAV_SIDE) {
-                            R.string.nav_position_side
-                        } else {
-                            R.string.nav_position_bottom
-                        }
-                    )
-                },
-                onSelect = { position ->
-                    AppPrefs.setNavPosition(context, position)
-                    navPosition = position
-                },
-            )
-            ChoiceRow(
-                index = if (resolvedDark) 4 else 3,
-                count = count,
-                icon = Icons.Rounded.Style,
-                title = stringResource(R.string.settings_ui_style),
-                options = listOf(AppPrefs.UI_STYLE_MATERIAL, AppPrefs.UI_STYLE_GLASS),
-                selected = uiStyle,
-                label = { style ->
-                    if (style == AppPrefs.UI_STYLE_GLASS) {
-                        stringResource(R.string.settings_ui_style_glass)
-                    } else {
-                        stringResource(R.string.settings_ui_style_material)
-                    }
-                },
-                onSelect = { style ->
-                    AppPrefs.setUiStyle(context, style)
-                    uiStyle = style
-                },
-            )
-            NavigationRow(
-                index = if (resolvedDark) 5 else 4,
-                count = count,
-                icon = Icons.Rounded.ViewCarousel,
-                title = stringResource(R.string.settings_home_hero),
-                supporting = stringResource(heroStyle.labelRes),
-                onClick = { heroDialog = true },
-            )
         }
-    }
+
+        if (navBarStyle == AppPrefs.NAV_BAR_NUVIO && navPosition == AppPrefs.NAV_BOTTOM) {
+            item(key = "nav_bar_tuning") {
+                SettingsGroup(stringResource(R.string.settings_nav_bar_tuning)) {
+                    SliderRow(
+                        index = 0,
+                        count = 3,
+                        icon = Icons.Rounded.PhotoSizeSelectLarge,
+                        title = stringResource(R.string.settings_nav_bar_icon_size),
+                        valueText = stringResource(R.string.settings_nav_bar_dp, navBarIconSize),
+                        value = navBarIconSize.toFloat(),
+                        valueRange = 20f..34f,
+                        steps = 13,
+                        onValueChange = { navBarIconSize = it.roundToInt() },
+                        onValueChangeFinished = {
+                            AppPrefs.setNavBarIconSize(context, navBarIconSize)
+                        },
+                    )
+                    SliderRow(
+                        index = 1,
+                        count = 3,
+                        icon = Icons.Rounded.AspectRatio,
+                        title = stringResource(R.string.settings_nav_bar_width),
+                        valueText = stringResource(R.string.settings_nav_bar_dp, navBarWidth),
+                        value = navBarWidth.toFloat(),
+                        valueRange = 240f..480f,
+                        steps = 11,
+                        onValueChange = { navBarWidth = it.roundToInt() },
+                        onValueChangeFinished = {
+                            AppPrefs.setNavBarWidth(context, navBarWidth)
+                        },
+                    )
+                    SliderRow(
+                        index = 2,
+                        count = 3,
+                        icon = Icons.Rounded.Height,
+                        title = stringResource(R.string.settings_nav_bar_height),
+                        valueText = stringResource(R.string.settings_nav_bar_dp, navBarHeight),
+                        value = navBarHeight.toFloat(),
+                        valueRange = 48f..84f,
+                        steps = 8,
+                        onValueChange = { navBarHeight = it.roundToInt() },
+                        onValueChangeFinished = {
+                            AppPrefs.setNavBarHeight(context, navBarHeight)
+                        },
+                    )
+                }
+            }
+        }
 
         item(key = "colors") {
             val firstCategory = if (dynamicAvailable) 1 else 0

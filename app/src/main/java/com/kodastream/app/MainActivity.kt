@@ -10,10 +10,15 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.Coil
@@ -79,6 +84,10 @@ class MainActivity : AppCompatActivity() {
             // Activity-scoped: once per process, and survives recreation.
             val updateViewModel: UpdateViewModel = viewModel()
             var setupDone by remember { mutableStateOf(AppPrefs.setupDone(this@MainActivity)) }
+            val hideStatusBar by AppPrefs.hideStatusBar.collectAsState(
+                initial = AppPrefs.hideStatusBar(this@MainActivity)
+            )
+            LaunchedEffect(hideStatusBar) { applyStatusBarVisibility(hideStatusBar == true) }
             val update = updateViewModel.update
             val dark = when (themeViewModel.mode) {
                 ThemeMode.SYSTEM -> isSystemInDarkTheme()
@@ -144,6 +153,20 @@ class MainActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         CommonActivity.setActivityInstance(this)
+        // The player and reader hide the system bars in their own windows;
+        // this window keeps its own state, so re-apply it on every return.
+        applyStatusBarVisibility(AppPrefs.hideStatusBar(this))
+    }
+
+    private fun applyStatusBarVisibility(hidden: Boolean) {
+        val controller = WindowCompat.getInsetsController(window, window.decorView)
+        if (hidden) {
+            controller.systemBarsBehavior =
+                WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            controller.hide(WindowInsetsCompat.Type.statusBars())
+        } else {
+            controller.show(WindowInsetsCompat.Type.statusBars())
+        }
     }
 
     private fun handleIntent(intent: Intent?) {

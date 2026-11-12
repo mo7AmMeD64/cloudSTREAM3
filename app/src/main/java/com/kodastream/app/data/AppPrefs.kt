@@ -16,6 +16,11 @@ object AppPrefs {
     private const val KEY_PROVIDER = "selected_provider"
     private const val KEY_AUTO_UPDATE = "auto_update_extensions"
     private const val KEY_NAV_POSITION = "nav_position"
+    private const val KEY_NAV_BAR_STYLE = "nav_bar_style"
+    private const val KEY_HIDE_STATUS_BAR = "hide_status_bar"
+    private const val KEY_NAV_BAR_ICON_SIZE = "nav_bar_icon_size"
+    private const val KEY_NAV_BAR_WIDTH = "nav_bar_width"
+    private const val KEY_NAV_BAR_HEIGHT = "nav_bar_height"
     const val KEY_UI_STYLE = "ui_style"
     private const val KEY_APP_MODE = "app_mode"
     private const val KEY_HOME_HERO_STYLE = "home_hero_style"
@@ -52,6 +57,8 @@ object AppPrefs {
 
     const val NAV_SIDE = "side"
     const val NAV_BOTTOM = "bottom"
+    const val NAV_BAR_CLOUD = "cloud"
+    const val NAV_BAR_NUVIO = "nuvio"
     const val UI_STYLE_MATERIAL = "material"
     const val UI_STYLE_GLASS = "glass"
     const val LANGUAGE_SYSTEM = "system"
@@ -74,6 +81,58 @@ object AppPrefs {
     fun setNavPosition(context: Context, value: String) {
         _navPosition.value = value
         prefs(context).edit { putString(KEY_NAV_POSITION, value) }
+    }
+
+    private val _navBarStyle = MutableStateFlow<String?>(null)
+
+    /** The bottom bar style, as a flow so the shell swaps it the moment it changes. */
+    val navBarStyle: StateFlow<String?> = _navBarStyle.asStateFlow()
+
+    /** "cloud" (the Material floating pill) or "nuvio" (the jelly bar). */
+    fun navBarStyle(context: Context): String =
+        _navBarStyle.value
+            ?: prefs(context).getString(KEY_NAV_BAR_STYLE, null)?.also { _navBarStyle.value = it }
+            ?: NAV_BAR_CLOUD
+
+    fun setNavBarStyle(context: Context, value: String) {
+        _navBarStyle.value = value
+        prefs(context).edit { putString(KEY_NAV_BAR_STYLE, value) }
+    }
+
+    /** Nuvio bar tuning: icon dp (20-34), bar width dp (240-480), expanded height dp (48-84). */
+    fun navBarIconSize(context: Context): Int =
+        prefs(context).getInt(KEY_NAV_BAR_ICON_SIZE, 28)
+
+    fun setNavBarIconSize(context: Context, value: Int) {
+        prefs(context).edit { putInt(KEY_NAV_BAR_ICON_SIZE, value) }
+    }
+
+    fun navBarWidth(context: Context): Int =
+        prefs(context).getInt(KEY_NAV_BAR_WIDTH, 400)
+
+    fun setNavBarWidth(context: Context, value: Int) {
+        prefs(context).edit { putInt(KEY_NAV_BAR_WIDTH, value) }
+    }
+
+    fun navBarHeight(context: Context): Int =
+        prefs(context).getInt(KEY_NAV_BAR_HEIGHT, 64)
+
+    fun setNavBarHeight(context: Context, value: Int) {
+        prefs(context).edit { putInt(KEY_NAV_BAR_HEIGHT, value) }
+    }
+
+    private val _hideStatusBar = MutableStateFlow<Boolean?>(null)
+
+    /** Hiding the system status bar, as a flow so the window applies it immediately. */
+    val hideStatusBar: StateFlow<Boolean?> = _hideStatusBar.asStateFlow()
+
+    fun hideStatusBar(context: Context): Boolean =
+        _hideStatusBar.value
+            ?: prefs(context).getBoolean(KEY_HIDE_STATUS_BAR, false).also { _hideStatusBar.value = it }
+
+    fun setHideStatusBar(context: Context, value: Boolean) {
+        _hideStatusBar.value = value
+        prefs(context).edit { putBoolean(KEY_HIDE_STATUS_BAR, value) }
     }
 
     /** The navigation UI style: "material" (default) or "glass". */
