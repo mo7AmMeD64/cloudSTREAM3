@@ -73,9 +73,11 @@ class MangaDownloadedPageLoader(
 
     override suspend fun loadPage(page: ReaderPage) = withContext(Dispatchers.IO) {
         if (page.file?.isFile == true) return@withContext
+        // Same test as getPages(): a SAF file's MIME type can be missing, so
+        // only a real directory goes through the folder path.
         val local = when {
-            chapterDir.isFile -> extractArchiveEntry(page)
-            else -> extractDirectoryPage(page)
+            chapterDir.isDirectory -> extractDirectoryPage(page)
+            else -> extractArchiveEntry(page)
         } ?: throw IllegalStateException("The downloaded page is missing")
         page.file = local
         page.stream = { local.inputStream() }

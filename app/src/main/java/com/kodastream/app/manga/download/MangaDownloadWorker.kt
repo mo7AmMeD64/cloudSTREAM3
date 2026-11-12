@@ -47,7 +47,12 @@ class MangaDownloadWorker(
         }
 
         try {
-            setForeground(foregroundInfo())
+            // A background-started worker cannot always promote itself to a
+            // foreground service; the download can still run without it.
+            try {
+                setForeground(foregroundInfo())
+            } catch (_: IllegalStateException) {
+            }
             while (issue == null && manager.isRunning.value) {
                 delay(1_000)
                 issue = networkIssue()
