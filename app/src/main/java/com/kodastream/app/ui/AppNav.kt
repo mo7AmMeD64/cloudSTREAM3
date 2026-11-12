@@ -174,6 +174,7 @@ private object MangaRoutes {
     const val EXTENSIONS = "manga_extensions"
     const val SETTINGS = "manga_settings"
     const val STORES = "manga_stores"
+    const val DOWNLOADS = "manga_downloads"
     const val SOURCE = "manga_source/{id}"
     const val DETAILS = "manga_details/{id}"
 
@@ -612,6 +613,7 @@ private fun AppNavGraph(
             themeViewModel = themeViewModel,
             onOpenMangaExtensions = { navController.navigate(MangaRoutes.EXTENSIONS) },
             onOpenMangaStores = { navController.navigate(MangaRoutes.STORES) },
+            onOpenMangaDownloads = { navController.navigate(MangaRoutes.DOWNLOADS) },
             onMangaSectionChanged = onMangaSectionChanged,
         )
         composable(MangaRoutes.EXTENSIONS) {
@@ -727,6 +729,7 @@ private fun MangaNavGraph(
             themeViewModel = themeViewModel,
             onOpenMangaExtensions = { navController.navigateTopLevel(MangaRoutes.EXTENSIONS) },
             onOpenMangaStores = { navController.navigate(MangaRoutes.STORES) },
+            onOpenMangaDownloads = { navController.navigate(MangaRoutes.DOWNLOADS) },
             onMangaSectionChanged = onMangaSectionChanged,
         )
         mangaPushedRoutes(navController, contentPadding)
@@ -743,6 +746,7 @@ private fun NavGraphBuilder.settingsCategoryRoute(
     themeViewModel: ThemeViewModel,
     onOpenMangaExtensions: () -> Unit,
     onOpenMangaStores: () -> Unit,
+    onOpenMangaDownloads: () -> Unit,
     onMangaSectionChanged: (Boolean) -> Unit,
 ) {
     composable(
@@ -761,6 +765,7 @@ private fun NavGraphBuilder.settingsCategoryRoute(
                 onBack = { navController.popBackStack() },
                 onOpenMangaExtensions = onOpenMangaExtensions,
                 onOpenMangaStores = onOpenMangaStores,
+                onOpenMangaDownloads = onOpenMangaDownloads,
                 onMangaSectionChanged = onMangaSectionChanged,
             )
         }
@@ -774,6 +779,12 @@ private fun NavGraphBuilder.mangaPushedRoutes(
 ) {
     composable(MangaRoutes.STORES) {
         MangaStoresScreen(
+            contentPadding = contentPadding,
+            onBack = { navController.popBackStack() },
+        )
+    }
+    composable(MangaRoutes.DOWNLOADS) {
+        com.kodastream.app.ui.manga.MangaDownloadsScreen(
             contentPadding = contentPadding,
             onBack = { navController.popBackStack() },
         )
@@ -824,6 +835,7 @@ private fun NavGraphBuilder.mangaDetailsRoute(
                         handle[GenreSourceKey] = ref.sourceId
                     }
                 },
+                onOpenDownloads = { navController.navigate(MangaRoutes.DOWNLOADS) },
             )
         }
     }

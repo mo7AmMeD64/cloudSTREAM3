@@ -17,6 +17,7 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -41,6 +42,7 @@ import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.ZeroCornerSize
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
@@ -52,6 +54,10 @@ import androidx.compose.material.icons.rounded.Brush
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.Download
+import androidx.compose.material.icons.rounded.DownloadDone
+import androidx.compose.material.icons.rounded.Downloading
 import androidx.compose.material.icons.rounded.ExpandLess
 import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.Favorite
@@ -113,6 +119,9 @@ import com.kodastream.app.manga.MangaChapter
 import com.kodastream.app.manga.MangaEntry
 import com.kodastream.app.manga.MangaRef
 import com.kodastream.app.manga.chapterGaps
+import com.kodastream.app.manga.download.MangaDownload
+import com.kodastream.app.manga.download.MangaDownloadInfo
+import com.kodastream.app.manga.download.downloadKey
 import com.kodastream.app.manga.isRecognizedNumber
 import com.kodastream.app.ui.components.ExpressivePullToRefresh
 import com.kodastream.app.ui.library.CategoryNameDialog
@@ -135,6 +144,7 @@ fun MangaDetailsScreen(
     onBack: () -> Unit,
     onOpenChapter: (chapter: MangaChapter, page: Int) -> Unit,
     onSearchGenre: (String) -> Unit,
+    onOpenDownloads: () -> Unit,
 ) {
     val app = LocalContext.current.applicationContext as Application
     val viewModel: MangaDetailsViewModel = viewModel(
@@ -227,6 +237,9 @@ fun MangaDetailsScreen(
             chapterState = chapterState,
             onOpenChapter = onOpenChapter,
             onToggleBookmark = viewModel::toggleBookmark,
+            onDownload = { viewModel.downloadChapters(listOf(it)) },
+            onCancelDownload = { viewModel.cancelDownloads(listOf(it)) },
+            onRetryDownload = { viewModel.retryDownloads(listOf(it)) },
         )
     }
 
@@ -251,6 +264,7 @@ fun MangaDetailsScreen(
             } else {
                 null
             },
+            onOpenDownloads = onOpenDownloads,
             shareEnabled = shareUrl != null,
             sourceAvailable = state.sourceAvailable,
         )
@@ -446,6 +460,8 @@ fun MangaDetailsScreen(
                 onSetRead = viewModel::setChapterRead,
                 onMarkPrevious = viewModel::markPreviousRead,
                 onToggleBookmark = viewModel::toggleBookmark,
+                onDownload = viewModel::downloadChapters,
+                onDeleteDownloads = viewModel::deleteDownloads,
             )
         }
     }
@@ -496,6 +512,7 @@ private fun MangaToolbar(
     onOpenBrowser: () -> Unit,
     onOpenInApp: (() -> Unit)?,
     onMoveToCategory: (() -> Unit)?,
+    onOpenDownloads: () -> Unit,
     shareEnabled: Boolean,
     sourceAvailable: Boolean,
 ) {
@@ -570,6 +587,14 @@ private fun MangaToolbar(
                         },
                     )
                 }
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.manga_downloads_title)) },
+                    leadingIcon = { Icon(Icons.Rounded.Download, contentDescription = null) },
+                    onClick = {
+                        menu = false
+                        onOpenDownloads()
+                    },
+                )
             }
         }
     }
@@ -1084,8 +1109,13 @@ private fun SelectionBar(
     onSetRead: (String, Boolean) -> Unit,
     onMarkPrevious: (String) -> Unit,
     onToggleBookmark: (String) -> Unit,
+    onDownload: (List<MangaChapter>) -> Unit,
+    onDeleteDownloads: (List<MangaChapter>) -> Unit,
 ) {
     val selection = chapterState.selection
+    val selectedChapters = state.chapters.filter { it.url in selection }
+    val downloadedSelected = selectedChapters.filter { it.url in state.downloaded }
+    val downloadable = selectedChapters.filter { it.url !in state.downloaded }
     Surface(
         color = MaterialTheme.colorScheme.surfaceContainerHigh,
         shape = MaterialTheme.shapes.large.copy(
@@ -1101,33 +1131,60 @@ private fun SelectionBar(
             Text(
                 text = stringResource(R.string.manga_selected_count, selection.size),
                 style = MaterialTheme.typography.labelLarge,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
                 modifier = Modifier
                     .weight(1f)
                     .padding(start = 8.dp),
             )
-            IconButton(onClick = {
-                selection.forEach { onSetRead(it, true) }
-                chapterState.selection = emptySet()
-            }) {
-                Icon(Icons.Rounded.CheckCircle, contentDescription = stringResource(R.string.manga_mark_read))
-            }
-            IconButton(onClick = {
-                selection.forEach { onSetRead(it, false) }
-                chapterState.selection = emptySet()
-            }) {
-                Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.manga_mark_unread))
-            }
-            IconButton(onClick = {
-                state.chapters.lastOrNull { it.url in selection }?.url?.let(onMarkPrevious)
-                chapterState.selection = emptySet()
-            }) {
-                Icon(Icons.Rounded.Check, contentDescription = stringResource(R.string.manga_mark_previous))
-            }
-            IconButton(onClick = {
-                selection.forEach(onToggleBookmark)
-                chapterState.selection = emptySet()
-            }) {
-                Icon(Icons.Rounded.BookmarkBorder, contentDescription = stringResource(R.string.manga_bookmark))
+            // The actions stay reachable on narrow screens instead of clipping.
+            Row(
+                modifier = Modifier
+                    .weight(1f)
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                if (downloadable.isNotEmpty()) {
+                    IconButton(onClick = {
+                        onDownload(downloadable)
+                        chapterState.selection = emptySet()
+                    }) {
+                        Icon(Icons.Rounded.Download, contentDescription = stringResource(R.string.manga_download_start))
+                    }
+                }
+                if (downloadedSelected.isNotEmpty()) {
+                    IconButton(onClick = {
+                        onDeleteDownloads(downloadedSelected)
+                        chapterState.selection = emptySet()
+                    }) {
+                        Icon(Icons.Rounded.Delete, contentDescription = stringResource(R.string.manga_download_delete))
+                    }
+                }
+                IconButton(onClick = {
+                    selection.forEach { onSetRead(it, true) }
+                    chapterState.selection = emptySet()
+                }) {
+                    Icon(Icons.Rounded.CheckCircle, contentDescription = stringResource(R.string.manga_mark_read))
+                }
+                IconButton(onClick = {
+                    selection.forEach { onSetRead(it, false) }
+                    chapterState.selection = emptySet()
+                }) {
+                    Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.manga_mark_unread))
+                }
+                IconButton(onClick = {
+                    state.chapters.lastOrNull { it.url in selection }?.url?.let(onMarkPrevious)
+                    chapterState.selection = emptySet()
+                }) {
+                    Icon(Icons.Rounded.Check, contentDescription = stringResource(R.string.manga_mark_previous))
+                }
+                IconButton(onClick = {
+                    selection.forEach(onToggleBookmark)
+                    chapterState.selection = emptySet()
+                }) {
+                    Icon(Icons.Rounded.BookmarkBorder, contentDescription = stringResource(R.string.manga_bookmark))
+                }
             }
         }
     }
@@ -1169,6 +1226,9 @@ private fun LazyListScope.chapterItems(
     chapterState: ChapterListState,
     onOpenChapter: (chapter: MangaChapter, page: Int) -> Unit,
     onToggleBookmark: (String) -> Unit,
+    onDownload: (MangaChapter) -> Unit,
+    onCancelDownload: (MangaChapter) -> Unit,
+    onRetryDownload: (MangaChapter) -> Unit,
 ) {
     items(shown, key = { "chapter-${it.url}" }) { chapter ->
         val progress = state.progress[chapter.url]
@@ -1177,6 +1237,8 @@ private fun LazyListScope.chapterItems(
             ChapterRow(
                 chapter = chapter,
                 progress = progress,
+                downloadInfo = state.queue[downloadKey(state.entry, chapter)],
+                downloaded = chapter.url in state.downloaded,
                 selected = chapter.url in selection,
                 onClick = {
                     if (selection.isNotEmpty()) {
@@ -1190,6 +1252,9 @@ private fun LazyListScope.chapterItems(
                     chapterState.selection = selection.toggle(chapter.url)
                 },
                 onToggleBookmark = { onToggleBookmark(chapter.url) },
+                onDownload = { onDownload(chapter) },
+                onCancelDownload = { onCancelDownload(chapter) },
+                onRetryDownload = { onRetryDownload(chapter) },
             )
             gaps[chapter.floorNumber()]?.let { gap ->
                 MissingChaptersDivider(gap)
@@ -1203,10 +1268,15 @@ private fun LazyListScope.chapterItems(
 private fun ChapterRow(
     chapter: MangaChapter,
     progress: ChapterProgress?,
+    downloadInfo: MangaDownloadInfo?,
+    downloaded: Boolean,
     selected: Boolean,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
     onToggleBookmark: () -> Unit,
+    onDownload: () -> Unit,
+    onCancelDownload: () -> Unit,
+    onRetryDownload: () -> Unit,
 ) {
     val read = progress?.read == true
     val bookmarked = progress?.bookmarked == true
@@ -1276,6 +1346,19 @@ private fun ChapterRow(
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                     )
                 }
+                when (downloadInfo?.state) {
+                    MangaDownload.State.DOWNLOADING -> Text(
+                        text = stringResource(R.string.manga_download_percent, downloadInfo.progress),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                    MangaDownload.State.QUEUE -> Text(
+                        text = stringResource(R.string.manga_download_queued),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                    )
+                    else -> Unit
+                }
                 chapter.scanlator?.takeIf { it.isNotBlank() }?.let {
                     Text(
                         text = it,
@@ -1298,6 +1381,60 @@ private fun ChapterRow(
                 } else {
                     MaterialTheme.colorScheme.onSurfaceVariant
                 },
+            )
+        }
+        ChapterDownloadAction(
+            downloaded = downloaded,
+            info = downloadInfo,
+            onDownload = onDownload,
+            onCancelDownload = onCancelDownload,
+            onRetryDownload = onRetryDownload,
+        )
+    }
+}
+
+/** The row's download slot: start, cancel while queued, retry after a failure. */
+@Composable
+private fun ChapterDownloadAction(
+    downloaded: Boolean,
+    info: MangaDownloadInfo?,
+    onDownload: () -> Unit,
+    onCancelDownload: () -> Unit,
+    onRetryDownload: () -> Unit,
+) {
+    when {
+        downloaded -> Icon(
+            Icons.Rounded.DownloadDone,
+            contentDescription = stringResource(R.string.manga_downloads_done),
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.padding(horizontal = 12.dp),
+        )
+        info?.state == MangaDownload.State.ERROR -> IconButton(onClick = onRetryDownload) {
+            Icon(
+                Icons.Rounded.Refresh,
+                contentDescription = stringResource(R.string.manga_download_retry),
+                tint = MaterialTheme.colorScheme.error,
+            )
+        }
+        info?.state == MangaDownload.State.DOWNLOADING -> IconButton(onClick = onCancelDownload) {
+            Icon(
+                Icons.Rounded.Downloading,
+                contentDescription = stringResource(R.string.manga_download_cancel),
+                tint = MaterialTheme.colorScheme.primary,
+            )
+        }
+        info?.state == MangaDownload.State.QUEUE -> IconButton(onClick = onCancelDownload) {
+            Icon(
+                Icons.Rounded.Schedule,
+                contentDescription = stringResource(R.string.manga_download_cancel),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        else -> IconButton(onClick = onDownload) {
+            Icon(
+                Icons.Rounded.Download,
+                contentDescription = stringResource(R.string.manga_download_start),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
     }

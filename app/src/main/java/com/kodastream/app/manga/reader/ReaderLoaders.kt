@@ -478,11 +478,14 @@ private const val PROBE_TIMEOUT_MS = 15_000L
 private const val PROBE_MAX_CHARS = 2_000_000
 
 /**
- * Ported from Mihon's `loader/ChapterLoader.kt`, online sources only.
+ * Ported from Mihon's `loader/ChapterLoader.kt`: a downloaded chapter is read
+ * from disk first, otherwise the source is used. [source] is null when the
+ * extension was removed, so only downloaded chapters can still open.
  */
 class ChapterLoader(
     private val context: Context,
-    private val source: HttpSource,
+    private val source: HttpSource?,
+    private val manga: com.kodastream.app.manga.MangaEntry,
     private val canLoadAhead: () -> Boolean = { true },
     private val store: ReaderPageStore = AndroidReaderPageStore(context),
 ) {
@@ -492,19 +495,29 @@ class ChapterLoader(
         chapter.state = ReaderChapter.State.Loading
         withContext(Dispatchers.IO) {
             try {
-                val loader = HttpPageLoader(chapter, source, store, canLoadAhead)
+                val downloadedDir = com.kodastream.app.manga.download.MangaDownloadManager
+                    .get(context)
+                    .findChapterDir(manga, chapter.chapter)
+                val loader: PageLoader = when {
+                    downloadedDir != null -> MangaDownloadedPageLoader(context, chapter, downloadedDir)
+                    source != null -> HttpPageLoader(chapter, source, store, canLoadAhead)
+                    else -> throw IllegalStateException("This source is not installed and the chapter is not downloaded.")
+                }
                 chapter.pageLoader = loader
                 val pages = loader.getPages().onEach { it.chapter = chapter }
                 if (pages.isEmpty()) {
-                    val detail = probeChapterPage(source, chapter.chapter)
-                    ReaderDiagnostics.record(
-                        ReaderDiagnosticEvent(
-                            chapterUrl = chapter.chapter.url,
-                            state = "empty page list",
-                            message = detail,
-                        ),
-                    )
-                    throw EmptyChapterException(detail)
+                    if (downloadedDir == null && source != null) {
+                        val detail = probeChapterPage(source, chapter.chapter)
+                        ReaderDiagnostics.record(
+                            ReaderDiagnosticEvent(
+                                chapterUrl = chapter.chapter.url,
+                                state = "empty page list",
+                                message = detail,
+                            ),
+                        )
+                        throw EmptyChapterException(detail)
+                    }
+                    throw EmptyChapterException(null)
                 }
                 chapter.requestedPage = requestedPage
                 chapter.state = ReaderChapter.State.Loaded(pages)

@@ -55,6 +55,7 @@ safefile = "0.0.8"
 shimmer = "0.5.0"
 torrentserver = "7861970"
 tvprovider = "1.1.0"
+unifile = "08f224c8f9"
 video = "1.0.0"
 webkit = "1.18.0"
 xmlutil = "1.0.2"
@@ -182,6 +183,7 @@ torrentserver = { module = "com.github.recloudstream:torrentserver", version.ref
 tvprovider = { module = "androidx.tvprovider:tvprovider", version.ref = "tvprovider" }
 video = { module = "com.google.android.mediahome:video", version.ref = "video" }
 work-runtime-ktx = { module = "androidx.work:work-runtime-ktx", version.ref = "workRuntimeKtx" }
+unifile = { module = "com.github.mihon:unifile", version.ref = "unifile" }
 zipline = { module = "app.cash.zipline:zipline-android", version.ref = "zipline" }
 
 compose-foundation = { module = "org.jetbrains.compose.foundation:foundation", version.ref = "composeMultiplatform" }

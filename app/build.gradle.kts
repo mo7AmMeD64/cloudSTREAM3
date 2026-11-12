@@ -156,6 +156,9 @@ dependencies {
     // ---- Koda's UI stack: Compose + Material 3 Expressive ----
     implementation(libs.ax.core.ktx)
     implementation(libs.ax.documentfile) // SAF DocumentFile for the download location
+    // Mihon's storage abstraction, so chapter downloads use the same SAF/file code paths.
+    implementation(libs.unifile)
+    implementation(libs.work.runtime.ktx) // Mihon's chapter DownloadWorker
     implementation(libs.appcompat) // MainActivity is an AppCompatActivity, like CloudStream's
     implementation(libs.ax.recyclerview) // original player's RecyclerView UI
     implementation(libs.constraintlayout) // player dialog layouts

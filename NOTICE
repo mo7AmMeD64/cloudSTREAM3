@@ -128,6 +128,38 @@ KodaStream components:
 - data/src/main/java/mihon/data/extension/model/*.kt
   -> app/src/main/java/com/kodastream/app/manga/store/MangaStoreModels.kt
 
+The manga chapter download system is a port of Mihon's download manager. These
+files were copied or adapted into app/src/main/java/com/kodastream/app/manga/download/:
+
+- app/src/main/java/eu/kanade/tachiyomi/data/download/model/Download.kt
+  -> MangaDownload.kt
+- app/src/main/java/eu/kanade/tachiyomi/data/download/DownloadProvider.kt
+  -> MangaDownloadProvider.kt
+- app/src/main/java/eu/kanade/tachiyomi/data/download/DownloadCache.kt
+  -> MangaDownloadCache.kt
+- app/src/main/java/eu/kanade/tachiyomi/data/download/DownloadStore.kt
+  -> MangaDownloadStore.kt
+- app/src/main/java/eu/kanade/tachiyomi/data/download/Downloader.kt
+  -> MangaDownloader.kt
+- app/src/main/java/eu/kanade/tachiyomi/data/download/DownloadManager.kt
+  -> MangaDownloadManager.kt
+- app/src/main/java/eu/kanade/tachiyomi/data/download/DownloadWorker.kt
+  -> MangaDownloadWorker.kt
+- app/src/main/java/eu/kanade/tachiyomi/data/download/DownloadNotifier.kt
+  -> MangaDownloadNotifier.kt
+- domain/src/main/java/tachiyomi/domain/storage/service/StorageManager.kt
+  -> MangaDownloadStorage.kt
+- core/common/src/main/kotlin/eu/kanade/tachiyomi/util/storage/DiskUtil.kt
+  -> MangaDiskUtil.kt
+- app/src/main/java/eu/kanade/tachiyomi/ui/reader/loader/DownloadPageLoader.kt
+  -> MangaDownloadedPageLoader.kt
+
+Adaptations for KodaStream: Metro dependency injection and SQLDelight replaced
+with the app's singleton manager and CloudStream DataStore queue records;
+MangaEntry/MangaChapter replace Mihon's domain models; ComicInfo.xml metadata
+is not written; the queue screen, settings rows and chapter-row actions are new
+Compose code; notification actions are omitted.
+
 Adaptations for KodaStream: OkHttp 5 API calls replaced with OkHttp 4.12
 equivalents; Metro dependency injection and SQLDelight removed (a hand-written
 Injekt registrar and SharedPreferences/JSON persistence in the app replace
@@ -187,8 +219,7 @@ adapted into app/src/main/java/com/kodastream/app/manga/reader/:
 
 Adaptations for KodaStream: Coil 3 replaced with Coil 2.7 and source fetchers;
 Mihon's DI graph, SQLDelight models, Voyager, Metro, Injekt preferences, the
-download manager, archive/epub/local loaders and the WebGPU viewer are not
-ported. The WebtoonStripImageView decodes cached files with BitmapRegionDecoder
+archive/epub/local loaders and the WebGPU viewer are not ported. The WebtoonStripImageView decodes cached files with BitmapRegionDecoder
 (with a sampled BitmapFactory fallback) instead of ca.mpreg:imagedecoder.
 Wide-page splitting (InsertPage) and the dual-page viewer are skipped. Chapter
 transitions are Compose views; the reader overlay, settings sheet and error

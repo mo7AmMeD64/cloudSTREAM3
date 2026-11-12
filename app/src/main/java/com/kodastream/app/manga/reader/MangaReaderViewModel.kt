@@ -89,14 +89,18 @@ class MangaReaderViewModel(
                 }
                 MangaEngine.get(app)
                 source = manager.catalogueSourceById(ref.sourceId) as? HttpSource
-                chapterLoader = source?.let { ChapterLoader(app, it) }
-                if (source == null) {
-                    _overlay.value = _overlay.value.copy(
-                        loading = false,
-                        error = "This source is not installed.",
-                    )
-                    return@launch
-                }
+                val libraryEntry = MangaLibraryStore.entry(app, ref.sourceId, ref.url)
+                val entry = libraryEntry ?: MangaEntry(
+                    sourceId = ref.sourceId,
+                    url = ref.url,
+                    title = ref.title,
+                    thumbnailUrl = ref.thumbnailUrl,
+                    sourceName = com.kodastream.app.manga.download.MangaDownloadStore
+                        .sourceName(app, ref.sourceId, ref.url)
+                        .orEmpty()
+                        .ifBlank { source?.name.orEmpty() },
+                )
+                chapterLoader = ChapterLoader(app, source, entry)
                 init()
             } catch (e: CancellationException) {
                 throw e
@@ -121,7 +125,11 @@ class MangaReaderViewModel(
             if (chapters.isEmpty()) {
                 _overlay.value = _overlay.value.copy(
                     loading = false,
-                    error = "The source returned no chapters for this title.",
+                    error = if (source == null) {
+                        "This source is not installed and no chapters are cached for it."
+                    } else {
+                        "The source returned no chapters for this title."
+                    },
                 )
                 return
             }

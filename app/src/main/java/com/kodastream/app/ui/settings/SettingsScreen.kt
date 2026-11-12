@@ -96,6 +96,7 @@ fun SettingsCategoryScreen(
     onBack: () -> Unit,
     onOpenMangaExtensions: () -> Unit,
     onOpenMangaStores: () -> Unit,
+    onOpenMangaDownloads: () -> Unit,
     onMangaSectionChanged: (Boolean) -> Unit,
 ) {
     when (category) {
@@ -112,6 +113,7 @@ fun SettingsCategoryScreen(
             onBack = onBack,
             onOpenMangaExtensions = onOpenMangaExtensions,
             onOpenMangaStores = onOpenMangaStores,
+            onOpenMangaDownloads = onOpenMangaDownloads,
             onMangaSectionChanged = onMangaSectionChanged,
         )
         SettingsCategory.ABOUT -> AboutSettingsPage(onBack = onBack)

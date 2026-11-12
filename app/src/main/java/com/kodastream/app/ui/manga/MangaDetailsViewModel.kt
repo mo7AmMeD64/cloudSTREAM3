@@ -14,6 +14,9 @@ import com.kodastream.app.manga.MangaPrefs
 import com.kodastream.app.manga.MangaRef
 import com.kodastream.app.manga.MangaLibraryStore
 import com.kodastream.app.manga.continueReading
+import com.kodastream.app.manga.download.MangaDownloadCache
+import com.kodastream.app.manga.download.MangaDownloadInfo
+import com.kodastream.app.manga.download.MangaDownloadManager
 import com.kodastream.app.manga.extension.LoadedSource
 import com.kodastream.app.manga.extension.MangaSourceManager
 import com.kodastream.app.manga.key
@@ -49,6 +52,10 @@ data class MangaDetailsState(
     /** The error looks like a Cloudflare check that needs the in-app browser. */
     val blocked: Boolean = false,
     val sourceAvailable: Boolean = true,
+    /** Chapter URLs that have a folder or CBZ on disk. */
+    val downloaded: Set<String> = emptySet(),
+    /** Live status and progress of queued chapters, keyed by download key. */
+    val queue: Map<String, MangaDownloadInfo> = emptyMap(),
 )
 
 /**
@@ -66,6 +73,7 @@ class MangaDetailsViewModel(
         manager.catalogueSourceById(ref.sourceId) as? CatalogueSource
     private val loaded: LoadedSource? =
         manager.sources.value.firstOrNull { it.source.id == ref.sourceId }
+    private val downloadManager = MangaDownloadManager.get(app)
 
     // The instant state, so the header paints before any store is parsed.
     private val _state = MutableStateFlow(
@@ -83,7 +91,46 @@ class MangaDetailsViewModel(
             // parsing them on the UI thread is what made details open late.
             val initial = withContext(Dispatchers.IO) { initialState() }
             _state.update { initial }
+            refreshDownloaded()
             refresh(first = true)
+        }
+        viewModelScope.launch {
+            downloadManager.queueInfo.collect { info ->
+                _state.update { it.copy(queue = info) }
+            }
+        }
+        viewModelScope.launch {
+            MangaDownloadCache.changes.collect { refreshDownloaded() }
+        }
+    }
+
+    private suspend fun refreshDownloaded() {
+        val chapters = _state.value.chapters
+        if (chapters.isEmpty()) return
+        val urls = withContext(Dispatchers.IO) {
+            downloadManager.downloadedChapterUrls(_state.value.entry, chapters)
+        }
+        _state.update { it.copy(downloaded = urls) }
+    }
+
+    fun downloadChapters(chapters: List<MangaChapter>) {
+        if (chapters.isEmpty()) return
+        viewModelScope.launch { downloadManager.queueChapters(_state.value.entry, chapters) }
+    }
+
+    fun cancelDownloads(chapters: List<MangaChapter>) {
+        viewModelScope.launch { downloadManager.cancel(chapters) }
+    }
+
+    fun retryDownloads(chapters: List<MangaChapter>) {
+        viewModelScope.launch { downloadManager.retry(chapters) }
+    }
+
+    fun deleteDownloads(chapters: List<MangaChapter>) {
+        if (chapters.isEmpty()) return
+        viewModelScope.launch {
+            downloadManager.deleteChapters(_state.value.entry, chapters)
+            refreshDownloaded()
         }
     }
 
@@ -168,6 +215,7 @@ class MangaDetailsViewModel(
                     error = null,
                 )
             }
+            refreshDownloaded()
         } catch (e: CancellationException) {
             throw e
         } catch (e: Throwable) {
@@ -189,6 +237,8 @@ class MangaDetailsViewModel(
             _state.update {
                 it.copy(entry = entry, favorite = favorite)
             }
+            // The entry may now carry the source name the folder is named after.
+            refreshDownloaded()
         } catch (e: CancellationException) {
             throw e
         } catch (e: Throwable) {

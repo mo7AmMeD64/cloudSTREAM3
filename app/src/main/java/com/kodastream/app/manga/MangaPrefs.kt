@@ -45,6 +45,9 @@ object MangaPrefs {
     private const val KEY_READER_CACHE_MB = "reader_cache_mb"
     private const val KEY_CHECK_ON_OPEN = "check_updates_on_open"
     private const val KEY_MODE_PREFIX = "reader_mode_for_"
+    private const val KEY_DOWNLOAD_TREE = "manga_download_tree"
+    private const val KEY_DOWNLOAD_CBZ = "manga_download_cbz"
+    private const val KEY_DOWNLOAD_WIFI = "manga_download_wifi"
 
     const val ALL_LANGUAGES = "all"
     const val DEFAULT_CACHE_MB = 200
@@ -315,4 +318,37 @@ object MangaPrefs {
     fun setCheckUpdatesOnOpen(context: Context, value: Boolean) {
         prefs(context).edit { putBoolean(KEY_CHECK_ON_OPEN, value) }
     }
+
+    // ---------------------------------------------------------------- chapter downloads
+
+    /** The SAF tree the user picked; null means the app's own external folder. */
+    fun downloadTreeUri(context: Context): String? =
+        prefs(context).getString(KEY_DOWNLOAD_TREE, null)
+
+    fun setDownloadTreeUri(context: Context, uri: String?) {
+        prefs(context).edit {
+            if (uri == null) remove(KEY_DOWNLOAD_TREE) else putString(KEY_DOWNLOAD_TREE, uri)
+        }
+    }
+
+    /** Mihon's default: save a chapter as one CBZ archive instead of a folder of images. */
+    fun saveChaptersAsCBZ(context: Context): Boolean =
+        prefs(context).getBoolean(KEY_DOWNLOAD_CBZ, true)
+
+    fun setSaveChaptersAsCBZ(context: Context, value: Boolean) {
+        prefs(context).edit { putBoolean(KEY_DOWNLOAD_CBZ, value) }
+    }
+
+    fun downloadOnlyOverWifi(context: Context): Boolean =
+        prefs(context).getBoolean(KEY_DOWNLOAD_WIFI, false)
+
+    fun setDownloadOnlyOverWifi(context: Context, value: Boolean) {
+        prefs(context).edit { putBoolean(KEY_DOWNLOAD_WIFI, value) }
+    }
+
+    fun downloadParallelSources(context: Context): Int =
+        prefs(context).getInt("manga_download_parallel_sources", 5).coerceIn(1, 10)
+
+    fun downloadParallelPages(context: Context): Int =
+        prefs(context).getInt("manga_download_parallel_pages", 5).coerceIn(1, 10)
 }

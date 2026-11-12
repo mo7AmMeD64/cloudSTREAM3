@@ -1,5 +1,7 @@
 package com.kodastream.app.ui.settings
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Row
 import eu.kanade.tachiyomi.network.PREF_DOH_SHECAN
 import eu.kanade.tachiyomi.network.PREF_DOH_QUAD9
@@ -29,7 +31,9 @@ import androidx.compose.material.icons.rounded.AutoStories
 import androidx.compose.material.icons.rounded.Contrast
 import androidx.compose.material.icons.rounded.DeleteSweep
 import androidx.compose.material.icons.rounded.Dns
+import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.Extension
+import androidx.compose.material.icons.rounded.Folder
 import androidx.compose.material.icons.rounded.Restore
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Storage
@@ -56,6 +60,7 @@ import com.kodastream.app.manga.MangaPrefs
 import com.kodastream.app.manga.MangaReadingMode
 import com.kodastream.app.manga.TapInvert
 import com.kodastream.app.manga.TapZoneLayout
+import com.kodastream.app.manga.download.MangaDownloadStorage
 import com.kodastream.app.manga.store.MangaStoreRepository
 import com.kodastream.app.ui.manga.MangaLanguageDialog
 import com.kodastream.app.ui.manga.mangaLanguageSortKey
@@ -135,6 +140,7 @@ internal fun MangaSettingsPage(
     onBack: () -> Unit,
     onOpenMangaExtensions: () -> Unit,
     onOpenMangaStores: () -> Unit,
+    onOpenMangaDownloads: () -> Unit,
     onMangaSectionChanged: (Boolean) -> Unit,
 ) {
     val context = LocalContext.current
@@ -182,6 +188,32 @@ internal fun MangaSettingsPage(
     var dohDialog by remember { mutableStateOf(false) }
     var userAgent by remember { mutableStateOf(networkPrefs.defaultUserAgent) }
     var userAgentDialog by remember { mutableStateOf(false) }
+    var downloadLocation by remember {
+        mutableStateOf(MangaDownloadStorage.readableLocation(context))
+    }
+    var downloadUsesTree by remember { mutableStateOf(MangaPrefs.downloadTreeUri(context) != null) }
+    var downloadCbz by remember { mutableStateOf(MangaPrefs.saveChaptersAsCBZ(context)) }
+    var downloadWifiOnly by remember { mutableStateOf(MangaPrefs.downloadOnlyOverWifi(context)) }
+    val downloadTreePicker = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocumentTree(),
+    ) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        if (MangaDownloadStorage.adoptTree(context, uri)) {
+            downloadUsesTree = true
+            downloadLocation = MangaDownloadStorage.readableLocation(context)
+            Toast.makeText(
+                context,
+                R.string.settings_manga_download_location_updated,
+                Toast.LENGTH_SHORT,
+            ).show()
+        } else {
+            Toast.makeText(
+                context,
+                R.string.settings_manga_download_location_failed,
+                Toast.LENGTH_SHORT,
+            ).show()
+        }
+    }
     val directionShown = readerMode == MangaReadingMode.PAGED_RTL ||
         readerMode == MangaReadingMode.PAGED_LTR
 
@@ -341,6 +373,67 @@ internal fun MangaSettingsPage(
                         readerVolume = value
                         MangaPrefs.setReaderVolumeKeys(context, value)
                     },
+                )
+            }
+        }
+
+        item(key = "manga_downloads") {
+            val count = if (downloadUsesTree) 5 else 4
+            var row = -1
+            SettingsGroup(stringResource(R.string.settings_manga_group_downloads)) {
+                NavigationRow(
+                    index = ++row,
+                    count = count,
+                    icon = Icons.Rounded.Folder,
+                    title = stringResource(R.string.settings_manga_download_location),
+                    supporting = downloadLocation,
+                    onClick = { downloadTreePicker.launch(null) },
+                )
+                if (downloadUsesTree) {
+                    NavigationRow(
+                        index = ++row,
+                        count = count,
+                        icon = Icons.Rounded.Restore,
+                        title = stringResource(R.string.settings_manga_download_location_reset),
+                        supporting = stringResource(R.string.settings_manga_download_location_default_summary),
+                        onClick = {
+                            MangaDownloadStorage.resetToDefault(context)
+                            downloadUsesTree = false
+                            downloadLocation = MangaDownloadStorage.readableLocation(context)
+                        },
+                    )
+                }
+                SwitchRow(
+                    index = ++row,
+                    count = count,
+                    icon = Icons.Rounded.Storage,
+                    title = stringResource(R.string.settings_manga_download_cbz),
+                    supporting = stringResource(R.string.settings_manga_download_cbz_summary),
+                    checked = downloadCbz,
+                    onCheckedChange = { value ->
+                        downloadCbz = value
+                        MangaPrefs.setSaveChaptersAsCBZ(context, value)
+                    },
+                )
+                SwitchRow(
+                    index = ++row,
+                    count = count,
+                    icon = Icons.Rounded.Download,
+                    title = stringResource(R.string.settings_manga_download_wifi),
+                    supporting = stringResource(R.string.settings_manga_download_wifi_summary),
+                    checked = downloadWifiOnly,
+                    onCheckedChange = { value ->
+                        downloadWifiOnly = value
+                        MangaPrefs.setDownloadOnlyOverWifi(context, value)
+                    },
+                )
+                NavigationRow(
+                    index = ++row,
+                    count = count,
+                    icon = Icons.Rounded.Download,
+                    title = stringResource(R.string.settings_manga_download_queue),
+                    supporting = stringResource(R.string.settings_manga_download_queue_summary),
+                    onClick = onOpenMangaDownloads,
                 )
             }
         }
