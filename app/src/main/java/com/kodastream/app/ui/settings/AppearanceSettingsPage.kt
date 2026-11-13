@@ -2,6 +2,7 @@ package com.kodastream.app.ui.settings
 
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.AppShortcut
 import androidx.compose.material.icons.rounded.AspectRatio
 import androidx.compose.material.icons.rounded.Contrast
 import androidx.compose.material.icons.rounded.DarkMode
@@ -34,6 +35,7 @@ import kotlin.math.roundToInt
 internal fun AppearanceSettingsPage(
     themeViewModel: ThemeViewModel,
     onOpenColors: () -> Unit,
+    onOpenAppIcon: () -> Unit,
     onBack: () -> Unit,
 ) {
     val context = LocalContext.current
@@ -258,6 +260,19 @@ internal fun AppearanceSettingsPage(
                             ?: stringResource(R.string.dynamic_from_wallpaper)
                     },
                     onClick = onOpenColors,
+                )
+            }
+        }
+
+        item(key = "app_icon") {
+            SettingsGroup(stringResource(R.string.settings_group_launcher)) {
+                NavigationRow(
+                    index = 0,
+                    count = 1,
+                    icon = Icons.Rounded.AppShortcut,
+                    title = stringResource(R.string.settings_app_icon),
+                    supporting = stringResource(R.string.settings_app_icon_summary),
+                    onClick = onOpenAppIcon,
                 )
             }
         }

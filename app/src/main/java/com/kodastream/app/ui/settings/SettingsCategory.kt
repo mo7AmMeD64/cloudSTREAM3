@@ -29,6 +29,9 @@ enum class SettingsCategory(val id: String) {
         /** The full-screen palette picker, pushed above the Appearance category. */
         const val COLORS_ROUTE = "settings_colors"
 
+        /** The full-screen launcher icon picker, pushed above the Appearance category. */
+        const val APP_ICON_ROUTE = "settings_app_icon"
+
         fun fromId(id: String?): SettingsCategory? = entries.firstOrNull { it.id == id }
 
         fun route(category: SettingsCategory): String = "settings_page/${category.id}"

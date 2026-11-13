@@ -30,4 +30,9 @@ class AppPrefsTest {
     fun hidePosterTitlesKeyConstant() {
         assertEquals("hide_poster_titles", AppPrefs.KEY_HIDE_POSTER_TITLES)
     }
+
+    @Test
+    fun appIconKeyConstant() {
+        assertEquals("app_icon", AppPrefs.KEY_APP_ICON)
+    }
 }

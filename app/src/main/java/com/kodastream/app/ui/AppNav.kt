@@ -143,6 +143,7 @@ import com.kodastream.app.ui.manga.MangaStoresScreen
 import com.kodastream.app.ui.manga.SourcePreferencesScreen
 import com.kodastream.app.ui.player.PlayerActivity
 import com.kodastream.app.ui.search.SearchScreen
+import com.kodastream.app.ui.settings.AppIconScreen
 import com.kodastream.app.ui.settings.SettingsCategory
 import com.kodastream.app.ui.settings.SettingsCategoryScreen
 import com.kodastream.app.ui.settings.SettingsScreen
@@ -767,6 +768,7 @@ private fun NavGraphBuilder.settingsCategoryRoute(
                 themeViewModel = themeViewModel,
                 onBack = { navController.popBackStack() },
                 onOpenColors = { navController.navigate(SettingsCategory.COLORS_ROUTE) },
+                onOpenAppIcon = { navController.navigate(SettingsCategory.APP_ICON_ROUTE) },
                 onOpenMangaExtensions = onOpenMangaExtensions,
                 onOpenMangaStores = onOpenMangaStores,
                 onOpenMangaDownloads = onOpenMangaDownloads,
@@ -789,6 +791,9 @@ private fun NavGraphBuilder.settingsCategoryRoute(
             onPaletteStyleSelected = themeViewModel::updateStyle,
             amoledDark = themeViewModel.amoled,
         )
+    }
+    composable(SettingsCategory.APP_ICON_ROUTE) {
+        AppIconScreen(onBack = { navController.popBackStack() })
     }
 }
 

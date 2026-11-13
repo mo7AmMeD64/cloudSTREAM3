@@ -95,6 +95,7 @@ fun SettingsCategoryScreen(
     themeViewModel: ThemeViewModel,
     onBack: () -> Unit,
     onOpenColors: () -> Unit,
+    onOpenAppIcon: () -> Unit,
     onOpenMangaExtensions: () -> Unit,
     onOpenMangaStores: () -> Unit,
     onOpenMangaDownloads: () -> Unit,
@@ -104,6 +105,7 @@ fun SettingsCategoryScreen(
         SettingsCategory.APPEARANCE -> AppearanceSettingsPage(
             themeViewModel = themeViewModel,
             onOpenColors = onOpenColors,
+            onOpenAppIcon = onOpenAppIcon,
             onBack = onBack,
         )
         SettingsCategory.PLAYER -> PlayerSettingsPage(onBack = onBack)

@@ -121,6 +121,13 @@
     <string name="settings_hide_status_bar_summary">Use the full screen height. Swipe from the top edge to reveal it.</string>
     <string name="settings_hide_titles">Hide titles</string>
     <string name="settings_hide_titles_summary">Hide movie and TV show names below posters.</string>
+    <string name="settings_group_launcher">Home screen</string>
+    <string name="settings_app_icon">App icon</string>
+    <string name="settings_app_icon_summary">Choose the icon shown on your home screen.</string>
+    <string name="app_icon_default">Default</string>
+    <string name="app_icon_number">Icon %1$s</string>
+    <string name="app_icon_hint">Pick an icon. Your launcher may take a moment to show the change.</string>
+    <string name="app_icon_updated">App icon updated</string>
     <string name="settings_version">Version %1$s</string>
     <string name="settings_privacy_history">Privacy and history</string>
     <string name="settings_colors">Colors</string>

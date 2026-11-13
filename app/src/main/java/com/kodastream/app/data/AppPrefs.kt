@@ -151,6 +151,23 @@ object AppPrefs {
         prefs(context).edit { putBoolean(KEY_HIDE_POSTER_TITLES, value) }
     }
 
+    internal const val KEY_APP_ICON = "app_icon"
+
+    private val _appIcon = MutableStateFlow<String?>(null)
+
+    /** The launcher icon id, as a flow so the picker's tick follows the change. */
+    val appIcon: StateFlow<String?> = _appIcon.asStateFlow()
+
+    fun appIcon(context: Context): String =
+        _appIcon.value
+            ?: prefs(context).getString(KEY_APP_ICON, null)?.also { _appIcon.value = it }
+            ?: AppIcons.DEFAULT
+
+    fun setAppIcon(context: Context, value: String) {
+        _appIcon.value = value
+        prefs(context).edit { putString(KEY_APP_ICON, value) }
+    }
+
     /** The navigation UI style: "material" (default) or "glass". */
     fun uiStyle(context: Context): String =
         _uiStyle.value

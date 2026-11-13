@@ -1,6 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="ic_launcher_background">#FFFA0484</color>
+    <color name="ic_launcher_bg_1">#FFBB0001</color>
+    <color name="ic_launcher_bg_2">#FFAC0014</color>
+    <color name="ic_launcher_bg_3">#FFB60201</color>
+    <color name="ic_launcher_bg_4">#FFCE1127</color>
+    <color name="ic_launcher_bg_5">#FFBC0070</color>
 
     <!-- ==== CloudStream original palette (ported player UI) ==== -->
 
