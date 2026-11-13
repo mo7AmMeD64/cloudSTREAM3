@@ -18,6 +18,7 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -87,14 +88,10 @@ import kotlin.math.sin
 import kotlin.math.sqrt
 
 /**
- * NuvioMobile's own bar colours, not Material roles, so the style matches
- * Nuvio's default WHITE theme exactly: #1C1C1E glass, white accent, muted
- * #969CA3 labels. The fallback surface is Nuvio's non-haze one (0.82 alpha)
- * plus its 0.75dp white edge.
+ * Nuvio's geometry, physics and typography, painted with the active palette's
+ * roles: Nuvio's hardcoded glass (#1C1C1E / #F5F5F5) would stay the same in
+ * every palette, so the bar would never follow a theme change.
  */
-private val NuvioBarSurface = Color(0xFF1C1C1E)
-private val NuvioBarAccent = Color(0xFFF5F5F5)
-private val NuvioBarMuted = Color(0xFF969CA3)
 private val NuvioBarFont = FontFamily(
     Font(R.font.jetbrains_sans_regular, FontWeight.Normal),
     Font(R.font.jetbrains_sans_bold, FontWeight.Bold),
@@ -131,8 +128,10 @@ internal fun NuvioNavBar(
             iconRes = destination.nuvioIconRes,
         )
     }
-    val accent = NuvioBarAccent
-    val muted = NuvioBarMuted
+    val accent = MaterialTheme.colorScheme.primary
+    val muted = MaterialTheme.colorScheme.onSurfaceVariant
+    val surface = MaterialTheme.colorScheme.surfaceContainerHigh
+    val edge = MaterialTheme.colorScheme.onSurface
     val labelFraction by animateFloatAsState(
         targetValue = scrollState.labelVisibility,
         animationSpec = tween(300, easing = FastOutSlowInEasing),
@@ -225,18 +224,18 @@ internal fun NuvioNavBar(
                                 Modifier
                                     .matchParentSize()
                                     .drawWithCache {
-                                        val fill = NuvioBarSurface.copy(alpha = 0.82f)
-                                        val edge = Brush.verticalGradient(
+                                        val fill = surface.copy(alpha = 0.82f)
+                                        val edgeBrush = Brush.verticalGradient(
                                             listOf(
-                                                Color.White.copy(alpha = 0.27f),
-                                                Color.White.copy(alpha = 0.02f),
+                                                edge.copy(alpha = 0.27f),
+                                                edge.copy(alpha = 0.02f),
                                             )
                                         )
                                         val width = 0.75.dp.toPx()
                                         onDrawBehind {
                                             drawRect(fill)
                                             drawRoundRect(
-                                                brush = edge,
+                                                brush = edgeBrush,
                                                 topLeft = Offset(width / 2, width / 2),
                                                 size = Size(size.width - width, size.height - width),
                                                 cornerRadius = CornerRadius((size.height - width) / 2),
