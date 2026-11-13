@@ -25,4 +25,9 @@ class AppPrefsTest {
         assertEquals("material", AppPrefs.UI_STYLE_MATERIAL)
         assertEquals("glass", AppPrefs.UI_STYLE_GLASS)
     }
+
+    @Test
+    fun hidePosterTitlesKeyConstant() {
+        assertEquals("hide_poster_titles", AppPrefs.KEY_HIDE_POSTER_TITLES)
+    }
 }

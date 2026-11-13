@@ -41,6 +41,7 @@ import androidx.compose.material3.TooltipBox
 import androidx.compose.material3.TooltipDefaults
 import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -69,6 +70,7 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.kodastream.app.R
+import com.kodastream.app.data.AppPrefs
 import com.lagradost.cloudstream3.SearchResponse
 import kotlinx.coroutines.launch
 
@@ -129,6 +131,20 @@ private fun PosterPlaceholder() {
     )
 }
 
+/**
+ * The Appearance "Hide titles" switch, as state so grids update the moment it
+ * flips. The title leaves the card rather than being blanked, so the card and
+ * its grid cell shrink with it instead of keeping an empty strip.
+ */
+@Composable
+fun rememberHidePosterTitles(): Boolean {
+    val context = LocalContext.current
+    val hidden by AppPrefs.hidePosterTitles.collectAsState(
+        initial = AppPrefs.hidePosterTitles(context),
+    )
+    return hidden == true
+}
+
 /** A poster with its title underneath, the basic unit of every list in the app. */
 @Composable
 fun PosterCard(
@@ -175,6 +191,7 @@ fun PosterCard(
     selectionMode: Boolean = false,
 ) {
     val ratio = if (horizontal) 16f / 9f else 2f / 3f
+    val hideTitle = rememberHidePosterTitles()
     val interactionSource = remember { MutableInteractionSource() }
     val pressed by interactionSource.collectIsPressedAsState()
     val scale by animateFloatAsState(
@@ -195,6 +212,15 @@ fun PosterCard(
             .then(
                 if (selectionMode) {
                     Modifier.semantics { this.selected = selected }
+                } else {
+                    Modifier
+                }
+            )
+            // The title carries the card's name for TalkBack; when it is
+            // hidden, the card itself keeps announcing the title.
+            .then(
+                if (hideTitle) {
+                    Modifier.semantics { contentDescription = name }
                 } else {
                     Modifier
                 }
@@ -291,10 +317,12 @@ fun PosterCard(
                         }
                     }
                 }
-                PosterTitle(
-                    text = name,
-                    onTruncatedChange = { truncated = it },
-                )
+                if (!hideTitle) {
+                    PosterTitle(
+                        text = name,
+                        onTruncatedChange = { truncated = it },
+                    )
+                }
             }
         }
     }

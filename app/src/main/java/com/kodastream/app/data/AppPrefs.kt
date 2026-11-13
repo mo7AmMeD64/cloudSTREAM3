@@ -18,6 +18,7 @@ object AppPrefs {
     private const val KEY_NAV_POSITION = "nav_position"
     private const val KEY_NAV_BAR_STYLE = "nav_bar_style"
     private const val KEY_HIDE_STATUS_BAR = "hide_status_bar"
+    internal const val KEY_HIDE_POSTER_TITLES = "hide_poster_titles"
     private const val KEY_NAV_BAR_ICON_SIZE = "nav_bar_icon_size"
     private const val KEY_NAV_BAR_WIDTH = "nav_bar_width"
     private const val KEY_NAV_BAR_HEIGHT = "nav_bar_height"
@@ -133,6 +134,21 @@ object AppPrefs {
     fun setHideStatusBar(context: Context, value: Boolean) {
         _hideStatusBar.value = value
         prefs(context).edit { putBoolean(KEY_HIDE_STATUS_BAR, value) }
+    }
+
+    private val _hidePosterTitles = MutableStateFlow<Boolean?>(null)
+
+    /** Hiding the movie and TV titles under posters, as a flow so grids update at once. */
+    val hidePosterTitles: StateFlow<Boolean?> = _hidePosterTitles.asStateFlow()
+
+    fun hidePosterTitles(context: Context): Boolean =
+        _hidePosterTitles.value
+            ?: prefs(context).getBoolean(KEY_HIDE_POSTER_TITLES, false)
+                .also { _hidePosterTitles.value = it }
+
+    fun setHidePosterTitles(context: Context, value: Boolean) {
+        _hidePosterTitles.value = value
+        prefs(context).edit { putBoolean(KEY_HIDE_POSTER_TITLES, value) }
     }
 
     /** The navigation UI style: "material" (default) or "glass". */

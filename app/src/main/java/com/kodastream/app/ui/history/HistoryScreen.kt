@@ -58,6 +58,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.kodastream.app.R
 import com.kodastream.app.data.AppPrefs
@@ -77,6 +78,7 @@ import com.kodastream.app.ui.components.bouncySpring
 import com.kodastream.app.ui.components.episodeBadge
 import com.kodastream.app.ui.components.episodeBadgeDescription
 import com.kodastream.app.ui.components.episodeBadgeLabel
+import com.kodastream.app.ui.components.rememberHidePosterTitles
 import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.LocalDate
@@ -317,6 +319,7 @@ private fun HistoryCard(
         label = "historyPress",
     )
     val badge = episodeBadge(entry.season, entry.episode)
+    val hideTitle = rememberHidePosterTitles()
 
     Surface(
         modifier = Modifier
@@ -325,6 +328,13 @@ private fun HistoryCard(
                 scaleX = scale
                 scaleY = scale
             }
+            .then(
+                if (hideTitle) {
+                    Modifier.semantics { contentDescription = entry.title }
+                } else {
+                    Modifier
+                }
+            )
             .combinedClickable(
                 interactionSource = interactionSource,
                 indication = null,
@@ -414,7 +424,9 @@ private fun HistoryCard(
                     )
                 }
             }
-            PosterTitle(text = entry.title)
+            if (!hideTitle) {
+                PosterTitle(text = entry.title)
+            }
         }
     }
 }
