@@ -94,6 +94,7 @@ fun SettingsCategoryScreen(
     category: SettingsCategory,
     themeViewModel: ThemeViewModel,
     onBack: () -> Unit,
+    onOpenColors: () -> Unit,
     onOpenMangaExtensions: () -> Unit,
     onOpenMangaStores: () -> Unit,
     onOpenMangaDownloads: () -> Unit,
@@ -102,6 +103,7 @@ fun SettingsCategoryScreen(
     when (category) {
         SettingsCategory.APPEARANCE -> AppearanceSettingsPage(
             themeViewModel = themeViewModel,
+            onOpenColors = onOpenColors,
             onBack = onBack,
         )
         SettingsCategory.PLAYER -> PlayerSettingsPage(onBack = onBack)

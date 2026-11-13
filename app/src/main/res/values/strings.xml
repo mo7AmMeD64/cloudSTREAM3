@@ -122,6 +122,12 @@
     <string name="settings_version">Version %1$s</string>
     <string name="settings_privacy_history">Privacy and history</string>
     <string name="settings_colors">Colors</string>
+    <string name="color_palette">Color palette</string>
+    <string name="dynamic_from_wallpaper">Dynamic (from wallpaper)</string>
+    <string name="selected">Selected</string>
+    <string name="palette_style_title">Palette style</string>
+    <string name="palette_style_description">Choose how colorful your theme feels. Previews update as you explore.</string>
+    <string name="palette_style_presets_hint">Styles apply to preset palettes. Wallpaper follows your system colors; Black and White keep their own look.</string>
     <string name="palette_wallpaper">Wallpaper</string>
     <string name="settings_wallpaper_colors">Use wallpaper colors</string>
     <string name="settings_wallpaper_colors_summary">Take the colors from your wallpaper (Android 12 and later).</string>

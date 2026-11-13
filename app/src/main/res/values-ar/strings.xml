@@ -119,6 +119,12 @@
     <string name="settings_version">الإصدار %1$s</string>
     <string name="settings_privacy_history">الخصوصية والسجل</string>
     <string name="settings_colors">الألوان</string>
+    <string name="color_palette">لوحة الألوان</string>
+    <string name="dynamic_from_wallpaper">ديناميكي (من الخلفية)</string>
+    <string name="selected">محدد</string>
+    <string name="palette_style_title">نمط اللوحة</string>
+    <string name="palette_style_description">اختر مدى حيوية ألوان مظهرك. تتحدّث المعاينات أثناء التصفح.</string>
+    <string name="palette_style_presets_hint">تنطبق الأنماط على اللوحات الجاهزة. تتبع الخلفية ألوان نظامك؛ ويحتفظ الأسود والأبيض بمظهرهما الخاص.</string>
     <string name="palette_wallpaper">ألوان الخلفية</string>
     <string name="settings_wallpaper_colors">استخدام ألوان الخلفية</string>
     <string name="settings_wallpaper_colors_summary">خذ الألوان من خلفية جهازك (أندرويد 12 وما بعده).</string>

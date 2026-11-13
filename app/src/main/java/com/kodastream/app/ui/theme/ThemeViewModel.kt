@@ -35,26 +35,8 @@ class ThemeViewModel(application: Application) : AndroidViewModel(application) {
 
     fun updatePalette(id: String) {
         palette = id
-        prefs.edit {
-            putString(KEY_PALETTE, id)
-            // Remembered so the wallpaper switch can return to the last seed.
-            if (id != DYNAMIC_PALETTE_ID) putString(KEY_LAST_SEED, id)
-        }
+        prefs.edit { putString(KEY_PALETTE, id) }
     }
-
-    /** The wallpaper switch: on uses dynamic color, off returns to the last seed. */
-    fun setWallpaperColors(enabled: Boolean) {
-        if (enabled && palette != DYNAMIC_PALETTE_ID) {
-            // Keep the seed that was on screen before the switch.
-            prefs.edit { putString(KEY_LAST_SEED, palette) }
-        }
-        updatePalette(if (enabled) DYNAMIC_PALETTE_ID else lastSeedPalette)
-    }
-
-    private val lastSeedPalette: String
-        get() = prefs.getString(KEY_LAST_SEED, null)
-            ?.takeIf { it != DYNAMIC_PALETTE_ID && findPalette(it) != null }
-            ?: APP_PALETTES.first().id
 
     fun updateAmoled(value: Boolean) {
         amoled = value
@@ -70,7 +52,6 @@ class ThemeViewModel(application: Application) : AndroidViewModel(application) {
         private const val PREFS = "kodastream_theme"
         private const val KEY_MODE = "mode"
         private const val KEY_PALETTE = "palette"
-        private const val KEY_LAST_SEED = "last_seed_palette"
         private const val KEY_AMOLED = "amoled"
         private const val KEY_STYLE = "style"
 

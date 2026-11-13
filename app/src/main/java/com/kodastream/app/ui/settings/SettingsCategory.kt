@@ -26,6 +26,9 @@ enum class SettingsCategory(val id: String) {
         /** Route pattern for a category page, registered in both navigation graphs. */
         const val ROUTE = "settings_page/{$ARG_ID}"
 
+        /** The full-screen palette picker, pushed above the Appearance category. */
+        const val COLORS_ROUTE = "settings_colors"
+
         fun fromId(id: String?): SettingsCategory? = entries.firstOrNull { it.id == id }
 
         fun route(category: SettingsCategory): String = "settings_page/${category.id}"

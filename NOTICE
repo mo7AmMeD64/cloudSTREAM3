@@ -1,3 +1,26 @@
+KodaStream includes code ported from Koda
+(https://github.com/Ivorisnoob/Koda), licensed under the GNU General Public
+License v3.0.
+
+Copied files and their new locations:
+
+- app/src/main/java/com/ivor/ivormusic/ui/theme/ColorPaletteScreen.kt
+  -> app/src/main/java/com/kodastream/app/ui/theme/ColorPaletteScreen.kt
+- app/src/main/java/com/ivor/ivormusic/ui/theme/Theme.kt
+  -> app/src/main/java/com/kodastream/app/ui/theme/Theme.kt
+- app/src/main/java/com/ivor/ivormusic/ui/theme/ColorPalettes.kt
+  -> app/src/main/java/com/kodastream/app/ui/theme/ColorPalettes.kt
+- app/src/main/java/com/ivor/ivormusic/ui/theme/PaletteStyle.kt
+  -> app/src/main/java/com/kodastream/app/ui/theme/PaletteStyle.kt
+- app/src/main/java/com/ivor/ivormusic/ui/theme/ThemeMode.kt
+  -> app/src/main/java/com/kodastream/app/ui/theme/ThemeMode.kt
+- app/src/main/java/com/ivor/ivormusic/ui/theme/ThemeViewModel.kt
+  -> app/src/main/java/com/kodastream/app/ui/theme/ThemeViewModel.kt
+
+Adaptations for KodaStream: package and import changes; song artwork theming
+and the Glance widget resolver are not used; the palette picker stores its
+selection through ThemeViewModel instead of Koda's preference flows.
+
 KodaStream includes code ported from Nuvio
 (https://github.com/NuvioMedia/NuvioMobile), licensed under the GNU General
 Public License v3.0.

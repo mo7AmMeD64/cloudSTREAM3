@@ -17,6 +17,7 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.border
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.FloatingToolbarDefaults
 import androidx.compose.ui.draw.shadow
 import androidx.compose.foundation.layout.Arrangement
@@ -147,6 +148,8 @@ import com.kodastream.app.ui.settings.SettingsCategoryScreen
 import com.kodastream.app.ui.settings.SettingsScreen
 import com.kodastream.app.ui.sources.SourceSheet
 import com.kodastream.app.ui.sources.SourceViewModel
+import com.kodastream.app.ui.theme.ColorPaletteScreen
+import com.kodastream.app.ui.theme.ThemeMode
 import com.kodastream.app.ui.theme.ThemeViewModel
 import com.lagradost.cloudstream3.SearchResponse
 
@@ -763,12 +766,29 @@ private fun NavGraphBuilder.settingsCategoryRoute(
                 category = category,
                 themeViewModel = themeViewModel,
                 onBack = { navController.popBackStack() },
+                onOpenColors = { navController.navigate(SettingsCategory.COLORS_ROUTE) },
                 onOpenMangaExtensions = onOpenMangaExtensions,
                 onOpenMangaStores = onOpenMangaStores,
                 onOpenMangaDownloads = onOpenMangaDownloads,
                 onMangaSectionChanged = onMangaSectionChanged,
             )
         }
+    }
+    composable(SettingsCategory.COLORS_ROUTE) {
+        val dark = when (themeViewModel.mode) {
+            ThemeMode.SYSTEM -> isSystemInDarkTheme()
+            ThemeMode.LIGHT -> false
+            ThemeMode.DARK -> true
+        }
+        ColorPaletteScreen(
+            currentPalette = themeViewModel.palette,
+            onPaletteSelected = themeViewModel::updatePalette,
+            isDarkMode = dark,
+            onBack = { navController.popBackStack() },
+            paletteStyle = themeViewModel.style,
+            onPaletteStyleSelected = themeViewModel::updateStyle,
+            amoledDark = themeViewModel.amoled,
+        )
     }
 }
 
