@@ -3,7 +3,6 @@ package com.kodastream.app.ui.theme
 import android.app.Application
 import android.content.Context
 import androidx.appcompat.app.AppCompatDelegate
-import androidx.compose.material3.ColorScheme
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -65,22 +64,6 @@ class ThemeViewModel(application: Application) : AndroidViewModel(application) {
                 .getString(KEY_MODE, null)
             val mode = ThemeMode.entries.firstOrNull { it.name == saved } ?: ThemeMode.DARK
             AppCompatDelegate.setDefaultNightMode(mode.nightMode)
-        }
-
-        /**
-         * The player's View chrome cannot read a CompositionLocal, so it asks
-         * for the same dark scheme the Compose UI would build from the palette.
-         */
-        fun playerColorScheme(context: Context): ColorScheme {
-            val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            return kodaColorScheme(
-                context = context,
-                darkTheme = true,
-                colorPalette = prefs.getString(KEY_PALETTE, DYNAMIC_PALETTE_ID)
-                    ?: DYNAMIC_PALETTE_ID,
-                amoledDark = prefs.getBoolean(KEY_AMOLED, false),
-                paletteStyle = PaletteStyle.fromStorageId(prefs.getString(KEY_STYLE, null)),
-            )
         }
     }
 }

@@ -42,7 +42,6 @@ import com.kodastream.app.ui.details.castToWebVideoCaster
 import com.kodastream.app.ui.player.openInExternalPlayer
 import com.kodastream.app.ui.player.OnlineSubtitle
 import com.kodastream.app.ui.player.OnlineSubtitlesHelper
-import com.kodastream.app.ui.player.PlayerAccent
 import com.lagradost.cloudstream3.CommonActivity
 import com.lagradost.cloudstream3.SubtitleFile
 import com.lagradost.cloudstream3.newSubtitleFile
@@ -517,7 +516,6 @@ class GeneratorPlayer : FullScreenPlayer() {
                 val sourceDialog = Dialog(ctx, R.style.DialogFullscreenPlayer)
                 val binding =
                     PlayerSelectSourceAndSubsBinding.inflate(LayoutInflater.from(ctx), null, false)
-                PlayerAccent.fill(binding.applyBtt)
                 sourceDialog.setContentView(binding.root)
 
                 fixSystemBarsPadding(binding.root)
@@ -831,7 +829,6 @@ class GeneratorPlayer : FullScreenPlayer() {
                 val currentAudioTracks = tracks.allAudioTracks
                 val binding: PlayerSelectTracksBinding =
                     PlayerSelectTracksBinding.inflate(LayoutInflater.from(ctx), null, false)
-                PlayerAccent.fill(binding.applyBtt)
                 val trackDialog = Dialog(ctx, R.style.DialogFullscreenPlayer)
                 this.selectTrackDialog = trackDialog
                 trackDialog.setContentView(binding.root)
@@ -995,7 +992,6 @@ class GeneratorPlayer : FullScreenPlayer() {
 
         val progressBar = ProgressBar(act).apply {
             isIndeterminate = true
-            indeterminateTintList = ColorStateList.valueOf(PlayerAccent.color)
             setPadding(0, 24.toPx, 0, 24.toPx)
         }
         rootLayout.addView(progressBar)
@@ -1004,8 +1000,6 @@ class GeneratorPlayer : FullScreenPlayer() {
         val listView = ListView(act).apply {
             visibility = View.GONE
             dividerHeight = 1.toPx
-            setBackgroundResource(R.drawable.bg_player_list_surface)
-            clipToOutline = true
             layoutParams = LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 maxListHeight
@@ -1019,8 +1013,6 @@ class GeneratorPlayer : FullScreenPlayer() {
             activity?.hideSystemUI()
         }
         dialog.show()
-        dialog.findViewById<View>(com.google.android.material.R.id.design_bottom_sheet)
-            ?.setBackgroundResource(R.drawable.bg_player_sheet_bottom)
 
         val meta = getMetaData()
         val response = loadResponse ?: viewModel.state.generatorState?.response

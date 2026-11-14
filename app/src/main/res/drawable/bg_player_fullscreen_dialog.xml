@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!-- Fullscreen player dialogs (source, tracks, subtitle offset) sit on this. -->
-<shape xmlns:android="http://schemas.android.com/apk/res/android"
-    android:shape="rectangle">
-    <gradient
-        android:angle="270"
-        android:endColor="#FF050508"
-        android:startColor="#FF121219" />
-</shape>

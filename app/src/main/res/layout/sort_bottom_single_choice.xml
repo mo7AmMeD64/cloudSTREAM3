@@ -17,12 +17,4 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@android:id/text1"
     style="@style/CheckLabel"
-    android:minHeight="52dp"
-    android:paddingStart="16dp"
-    android:paddingEnd="16dp"
-    android:letterSpacing="0.01"
-    android:maxLines="2"
-    android:ellipsize="end"
-    android:textSize="15sp"
-    android:textStyle="normal"
     tools:text="hello" />

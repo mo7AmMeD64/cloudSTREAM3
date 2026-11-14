@@ -133,12 +133,4 @@
     <color name="colorTestFail">#ea596e</color>
     <color name="colorTestWarning">#FF9800</color>
     <color name="playIconBackground">#B3000000</color>
-
-    <!-- ==== Player chrome (always dark; accent comes from the active palette at runtime) ==== -->
-    <color name="player_text_secondary">#CCFFFFFF</color>
-    <color name="player_control_surface">#1FFFFFFF</color>
-    <color name="player_control_outline">#2EFFFFFF</color>
-    <color name="player_play_icon">#FF0B0B0F</color>
-    <color name="player_surface">#FF16161C</color>
-    <color name="player_surface_raised">#FF1E1E26</color>
 </resources>

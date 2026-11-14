@@ -18,24 +18,20 @@
             android:id="@+id/sort_sources_holder"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginStart="12dp"
-            android:layout_marginEnd="6dp"
             android:layout_weight="50"
             android:orientation="vertical">
 
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="16dp"
-                android:fontFamily="sans-serif-medium"
-                android:letterSpacing="0.01"
-                android:paddingStart="20dp"
-                android:paddingTop="8dp"
-                android:paddingEnd="20dp"
-                android:paddingBottom="12dp"
+                android:layout_marginTop="10dp"
+                android:paddingStart="?android:attr/listPreferredItemPaddingStart"
+                android:paddingTop="10dp"
+                android:paddingEnd="?android:attr/listPreferredItemPaddingEnd"
+                android:paddingBottom="10dp"
                 android:text="@string/pick_source"
                 android:textColor="?attr/textColor"
-                android:textSize="22sp"
+                android:textSize="20sp"
                 android:textStyle="bold" />
 
             <ListView
@@ -43,12 +39,10 @@
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
                 android:layout_rowWeight="1"
-                android:background="@drawable/bg_player_list_surface"
-                android:clipToOutline="true"
+                android:background="?attr/primaryBlackBackground"
                 android:listSelector="@drawable/outline_drawable_forced"
                 android:nextFocusRight="@id/sort_subtitles"
                 android:nextFocusDown="@id/apply_btt"
-                android:padding="6dp"
                 android:requiresFadingEdge="vertical"
                 tools:layout_height="100dp"
                 tools:listitem="@layout/sort_bottom_single_choice" />
@@ -58,8 +52,6 @@
             android:id="@+id/sort_subtitles_holder"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginStart="6dp"
-            android:layout_marginEnd="12dp"
             android:layout_weight="50"
             android:orientation="vertical">
 
@@ -74,7 +66,7 @@
                 <RelativeLayout
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
-                    android:layout_marginTop="16dp"
+                    android:layout_marginTop="10dp"
                     android:orientation="horizontal">
 
                     <TextView
@@ -82,15 +74,12 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_alignParentStart="true"
-                        android:fontFamily="sans-serif-medium"
-                        android:letterSpacing="0.01"
-                        android:paddingTop="8dp"
-                        android:paddingBottom="12dp"
-                        android:paddingStart="20dp"
-                        android:paddingEnd="20dp"
+                        android:paddingVertical="10dp"
+                        android:paddingStart="?android:attr/listPreferredItemPaddingStart"
+                        android:paddingEnd="?android:attr/listPreferredItemPaddingEnd"
                         android:text="@string/pick_subtitle"
                         android:textColor="?attr/textColor"
-                        android:textSize="22sp"
+                        android:textSize="20sp"
                         android:textStyle="bold" />
 
                     <TextView
@@ -101,28 +90,28 @@
                         android:layout_gravity="center"
                         android:layout_toStartOf="@+id/subtitle_settings_btt"
                         android:layout_toEndOf="@id/subtitles_text"
-                        android:background="@drawable/bg_player_input"
                         android:focusable="true"
+                        android:foreground="@drawable/outline_drawable_forced"
                         android:gravity="start"
                         android:maxLines="1"
-                        android:paddingHorizontal="12dp"
-                        android:paddingVertical="8dp"
+                        android:paddingHorizontal="10dp"
+                        android:paddingVertical="10dp"
                         android:textColor="?attr/textColor"
-                        android:textSize="14sp"
+                        android:textSize="15sp"
                         tools:text="Thai (TIS 620-2533/ISO 8859-11)" />
 
                     <ImageView
                         android:id="@+id/subtitle_settings_btt"
-                        android:layout_width="48dp"
-                        android:layout_height="48dp"
+                        android:layout_width="wrap_content"
+                        android:layout_height="44dp"
                         android:layout_alignParentEnd="true"
                         android:layout_centerVertical="true"
                         android:layout_gravity="center"
-                        android:background="@drawable/bg_player_circle_button"
                         android:contentDescription="@string/subtitles_settings"
-                        android:padding="12dp"
-                        android:src="@drawable/ic_outline_settings_24"
-                        app:tint="@android:color/white" />
+                        android:foreground="@drawable/outline_drawable_forced"
+                        android:paddingHorizontal="10dp"
+                        android:paddingVertical="10dp"
+                        android:src="@drawable/ic_outline_settings_24" />
                 </RelativeLayout>
 
                 <ImageView
@@ -148,9 +137,7 @@
                     android:layout_height="match_parent"
                     android:layout_rowWeight="1"
                     android:layout_weight="1"
-                    android:background="@drawable/bg_player_list_surface"
-                    android:clipToOutline="true"
-                    android:padding="6dp"
+                    android:background="?attr/primaryBlackBackground"
                     android:listSelector="@drawable/outline_drawable_forced"
                     android:nextFocusLeft="@id/sort_providers"
                     android:nextFocusRight="@id/sort_subtitles_options"
@@ -167,9 +154,7 @@
                     android:layout_height="match_parent"
                     android:layout_rowWeight="1"
                     android:layout_weight="1"
-                    android:background="@drawable/bg_player_list_surface"
-                    android:clipToOutline="true"
-                    android:padding="6dp"
+                    android:background="?attr/primaryBlackBackground"
                     android:listSelector="@drawable/outline_drawable_forced"
                     android:nextFocusLeft="@id/sort_subtitles"
                     android:nextFocusRight="@id/apply_btt"
@@ -192,9 +177,7 @@
         android:layout_gravity="bottom"
         android:layout_marginTop="-60dp"
         android:gravity="bottom|end"
-        android:orientation="horizontal"
-        android:paddingStart="12dp"
-        android:paddingEnd="12dp">
+        android:orientation="horizontal">
 
 
         <com.google.android.material.button.MaterialButton

@@ -7,7 +7,6 @@ import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
 import com.kodastream.app.R
 import com.kodastream.app.databinding.PlayerEpisodesBinding
-import com.kodastream.app.ui.player.PlayerAccent
 import com.lagradost.cloudstream3.ui.result.ResultEpisode
 import com.lagradost.cloudstream3.ui.result.VideoWatchState
 
@@ -38,9 +37,7 @@ class PlayerEpisodeAdapter(
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
         return ViewHolder(
             PlayerEpisodesBinding.inflate(LayoutInflater.from(parent.context), parent, false)
-        ).apply {
-            binding.playerEpisodeWatched.setTextColor(PlayerAccent.color)
-        }
+        )
     }
 
     override fun getItemCount() = episodes.size

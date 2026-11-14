@@ -218,21 +218,14 @@
                 android:layout_width="match_parent"
                 android:layout_height="match_parent">
 
-                <View
-                    android:layout_width="match_parent"
-                    android:layout_height="220dp"
-                    android:layout_gravity="top"
-                    android:background="@drawable/bg_player_top_scrim"
-                    android:importantForAccessibility="no" />
-
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="64dp"
-                    android:layout_marginEnd="64dp"
+                    android:layout_marginStart="80dp"
+                    android:layout_marginEnd="80dp"
                     android:clipToPadding="false"
                     android:orientation="vertical"
-                    android:paddingTop="18dp"
+                    android:paddingTop="20dp"
                     app:layout_constraintLeft_toLeftOf="parent"
                     app:layout_constraintTop_toTopOf="parent">
 
@@ -242,11 +235,7 @@
                         android:layout_height="wrap_content"
                         android:layout_marginBottom="2.5dp"
                         android:gravity="center"
-                        android:letterSpacing="0.02"
-                        android:shadowColor="#80000000"
-                        android:shadowRadius="6"
-                        android:textColor="@color/player_text_secondary"
-                        android:textSize="13sp"
+                        android:textColor="@color/white"
                         tools:text="1920x1080" />
 
 
@@ -270,13 +259,8 @@
                             android:id="@+id/player_video_title"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:ellipsize="end"
                             android:gravity="center"
-                            android:letterSpacing="0.01"
-                            android:shadowColor="#99000000"
-                            android:shadowRadius="8"
                             android:textColor="@color/white"
-                            android:textSize="17sp"
                             android:textStyle="bold"
                             android:visibility="visible"
                             tools:text="Hello world " />
@@ -317,9 +301,9 @@
 
                 <LinearLayout
                     android:id="@+id/player_go_back_holder"
-                    android:layout_width="56dp"
-                    android:layout_height="56dp"
-                    android:layout_margin="12dp"
+                    android:layout_width="70dp"
+                    android:layout_height="70dp"
+                    android:layout_margin="5dp"
                     android:orientation="horizontal"
                     app:layout_constraintStart_toStartOf="parent"
                     app:layout_constraintTop_toTopOf="parent">
@@ -332,10 +316,10 @@
 
                         <ImageView
                             android:id="@+id/player_go_back"
-                            android:layout_width="56dp"
-                            android:layout_height="56dp"
+                            android:layout_width="70dp"
+                            android:layout_height="70dp"
                             android:layout_gravity="center"
-                            android:background="@drawable/bg_player_circle_button"
+                            android:background="@drawable/video_tap_button_always_white"
                             android:clickable="true"
                             android:contentDescription="@string/go_back_img_des"
                             android:focusable="true"
@@ -343,7 +327,7 @@
                             android:nextFocusRight="@id/player_restart"
                             android:nextFocusUp="@id/player_go_back"
                             android:nextFocusDown="@id/player_pause_play"
-                            android:padding="16dp"
+                            android:padding="20dp"
                             android:src="@drawable/ic_baseline_arrow_back_24"
                             android:tag="@string/tv_no_focus_tag"
                             app:tint="@android:color/white" />
@@ -428,7 +412,7 @@
             </FrameLayout>
 
             <!--use for thinner app:trackThickness="3dp" com.google.android.material.progressindicator.CircularProgressIndicator-->
-            <com.google.android.material.progressindicator.CircularProgressIndicator
+            <ProgressBar
                 android:id="@+id/player_buffering"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -440,10 +424,6 @@
 
                 android:indeterminate="true"
                 android:visibility="gone"
-                app:indicatorColor="@color/white"
-                app:indicatorSize="56dp"
-                app:trackColor="#26FFFFFF"
-                app:trackThickness="3dp"
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintLeft_toLeftOf="parent"
                 app:layout_constraintRight_toRightOf="parent"
@@ -493,15 +473,15 @@
 
                     <ImageButton
                         android:id="@+id/player_rew"
-                        android:layout_width="72dp"
-                        android:layout_height="72dp"
+                        android:layout_width="70dp"
+                        android:layout_height="70dp"
                         android:layout_gravity="center"
 
-                        android:background="@drawable/bg_player_circle_button"
+                        android:background="@drawable/video_tap_button_skip"
                         android:nextFocusLeft="@id/player_rew"
                         android:nextFocusUp="@id/player_go_back"
                         android:nextFocusDown="@id/player_lock"
-                        android:padding="20dp"
+                        android:padding="10dp"
                         android:scaleType="fitCenter"
                         android:scaleX="-1"
                         android:src="@drawable/netflix_skip_forward"
@@ -521,11 +501,10 @@
 
                     <ImageView
                         android:id="@+id/player_pause_play"
-                        android:layout_width="78dp"
-                        android:layout_height="78dp"
+                        android:layout_width="70dp"
+                        android:layout_height="70dp"
                         android:layout_gravity="center"
-                        android:background="@drawable/bg_player_play_button"
-                        android:elevation="6dp"
+                        android:background="@drawable/video_tap_button"
                         android:nextFocusLeft="@id/player_rew"
 
                         android:nextFocusRight="@id/player_ffwd"
@@ -533,9 +512,8 @@
                         android:nextFocusUp="@id/player_go_back"
                         android:nextFocusDown="@id/player_lock"
 
-                        android:padding="23dp"
                         android:src="@drawable/netflix_pause"
-                        app:tint="@color/player_play_icon"
+                        app:tint="@color/white"
                         tools:ignore="ContentDescription" />
                 </FrameLayout>
 
@@ -563,15 +541,15 @@
 
                     <ImageButton
                         android:id="@+id/player_ffwd"
-                        android:layout_width="72dp"
-                        android:layout_height="72dp"
+                        android:layout_width="70dp"
+                        android:layout_height="70dp"
                         android:layout_gravity="center"
 
-                        android:background="@drawable/bg_player_circle_button"
+                        android:background="@drawable/video_tap_button_skip"
                         android:nextFocusRight="@id/player_rew"
                         android:nextFocusUp="@id/player_go_back"
                         android:nextFocusDown="@id/player_lock"
-                        android:padding="20dp"
+                        android:padding="10dp"
                         android:scaleType="fitCenter"
                         android:src="@drawable/netflix_skip_forward"
                         android:tintMode="src_in"
@@ -754,16 +732,9 @@
                 android:id="@+id/bottom_player_bar"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="12dp"
-                android:layout_marginEnd="12dp"
-                android:layout_marginBottom="12dp"
-                android:background="@drawable/bg_player_control_panel"
-                android:elevation="12dp"
+                android:layout_marginBottom="10dp"
                 android:gravity="center_vertical"
                 android:orientation="vertical"
-                android:outlineProvider="background"
-                android:paddingTop="10dp"
-                android:paddingBottom="12dp"
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintEnd_toEndOf="parent">
 
@@ -773,8 +744,6 @@
                     android:layout_height="wrap_content"
                     android:layoutDirection="ltr"
                     android:orientation="horizontal"
-                    android:paddingStart="8dp"
-                    android:paddingEnd="8dp"
                     tools:visibility="visible">
 
                     <TextView
@@ -782,16 +751,14 @@
                         android:layout_width="wrap_content"
                         android:layout_height="30dp"
                         android:layout_gravity="center"
-                        android:layout_marginStart="12dp"
-                        android:fontFamily="sans-serif-medium"
+                        android:layout_marginStart="20dp"
                         android:gravity="end|center_vertical"
                         android:includeFontPadding="false"
-                        android:letterSpacing="0.02"
                         android:minWidth="50dp"
                         android:paddingLeft="4dp"
                         android:paddingRight="4dp"
-                        android:textColor="@color/player_text_secondary"
-                        android:textSize="13sp"
+                        android:textColor="@android:color/white"
+                        android:textSize="14sp"
                         android:textStyle="normal"
                         app:layout_constraintBottom_toBottomOf="parent"
                         app:layout_constraintStart_toStartOf="parent"
@@ -839,9 +806,9 @@
                         app:layout_constraintTop_toTopOf="@id/exo_position"
                         app:played_color="@android:color/white"
                         app:scrubber_color="@android:color/white"
-                        app:scrubber_dragged_size="20dp"
+                        app:scrubber_dragged_size="18dp"
                         app:scrubber_enabled_size="12dp"
-                        app:unplayed_color="#3DFFFFFF" />
+                        app:unplayed_color="@color/videoProgress" />
 
                     <TextView
                         android:id="@id/exo_duration"
@@ -849,15 +816,13 @@
                         android:layout_height="30dp"
                         android:layout_gravity="center|center_vertical"
 
-                        android:layout_marginEnd="12dp"
-                        android:fontFamily="sans-serif-medium"
+                        android:layout_marginEnd="20dp"
                         android:includeFontPadding="false"
-                        android:letterSpacing="0.02"
                         android:minWidth="50dp"
                         android:paddingLeft="4dp"
                         android:paddingRight="4dp"
-                        android:textColor="@color/player_text_secondary"
-                        android:textSize="13sp"
+                        android:textColor="@android:color/white"
+                        android:textSize="14sp"
                         android:textStyle="normal"
                         app:layout_constraintBaseline_toBaselineOf="@id/exo_position"
                         app:layout_constraintEnd_toEndOf="parent"
@@ -868,15 +833,13 @@
                         android:layout_width="wrap_content"
                         android:layout_height="30dp"
                         android:layout_gravity="center|center_vertical"
-                        android:layout_marginEnd="12dp"
-                        android:fontFamily="sans-serif-medium"
+                        android:layout_marginEnd="20dp"
                         android:includeFontPadding="false"
-                        android:letterSpacing="0.02"
                         android:minWidth="50dp"
                         android:paddingLeft="4dp"
                         android:paddingRight="4dp"
-                        android:textColor="@color/player_text_secondary"
-                        android:textSize="13sp"
+                        android:textColor="@android:color/white"
+                        android:textSize="14sp"
                         android:textStyle="normal"
                         android:visibility="gone"
                         app:layout_constraintBaseline_toBaselineOf="@id/exo_position"
@@ -889,15 +852,13 @@
                         android:layout_height="30dp"
                         android:layout_gravity="center|center_vertical"
 
-                        android:layout_marginEnd="12dp"
-                        android:fontFamily="sans-serif-medium"
+                        android:layout_marginEnd="20dp"
                         android:includeFontPadding="false"
-                        android:letterSpacing="0.02"
                         android:minWidth="50dp"
                         android:paddingLeft="4dp"
                         android:paddingRight="4dp"
-                        android:textColor="@color/player_text_secondary"
-                        android:textSize="13sp"
+                        android:textColor="@android:color/white"
+                        android:textSize="14sp"
                         android:textStyle="normal"
                         android:visibility="gone"
                         app:layout_constraintBaseline_toBaselineOf="@id/exo_position"
@@ -914,15 +875,20 @@
 
                     <LinearLayout
                         android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
+                        android:layout_height="60dp"
                         android:gravity="center"
                         android:orientation="horizontal"
-                        android:paddingTop="8dp"
-                        android:paddingBottom="4dp">
+                        android:paddingTop="10dp"
+                        android:paddingBottom="10dp">
 
                         <com.google.android.material.button.MaterialButton
                             android:id="@+id/player_lock"
-                            style="@style/VideoButtonExpressive"
+                            style="@style/VideoButton"
+                            android:layout_height="40dp"
+                            android:minWidth="44dp"
+                            android:paddingStart="8dp"
+                            android:paddingEnd="8dp"
+                            app:iconSize="22dp"
                             android:nextFocusLeft="@id/player_skip_episode"
                             android:nextFocusRight="@id/player_resize_btt"
                             android:text="@string/video_lock"
@@ -936,7 +902,7 @@
 
                             <com.google.android.material.button.MaterialButton
                                 android:id="@+id/player_rotate_btt"
-                                style="@style/VideoButtonExpressive"
+                                style="@style/VideoButton"
                                 android:nextFocusLeft="@id/player_lock"
 
                                 android:nextFocusRight="@id/player_resize_btt"
@@ -945,7 +911,7 @@
 
                             <com.google.android.material.button.MaterialButton
                                 android:id="@+id/player_resize_btt"
-                                style="@style/VideoButtonExpressive"
+                                style="@style/VideoButton"
                                 android:nextFocusLeft="@id/player_rotate_btt"
 
                                 android:nextFocusRight="@id/player_speed_btt"
@@ -954,7 +920,7 @@
 
                             <com.google.android.material.button.MaterialButton
                                 android:id="@+id/player_speed_btt"
-                                style="@style/VideoButtonExpressive"
+                                style="@style/VideoButton"
                                 android:nextFocusLeft="@id/player_resize_btt"
 
                                 android:nextFocusRight="@id/player_subtitle_offset_btt"
@@ -963,7 +929,7 @@
 
                             <com.google.android.material.button.MaterialButton
                                 android:id="@+id/player_subtitle_offset_btt"
-                                style="@style/VideoButtonExpressive"
+                                style="@style/VideoButton"
                                 android:nextFocusLeft="@id/player_speed_btt"
                                 android:nextFocusRight="@id/player_sources_btt"
                                 android:text="@string/subtitle_offset"
@@ -974,7 +940,13 @@
 
                             <com.google.android.material.button.MaterialButton
                                 android:id="@+id/player_sources_btt"
-                                style="@style/VideoButtonExpressive"
+                                style="@style/VideoButton"
+                                android:layout_height="40dp"
+                                android:minWidth="44dp"
+                                android:paddingStart="8dp"
+                                android:paddingEnd="8dp"
+                                app:iconSize="22dp"
+
                                 android:nextFocusLeft="@id/player_subtitle_offset_btt"
                                 android:nextFocusRight="@id/player_cast_btt"
                                 android:text="@string/video_source"
@@ -982,7 +954,8 @@
 
                             <com.google.android.material.button.MaterialButton
                                 android:id="@+id/player_cast_btt"
-                                style="@style/VideoButtonExpressive"
+                                style="@style/VideoButton"
+                                android:layout_height="40dp"
                                 android:nextFocusLeft="@id/player_sources_btt"
                                 android:nextFocusRight="@id/player_external_btt"
                                 android:text="@string/cast_to_wvc"
@@ -990,7 +963,8 @@
 
                             <com.google.android.material.button.MaterialButton
                                 android:id="@+id/player_external_btt"
-                                style="@style/VideoButtonExpressive"
+                                style="@style/VideoButton"
+                                android:layout_height="40dp"
                                 android:nextFocusLeft="@id/player_cast_btt"
                                 android:nextFocusRight="@id/player_tracks_btt"
                                 android:text="@string/open_in_external_player"
@@ -998,7 +972,8 @@
 
                             <com.google.android.material.button.MaterialButton
                                 android:id="@+id/player_tracks_btt"
-                                style="@style/VideoButtonExpressive"
+                                style="@style/VideoButton"
+                                android:layout_height="40dp"
 
                                 android:nextFocusLeft="@id/player_external_btt"
                                 android:nextFocusRight="@id/player_compressor_btt"
@@ -1007,7 +982,8 @@
 
                             <com.google.android.material.button.MaterialButton
                                 android:id="@+id/player_compressor_btt"
-                                style="@style/VideoButtonExpressive"
+                                style="@style/VideoButton"
+                                android:layout_height="40dp"
                                 android:nextFocusLeft="@id/player_tracks_btt"
                                 android:nextFocusRight="@id/player_skip_op"
                                 android:text="@string/compressor"
@@ -1015,7 +991,7 @@
 
                             <com.google.android.material.button.MaterialButton
                                 android:id="@+id/player_skip_op"
-                                style="@style/VideoButtonExpressive"
+                                style="@style/VideoButton"
                                 android:nextFocusLeft="@id/player_sources_btt"
 
                                 android:nextFocusRight="@id/player_skip_episode"
@@ -1024,7 +1000,7 @@
 
                             <com.google.android.material.button.MaterialButton
                                 android:id="@+id/player_skip_episode"
-                                style="@style/VideoButtonExpressive"
+                                style="@style/VideoButton"
                                 android:nextFocusLeft="@id/player_skip_op"
                                 android:nextFocusRight="@id/player_lock"
                                 android:text="@string/next_episode"
@@ -1176,44 +1152,37 @@
     <com.google.android.material.button.MaterialButton
         android:id="@+id/player_speedup_button"
         style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-        android:layout_width="46dp"
-        android:layout_height="46dp"
+        android:layout_width="45dp"
+        android:layout_height="45dp"
         android:layout_gravity="center_horizontal"
-        android:layout_marginTop="28dp"
+        android:layout_marginTop="30dp"
+        app:iconPadding="0dp"
+        app:iconGravity="textStart"
         android:clickable="false"
         android:focusable="false"
-        android:foreground="@null"
-        android:insetTop="0dp"
-        android:insetBottom="0dp"
         android:textAllCaps="false"
         android:visibility="gone"
-        app:backgroundTint="@color/player_control_surface"
-        app:cornerRadius="23dp"
         app:icon="@drawable/speedup"
-        app:iconGravity="textStart"
-        app:iconPadding="0dp"
-        app:iconTint="@color/white"
-        app:strokeColor="@color/player_control_outline"
-        app:strokeWidth="1dp"
+        app:iconTint="@color/textColor"
+        android:foreground="@null"
+        android:backgroundTint="@color/player_speedup_scrim"
         tools:visibility="visible" />
     <LinearLayout
         android:id="@+id/player_episodes_button_root"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_gravity="end|center_vertical"
-        android:layout_marginEnd="12dp"
         android:orientation="vertical"
+        android:layout_gravity="end|center_vertical"
         >
         <ImageView
-            android:padding="14dp"
+            android:padding="15dp"
             android:id="@+id/player_episodes_button"
-            android:layout_width="52dp"
-            android:layout_height="52dp"
-            android:layout_gravity="center_horizontal"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
             android:contentDescription="@string/episodes"
             android:foregroundGravity="center"
             android:src="@drawable/ic_baseline_arrow_back_ios_24"
-            android:background="@drawable/bg_player_circle_button"
+            android:background="@drawable/video_tap_button_always_white"
             app:tint="@android:color/white" />
         <TextView
             android:id="@+id/player_episodes_button_text"
@@ -1225,29 +1194,18 @@
     <LinearLayout
         android:id="@+id/player_episode_overlay"
         android:visibility="gone"
-        android:paddingStart="12dp"
-        android:paddingTop="16dp"
-        android:paddingEnd="12dp"
-        android:paddingBottom="12dp"
-        android:background="@drawable/bg_player_episode_sheet"
-        android:elevation="16dp"
+        android:padding="5dp"
+        android:background="?attr/primaryBlackBackground"
         android:orientation="vertical"
         android:layout_gravity="end"
-        android:layout_marginTop="8dp"
-        android:layout_marginBottom="8dp"
         android:layout_width="wrap_content"
         android:layout_height="match_parent">
 
         <TextView
             android:id="@+id/player_episode_overlay_title"
-            android:paddingStart="8dp"
-            android:paddingTop="4dp"
-            android:paddingEnd="8dp"
-            android:paddingBottom="10dp"
+            android:padding="10dp"
             style="@style/WatchHeaderText"
-            android:textSize="20sp"
-            android:fontFamily="sans-serif-medium"
-            android:letterSpacing="-0.01"
+            android:textSize="15sp"
             android:layout_marginEnd="0dp"
             android:text="@string/episodes"
             android:layout_width="wrap_content"
@@ -1259,10 +1217,9 @@
             android:id="@+id/player_episode_list"
             tools:listitem="@layout/player_episodes"
             android:nextFocusLeft="@id/player_episodes_button"
-            android:layout_width="330dp"
+            android:layout_width="350dp"
             android:layout_height="match_parent"
             android:clipToPadding="false"
-            android:paddingBottom="8dp"
             android:descendantFocusability="afterDescendants">
 
         </androidx.recyclerview.widget.RecyclerView>

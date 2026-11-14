@@ -27,6 +27,9 @@ import android.view.animation.DecelerateInterpolator
 import android.widget.LinearLayout
 import androidx.annotation.OptIn
 import androidx.appcompat.app.AlertDialog
+import androidx.core.graphics.blue
+import androidx.core.graphics.green
+import androidx.core.graphics.red
 import androidx.core.view.children
 import androidx.core.view.isGone
 import androidx.core.view.isVisible
@@ -44,8 +47,6 @@ import com.kodastream.app.databinding.FragmentPlayerBinding
 import com.kodastream.app.databinding.PlayerCustomLayoutBinding
 import com.kodastream.app.databinding.SpeedDialogBinding
 import com.kodastream.app.databinding.SubtitleOffsetBinding
-import com.kodastream.app.ui.player.PlayerAccent
-import com.kodastream.app.ui.player.PlayerMotion
 import com.lagradost.cloudstream3.mvvm.logError
 import com.lagradost.cloudstream3.ui.player.GeneratorPlayer.Companion.subsProvidersIsActive
 import com.lagradost.cloudstream3.ui.player.source_priority.QualityDataHelper
@@ -58,6 +59,7 @@ import com.lagradost.cloudstream3.utils.AppContextUtils.shouldShowPlayerMetadata
 import com.lagradost.cloudstream3.utils.BackPressedCallbackHelper.attachBackPressedCallback
 import com.lagradost.cloudstream3.utils.BackPressedCallbackHelper.detachBackPressedCallback
 import com.lagradost.cloudstream3.utils.DataStoreHelper
+import com.lagradost.cloudstream3.utils.UIHelper.colorFromAttribute
 import com.lagradost.cloudstream3.utils.UIHelper.dismissSafe
 import com.lagradost.cloudstream3.utils.UIHelper.fixSystemBarsPadding
 import com.lagradost.cloudstream3.utils.UIHelper.hideSystemUI
@@ -66,7 +68,6 @@ import com.lagradost.cloudstream3.utils.UIHelper.toPx
 import com.lagradost.cloudstream3.utils.setText
 import com.lagradost.cloudstream3.utils.txt
 import com.lagradost.cloudstream3.utils.videoskip.VideoSkipStamp
-import kotlin.math.abs
 import kotlin.math.roundToInt
 
 private const val SUBTITLE_DELAY_BUNDLE_KEY = "subtitle_delay"
@@ -344,16 +345,14 @@ open class FullScreenPlayer : AbstractPlayerFragment<FragmentPlayerBinding>(
 
     private fun View.animateY(value: Float) {
         ObjectAnimator.ofFloat(this, "translationY", value).apply {
-            duration = PlayerMotion.MEDIUM
-            interpolator = PlayerMotion.emphasizedDecel
+            duration = 200
             start()
         }
     }
 
     private fun View.animateX(value: Float) {
         ObjectAnimator.ofFloat(this, "translationX", value).apply {
-            duration = PlayerMotion.MEDIUM
-            interpolator = PlayerMotion.emphasizedDecel
+            duration = 200
             start()
         }
     }
@@ -370,7 +369,7 @@ open class FullScreenPlayer : AbstractPlayerFragment<FragmentPlayerBinding>(
                 updateUIVisibility()
             } else {
                 toggleEpisodesOverlay(false)
-                playerHolder.postDelayed({ updateUIVisibility() }, PlayerMotion.MEDIUM)
+                playerHolder.postDelayed({ updateUIVisibility() }, 200)
             }
 
             val titleMove = if (isShowing) 0f else -50.toPx.toFloat()
@@ -397,8 +396,7 @@ open class FullScreenPlayer : AbstractPlayerFragment<FragmentPlayerBinding>(
             val fadeTo = if (isShowing) 1f else 0f
             val fadeAnimation = AlphaAnimation(1f - fadeTo, fadeTo)
 
-            fadeAnimation.duration = PlayerMotion.SHORT
-            fadeAnimation.interpolator = PlayerMotion.emphasizedDecel
+            fadeAnimation.duration = 100
             fadeAnimation.fillAfter = true
 
             animateLayoutChangesForSubtitles()
@@ -597,7 +595,6 @@ open class FullScreenPlayer : AbstractPlayerFragment<FragmentPlayerBinding>(
 
         var currentOffset = subtitleDelay
         binding.apply {
-            PlayerAccent.fill(applyBtt)
             var subtitleAdapter: SubtitleOffsetItemAdapter? = null
 
             subtitleOffsetInput.doOnTextChanged { text, _, _, _ ->
@@ -709,16 +706,6 @@ open class FullScreenPlayer : AbstractPlayerFragment<FragmentPlayerBinding>(
         binding.speedBar.value =
             (speed.coerceIn(0.1f, 2.0f) / binding.speedBar.stepSize).roundToInt()
                 .toFloat() * binding.speedBar.stepSize
-        PlayerAccent.slider(binding.speedBar)
-        for ((button, preset) in arrayOf(
-            binding.speed25 to 0.25f,
-            binding.speed100 to 1.0f,
-            binding.speed125 to 1.25f,
-            binding.speed150 to 1.5f,
-            binding.speed200 to 2.0f,
-        )) {
-            PlayerAccent.toggle(button, abs(speed - preset) < 0.001f)
-        }
     }
 
     private fun showSpeedDialog() {
@@ -777,7 +764,7 @@ open class FullScreenPlayer : AbstractPlayerFragment<FragmentPlayerBinding>(
         //    builder.show()
         //} else {
         val builder =
-            AlertDialog.Builder(act, R.style.Theme_AlertDialog_Player)
+            AlertDialog.Builder(act, R.style.AlertDialogCustom)
                 .setView(binding.root)
         builder.setOnDismissListener(dismiss)
         val dialog = builder.create()
@@ -786,6 +773,11 @@ open class FullScreenPlayer : AbstractPlayerFragment<FragmentPlayerBinding>(
         //}
     }
 
+    // getColorStateList(index) on a TypedArray built from a raw intArrayOf(...) can't be
+    // statically verified by lint as a styleable resource index (it isn't tied to an
+    // <declare-styleable>), so it always flags a false-positive ResourceType error here —
+    // this is the standard, expected suppression for this obtainStyledAttributes pattern.
+    @SuppressLint("ResourceType")
     private fun showCompressorDialog() {
         val act = activity ?: return
         val compressor = (player as? CS3IPlayer)?.compressor ?: return
@@ -799,9 +791,6 @@ open class FullScreenPlayer : AbstractPlayerFragment<FragmentPlayerBinding>(
 
         val binding = com.kodastream.app.databinding.CompressorDialogBinding
             .inflate(android.view.LayoutInflater.from(act))
-        PlayerAccent.fill(binding.applyBtt)
-        PlayerAccent.slider(binding.compressorThresholdBar)
-        PlayerAccent.slider(binding.compressorRatioBar)
 
         // ── Visual update helpers ──────────────────────────────────────────
         fun updateCurrentLabel() {
@@ -838,10 +827,27 @@ open class FullScreenPlayer : AbstractPlayerFragment<FragmentPlayerBinding>(
                 act.getString(R.string.compressor_makeup_hint, compressor.makeupGain.toInt())
         }
 
-        // Selected pill = accent, unselected = chrome — same as the speed presets.
+        // WhiteButton = selected/active, BlackButton = unselected — same as speed presets
         fun syncEnableButtons() {
-            PlayerAccent.toggle(binding.compressorEnableBtt, compressor.enabled)
-            PlayerAccent.toggle(binding.compressorDisableBtt, !compressor.enabled)
+            val ctx = context ?: return
+            listOf(
+                binding.compressorEnableBtt to compressor.enabled,
+                binding.compressorDisableBtt to !compressor.enabled,
+            ).forEach { (btn, active) ->
+                // Apply the full WhiteButton or BlackButton style — backgroundTint only.
+                // Also update setTextColor so we don't get white text on white background.
+                val styleAttr = if (active) R.style.WhiteButton else R.style.BlackButton
+                val ta = ctx.obtainStyledAttributes(
+                    styleAttr,
+                    intArrayOf(
+                        com.google.android.material.R.attr.backgroundTint,
+                        android.R.attr.textColor,
+                    )
+                )
+                btn.backgroundTintList = ta.getColorStateList(0)
+                ta.getColorStateList(1)?.let { btn.setTextColor(it) }
+                ta.recycle()
+            }
             updateCurrentLabel()
         }
 
@@ -854,7 +860,20 @@ open class FullScreenPlayer : AbstractPlayerFragment<FragmentPlayerBinding>(
         )
 
         fun syncPresetButtons(active: com.google.android.material.button.MaterialButton?) {
-            allPresets.forEach { PlayerAccent.toggle(it, it == active) }
+            val ctx = context ?: return
+            allPresets.forEach { btn ->
+                val isActive = btn == active
+                val ta = ctx.obtainStyledAttributes(
+                    if (isActive) R.style.WhiteButton else R.style.BlackButton,
+                    intArrayOf(
+                        com.google.android.material.R.attr.backgroundTint,
+                        android.R.attr.textColor,
+                    )
+                )
+                btn.backgroundTintList = ta.getColorStateList(0)
+                ta.getColorStateList(1)?.let { btn.setTextColor(it) }
+                ta.recycle()
+            }
         }
 
         // Figures out which preset (if any) matches the current values, so the
@@ -974,7 +993,7 @@ open class FullScreenPlayer : AbstractPlayerFragment<FragmentPlayerBinding>(
         }
 
         // ── Dialog lifecycle ───────────────────────────────────────────────
-        val dialog = AlertDialog.Builder(act, R.style.Theme_AlertDialog_Player)
+        val dialog = AlertDialog.Builder(act, R.style.AlertDialogCustom)
             .setView(binding.root)
             .create()
             .apply {
@@ -1047,8 +1066,7 @@ open class FullScreenPlayer : AbstractPlayerFragment<FragmentPlayerBinding>(
         playerHostView?.gestureHelper?.animateCenterControls(fadeTo)
         playerBinding?.apply {
             val fadeAnimation = AlphaAnimation(playerVideoTitleHolder.alpha, fadeTo).apply {
-                duration = PlayerMotion.SHORT
-                interpolator = PlayerMotion.emphasizedDecel
+                duration = 100
                 fillAfter = true
             }
 
@@ -1146,11 +1164,14 @@ open class FullScreenPlayer : AbstractPlayerFragment<FragmentPlayerBinding>(
             playerLock.setIconResource(
                 if (isLocked) R.drawable.player_ic_lock_modern else R.drawable.player_ic_unlock_modern
             )
-            val color = if (isLocked) PlayerAccent.color else Color.WHITE
-            playerLock.setTextColor(color)
-            playerLock.iconTint = ColorStateList.valueOf(color)
-            playerLock.rippleColor =
-                ColorStateList.valueOf(Color.argb(50, Color.red(color), Color.green(color), Color.blue(color)))
+            val color = if (isLocked) context?.colorFromAttribute(R.attr.colorPrimary)
+            else Color.WHITE
+            if (color != null) {
+                playerLock.setTextColor(color)
+                playerLock.iconTint = ColorStateList.valueOf(color)
+                playerLock.rippleColor =
+                    ColorStateList.valueOf(Color.argb(50, color.red, color.green, color.blue))
+            }
         }
     }
 
@@ -1463,7 +1484,6 @@ open class FullScreenPlayer : AbstractPlayerFragment<FragmentPlayerBinding>(
         // (brightness overlay is now injected by PlayerView.initialize())
         playerBinding =
             PlayerCustomLayoutBinding.bind(binding.root.findViewById(R.id.player_holder))
-        PlayerAccent.progress(binding.mainLoad)
 
         super.onBindingCreated(binding, savedInstanceState)
 
@@ -1750,8 +1770,8 @@ open class FullScreenPlayer : AbstractPlayerFragment<FragmentPlayerBinding>(
             overlay.animate()
                 .translationX(if (show) 0f else offset)
                 .alpha(if (show) 1f else 0f)
-                .setDuration(PlayerMotion.MEDIUM)
-                .setInterpolator(PlayerMotion.emphasizedDecel).withEndAction {
+                .setDuration(300)
+                .setInterpolator(AccelerateDecelerateInterpolator()).withEndAction {
                     if (!show) {
                         playerBinding?.playerEpisodeOverlay?.isGone = true
                     }
