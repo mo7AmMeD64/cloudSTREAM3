@@ -4,8 +4,8 @@
     - Single panel, 500dp wide, vertical
     - Current value shown at top as text
     - Slider flanked by FAB -/+ buttons for precise TV adjustment
-    - Preset BlackButtons below (active one switched to WhiteButton in Kotlin)
-    - On/Off as two BlackButtons — active one switched to WhiteButton in Kotlin
+    - Preset chips below (active one tinted with the palette accent in Kotlin)
+    - On/Off as two chips — active one tinted with the palette accent in Kotlin
     - Apply / Reset / Cancel at the bottom (matches subtitle_offset.xml)
 
     TV D-pad flow (top to bottom):
@@ -22,16 +22,26 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
-    android:minWidth="300dp">
+    android:minWidth="300dp"
+    android:background="@drawable/bg_player_dialog_surface"
+    android:paddingStart="12dp"
+    android:paddingTop="16dp"
+    android:paddingEnd="12dp">
 
     <!-- Current value display — updated programmatically -->
     <TextView
         android:id="@+id/compressor_current_label"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_margin="20dp"
+        android:layout_marginStart="20dp"
+        android:layout_marginTop="4dp"
+        android:layout_marginEnd="20dp"
+        android:layout_marginBottom="20dp"
+        android:fontFamily="sans-serif-medium"
         android:gravity="center_horizontal"
-        android:textSize="20sp"
+        android:letterSpacing="-0.01"
+        android:textColor="?attr/textColor"
+        android:textSize="26sp"
         tools:text="Compressor: Off" />
 
     <!-- On / Off row — styled like speed preset buttons -->
@@ -44,7 +54,7 @@
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/compressor_enable_btt"
-            style="@style/BlackButton"
+            style="@style/PlayerToggleButton"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
@@ -57,7 +67,7 @@
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/compressor_disable_btt"
-            style="@style/BlackButton"
+            style="@style/PlayerToggleButton"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
@@ -74,6 +84,7 @@
         style="@style/WatchHeaderText"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:layout_marginEnd="0dp"
         android:gravity="center_horizontal"
         android:paddingTop="8dp"
         tools:text="Threshold: -24 dB" />
@@ -101,7 +112,8 @@
             android:nextFocusUp="@id/compressor_enable_btt"
             android:nextFocusDown="@id/ratio_minus"
             android:src="@drawable/media3_icon_minus"
-            app:tint="?attr/textColor" />
+            app:backgroundTint="@color/player_control_surface"
+            app:tint="@color/white" />
 
         <com.google.android.material.slider.Slider
             android:id="@+id/compressor_threshold_bar"
@@ -132,7 +144,8 @@
             android:nextFocusUp="@id/compressor_disable_btt"
             android:nextFocusDown="@id/ratio_plus"
             android:src="@drawable/media3_icon_plus"
-            app:tint="?attr/textColor" />
+            app:backgroundTint="@color/player_control_surface"
+            app:tint="@color/white" />
 
     </LinearLayout>
 
@@ -142,6 +155,7 @@
         style="@style/WatchHeaderText"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:layout_marginEnd="0dp"
         android:gravity="center_horizontal"
         android:paddingTop="4dp"
         tools:text="Makeup Gain: +12 dB" />
@@ -169,7 +183,8 @@
             android:nextFocusUp="@id/threshold_minus"
             android:nextFocusDown="@id/compressor_preset_light"
             android:src="@drawable/media3_icon_minus"
-            app:tint="?attr/textColor" />
+            app:backgroundTint="@color/player_control_surface"
+            app:tint="@color/white" />
 
         <com.google.android.material.slider.Slider
             android:id="@+id/compressor_ratio_bar"
@@ -200,11 +215,12 @@
             android:nextFocusUp="@id/threshold_plus"
             android:nextFocusDown="@id/compressor_preset_heavy"
             android:src="@drawable/media3_icon_plus"
-            app:tint="?attr/textColor" />
+            app:backgroundTint="@color/player_control_surface"
+            app:tint="@color/white" />
 
     </LinearLayout>
 
-    <!-- Preset buttons — BlackButton in XML, active one set to WhiteButton in Kotlin -->
+    <!-- Preset chips — active one is tinted with the accent in Kotlin -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -212,7 +228,7 @@
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/compressor_preset_light"
-            style="@style/BlackButton"
+            style="@style/PlayerToggleButton"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_weight="1"
@@ -224,7 +240,7 @@
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/compressor_preset_dialog"
-            style="@style/BlackButton"
+            style="@style/PlayerToggleButton"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_weight="1"
@@ -236,7 +252,7 @@
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/compressor_preset_heavy"
-            style="@style/BlackButton"
+            style="@style/PlayerToggleButton"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_weight="1"
@@ -269,7 +285,7 @@
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/reset_btt"
-            style="@style/BlackButton"
+            style="@style/PlayerToggleButton"
             android:layout_width="wrap_content"
             android:layout_gravity="center_vertical|end"
             android:nextFocusLeft="@id/apply_btt"
@@ -280,7 +296,7 @@
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/cancel_btt"
-            style="@style/BlackButton"
+            style="@style/PlayerToggleButton"
             android:layout_width="wrap_content"
             android:layout_gravity="center_vertical|end"
             android:nextFocusLeft="@id/reset_btt"

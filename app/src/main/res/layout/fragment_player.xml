@@ -32,8 +32,7 @@
         android:id="@+id/player_loading_overlay"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:background="@android:color/black"
-        android:backgroundTint="@android:color/black"
+        android:background="@drawable/bg_player_loading"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
@@ -43,32 +42,40 @@
             android:id="@+id/overlay_loading_skip_button"
             style="@style/Widget.MaterialComponents.Button.OutlinedButton"
             android:layout_width="wrap_content"
-            android:layout_height="45dp"
+            android:layout_height="48dp"
             android:layout_gravity="center"
-            android:layout_marginTop="70dp"
-            android:backgroundTint="@color/transparent"
-
+            android:layout_marginTop="104dp"
+            android:backgroundTint="@color/player_control_surface"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
             android:text="@string/skip_loading"
             android:textAllCaps="false"
             android:textColor="@color/textColor"
             android:visibility="gone"
-            app:cornerRadius="4dp"
+            app:cornerRadius="24dp"
             app:icon="@drawable/ic_baseline_skip_next_24"
             app:iconTint="@color/textColor"
-            app:rippleColor="?attr/colorPrimary"
+            app:rippleColor="@color/video_button_ripple"
+            app:strokeColor="@color/player_control_outline"
+            app:strokeWidth="1dp"
             tools:visibility="visible" />
 
-        <ProgressBar
+        <com.google.android.material.progressindicator.CircularProgressIndicator
             android:id="@+id/main_load"
-            android:layout_width="50dp"
-            android:layout_height="50dp"
-            android:layout_gravity="center" />
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:indeterminate="true"
+            app:indicatorColor="@color/white"
+            app:indicatorSize="60dp"
+            app:trackColor="#26FFFFFF"
+            app:trackThickness="3dp" />
 
         <FrameLayout
             android:id="@+id/video_go_back_holder_holder"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_margin="5dp"
+            android:layout_margin="12dp"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent">
 
@@ -82,10 +89,10 @@
 
             <ImageView
                 android:id="@+id/player_loading_go_back"
-                android:layout_width="70dp"
-                android:layout_height="70dp"
+                android:layout_width="56dp"
+                android:layout_height="56dp"
                 android:layout_gravity="center"
-                android:background="@drawable/video_tap_button_always_white"
+                android:background="@drawable/bg_player_circle_button"
                 android:clickable="true"
                 android:contentDescription="@string/go_back_img_des"
                 android:focusable="true" />

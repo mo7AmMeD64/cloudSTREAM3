@@ -7,6 +7,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.ActivityInfo
+import android.content.res.ColorStateList
 import android.graphics.drawable.AnimatedImageDrawable
 import android.graphics.drawable.AnimatedVectorDrawable
 import android.media.metrics.PlaybackErrorEvent
@@ -27,6 +28,7 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.annotation.MainThread
 import androidx.annotation.OptIn
+import androidx.core.graphics.ColorUtils
 import androidx.core.view.isGone
 import androidx.core.view.isInvisible
 import androidx.core.view.isVisible
@@ -44,6 +46,9 @@ import androidx.preference.PreferenceManager
 import androidx.vectordrawable.graphics.drawable.AnimatedVectorDrawableCompat
 import com.github.rubensousa.previewseekbar.PreviewBar
 import com.github.rubensousa.previewseekbar.media3.PreviewTimeBar
+import com.google.android.material.button.MaterialButton
+import com.google.android.material.progressindicator.CircularProgressIndicator
+import com.kodastream.app.ui.player.PlayerAccent
 import com.lagradost.cloudstream3.CommonActivity.isInPIPMode
 import com.lagradost.cloudstream3.CommonActivity.screenWidth
 import com.lagradost.cloudstream3.CommonActivity.showToast
@@ -259,6 +264,17 @@ class PlayerView @JvmOverloads constructor(
         subtitleHolder = root.findViewById(R.id.subtitle_holder)
         timeLeft = root.findViewById(R.id.time_left)
         timeLive = root.findViewById(R.id.time_live)
+
+        // Palette accent for the pieces the XML styles cannot reach.
+        PlayerAccent.progress(playerBuffering as? CircularProgressIndicator)
+        listOf(
+            playerProgressbarLeftLevel1,
+            playerProgressbarLeftLevel2,
+            playerProgressbarRightLevel1,
+            playerProgressbarRightLevel2,
+        ).forEach(PlayerAccent::levelBar)
+        (playerSpeedupButton as? MaterialButton)?.iconTint =
+            ColorStateList.valueOf(PlayerAccent.color)
     }
 
     /**
@@ -284,6 +300,12 @@ class PlayerView @JvmOverloads constructor(
             // Preview bar
             val progressBar: PreviewTimeBar? = exoPlayerView?.findViewById(R.id.exo_progress)
             exoProgress = progressBar as? LivePreviewTimeBar
+            progressBar?.let {
+                it.setPlayedColor(PlayerAccent.color)
+                it.setScrubberColor(PlayerAccent.color)
+                it.setBufferedColor(ColorUtils.setAlphaComponent(PlayerAccent.color, 0x66))
+                it.setUnplayedColor(0x3DFFFFFF)
+            }
             applyProgressStyle(progressBar)
             val previewImageView: ImageView? = exoPlayerView?.findViewById(R.id.previewImageView)
             val previewFrameLayout: FrameLayout? =

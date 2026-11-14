@@ -34,6 +34,7 @@ import com.lagradost.cloudstream3.CommonActivity.screenWidthWithOrientation
 import com.lagradost.cloudstream3.CommonActivity.showToast
 import com.kodastream.app.R
 import com.kodastream.app.data.AppPrefs
+import com.kodastream.app.ui.player.PlayerMotion
 import com.lagradost.cloudstream3.mvvm.logError
 import com.lagradost.cloudstream3.mvvm.safe
 import com.lagradost.cloudstream3.ui.settings.Globals.EMULATOR
@@ -885,7 +886,11 @@ class PlayerGestureHelper(private val playerView: PlayerView) {
      */
     fun animateCenterControls(fadeTo: Float) {
         val from = if (fadeTo > 0.5f) 0f else 1f
-        fun makeAnim() = AlphaAnimation(from, fadeTo).apply { duration = 100; fillAfter = true }
+        fun makeAnim() = AlphaAnimation(from, fadeTo).apply {
+            duration = PlayerMotion.SHORT
+            interpolator = PlayerMotion.emphasizedDecel
+            fillAfter = true
+        }
         // Each view needs its own Animation instance; sharing one causes fillAfter to
         // not hold reliably across all views once any of them restarts the animation.
         playerView.playerRewHolder?.let  { it.alpha = 1f; it.startAnimation(makeAnim()) }

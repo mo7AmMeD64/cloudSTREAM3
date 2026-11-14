@@ -6,20 +6,22 @@
     android:layout_height="wrap_content"
     android:background="?attr/selectableItemBackground"
     android:gravity="center_vertical"
-    android:minHeight="64dp"
+    android:minHeight="68dp"
     android:orientation="horizontal"
-    android:paddingStart="16dp"
+    android:paddingStart="8dp"
     android:paddingTop="8dp"
-    android:paddingEnd="16dp"
+    android:paddingEnd="12dp"
     android:paddingBottom="8dp">
 
     <TextView
         android:id="@+id/player_episode_number"
-        android:layout_width="48dp"
-        android:layout_height="wrap_content"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:background="@drawable/bg_player_episode_number"
+        android:fontFamily="sans-serif-medium"
         android:gravity="center"
         android:textColor="?attr/textColor"
-        android:textSize="16sp"
+        android:textSize="15sp"
         android:textStyle="bold"
         tools:text="12" />
 
@@ -45,10 +47,11 @@
             android:id="@+id/player_episode_meta"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
             android:ellipsize="end"
             android:maxLines="1"
-            android:textColor="?attr/textColor"
-            android:textSize="12sp"
+            android:textColor="?attr/grayTextColor"
+            android:textSize="13sp"
             tools:text="S1 E12 · 24m" />
     </LinearLayout>
 
@@ -56,9 +59,12 @@
         android:id="@+id/player_episode_watched"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:letterSpacing="0.06"
         android:text="@string/episode_watched"
+        android:textAllCaps="true"
         android:textColor="?attr/colorPrimary"
-        android:textSize="12sp"
+        android:textSize="11sp"
+        android:textStyle="bold"
         android:visibility="gone"
         tools:visibility="visible" />
 </LinearLayout>

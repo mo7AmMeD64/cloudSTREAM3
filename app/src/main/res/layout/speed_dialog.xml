@@ -3,18 +3,37 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="500dp"
-    android:layout_height="match_parent"
-    android:orientation="vertical">
+    android:layout_height="wrap_content"
+    android:minWidth="320dp"
+    android:background="@drawable/bg_player_dialog_surface"
+    android:orientation="vertical"
+    android:paddingStart="12dp"
+    android:paddingTop="12dp"
+    android:paddingEnd="12dp"
+    android:paddingBottom="8dp">
+
+    <TextView
+        style="@style/PlayerDialogTitle"
+        android:layout_marginStart="20dp"
+        android:layout_marginTop="12dp"
+        android:layout_marginEnd="20dp"
+        android:text="@string/playback_speed" />
 
     <TextView
         android:id="@+id/speed_text"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_gravity="center_vertical"
-        android:layout_margin="20dp"
+        android:layout_marginStart="20dp"
+        android:layout_marginTop="4dp"
+        android:layout_marginEnd="20dp"
+        android:layout_marginBottom="20dp"
+        android:fontFamily="sans-serif-light"
         android:gravity="center_horizontal"
+        android:letterSpacing="-0.02"
         android:text="1.00x"
-        android:textSize="20sp"
+        android:textColor="?attr/textColor"
+        android:textSize="44sp"
         tools:ignore="HardcodedText" />
 
     <LinearLayout
@@ -25,6 +44,7 @@
             android:id="@+id/speed_minus"
             style="@style/ExtendedFloatingActionButton"
             android:layout_gravity="center_vertical"
+            android:layout_marginStart="12dp"
 
             android:foreground="@drawable/outline_drawable"
             android:nextFocusLeft="@id/speed_plus"
@@ -32,7 +52,8 @@
             android:nextFocusUp="@id/speed_minus"
             android:nextFocusDown="@id/speed_25"
             android:src="@drawable/media3_icon_minus"
-            app:tint="?attr/textColor" />
+            app:backgroundTint="@color/player_control_surface"
+            app:tint="@color/white" />
 
         <com.google.android.material.slider.Slider
             android:id="@+id/speed_bar"
@@ -63,12 +84,14 @@
             android:id="@+id/speed_plus"
             style="@style/ExtendedFloatingActionButton"
             android:layout_gravity="center_vertical"
+            android:layout_marginEnd="12dp"
             android:foreground="@drawable/outline_drawable"
             android:nextFocusLeft="@id/speed_bar"
             android:nextFocusRight="@id/speed_minus"
             android:nextFocusDown="@id/speed_200"
             android:src="@drawable/media3_icon_plus"
-            app:tint="?attr/textColor" />
+            app:backgroundTint="@color/player_control_surface"
+            app:tint="@color/white" />
     </LinearLayout>
 
     <LinearLayout
@@ -78,7 +101,7 @@
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/speed_25"
-            style="@style/BlackButton"
+            style="@style/PlayerToggleButton"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
@@ -91,7 +114,7 @@
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/speed_100"
-            style="@style/BlackButton"
+            style="@style/PlayerToggleButton"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
@@ -104,7 +127,7 @@
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/speed_125"
-            style="@style/BlackButton"
+            style="@style/PlayerToggleButton"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
@@ -117,7 +140,7 @@
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/speed_150"
-            style="@style/BlackButton"
+            style="@style/PlayerToggleButton"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
@@ -130,7 +153,7 @@
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/speed_200"
-            style="@style/BlackButton"
+            style="@style/PlayerToggleButton"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"

@@ -97,6 +97,56 @@
         <item name="android:insetBottom">@dimen/dialog_buttons_inset</item>
     </style>
 
+    <!-- Phone-only player chrome: tonal pills instead of bare text buttons. -->
+    <style name="VideoButtonExpressive" parent="@style/VideoButton">
+        <item name="android:layout_height">48dp</item>
+        <item name="android:layout_marginStart">4dp</item>
+        <item name="android:layout_marginEnd">4dp</item>
+        <item name="android:minWidth">48dp</item>
+        <item name="android:minHeight">48dp</item>
+        <item name="android:paddingStart">16dp</item>
+        <item name="android:paddingEnd">16dp</item>
+        <item name="android:insetTop">0dp</item>
+        <item name="android:insetBottom">0dp</item>
+        <item name="android:textSize">13sp</item>
+        <item name="android:textStyle">normal</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="android:letterSpacing">0.01</item>
+        <item name="cornerRadius">24dp</item>
+        <item name="iconSize">20dp</item>
+        <item name="iconPadding">6dp</item>
+        <item name="backgroundTint">@color/player_control_surface</item>
+        <item name="strokeColor">@color/player_control_outline</item>
+        <item name="strokeWidth">1dp</item>
+        <item name="rippleColor">@color/video_button_ripple</item>
+    </style>
+
+    <!-- Player toggle chips: speed presets and compressor presets / on-off. -->
+    <style name="PlayerToggleButton" parent="@style/BlackButton">
+        <item name="android:layout_height">44dp</item>
+        <item name="android:insetTop">0dp</item>
+        <item name="android:insetBottom">0dp</item>
+        <item name="android:textSize">13sp</item>
+        <item name="android:letterSpacing">0.01</item>
+        <item name="cornerRadius">22dp</item>
+    </style>
+
+    <style name="PlayerDialogTitle">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:textColor">?attr/textColor</item>
+        <item name="android:textSize">24sp</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:letterSpacing">-0.01</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="android:layout_marginBottom">8dp</item>
+    </style>
+
+    <!-- Same as AlertDialogCustom but with the player's M3 surface shape. -->
+    <style name="Theme.AlertDialog.Player" parent="@style/AlertDialogCustom">
+        <item name="android:windowBackground">@drawable/bg_player_dialog_surface</item>
+    </style>
+
     <style name="WhiteButton.Dialog" parent="WhiteButton">
         <item name="android:foreground">@drawable/outline_drawable_less_inset</item>
         <item name="android:insetTop">@dimen/dialog_buttons_inset</item>
@@ -136,7 +186,7 @@
     </style>
 
     <style name="DialogFullscreenPlayer" parent="DialogFullscreen">
-        <item name="android:windowBackground">?attr/primaryBlackBackground</item>
+        <item name="android:windowBackground">@drawable/bg_player_fullscreen_dialog</item>
         <item name="android:windowTranslucentNavigation">false</item>
         <item name="android:windowTranslucentStatus">false</item>
         <item name="android:windowIsFloating">false</item>

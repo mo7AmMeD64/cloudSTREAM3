@@ -33,13 +33,40 @@
         theme. The version-qualified variants add the API 28 cutout mode and
         the API 29 navigation-bar contrast opt-out; this base stays valid on
         minSdk 26.
+
+        Parent is the dark M3 theme on purpose: BottomSheetDialogs and Material
+        widgets created from this Activity would otherwise follow the system
+        light mode while the ported chrome stays dark. The ported attributes
+        below are copied from Theme.KodaStream because this theme no longer
+        inherits it.
     -->
-    <style name="Theme.KodaStream.Player.Base" parent="Theme.KodaStream">
+    <style name="Theme.KodaStream.Player.Base" parent="Theme.Material3.Dark.NoActionBar">
+        <item name="android:windowDrawsSystemBarBackgrounds">true</item>
         <item name="android:windowBackground">@android:color/black</item>
         <item name="android:colorBackground">@android:color/black</item>
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
-        <item name="android:windowDrawsSystemBarBackgrounds">true</item>
+        <item name="android:enforceStatusBarContrast">false</item>
+        <item name="android:enforceNavigationBarContrast">false</item>
+
+        <item name="colorPrimary">@color/colorPrimary</item>
+        <item name="colorOnPrimary">@color/black</item>
+        <item name="colorSurface">@color/player_surface</item>
+        <item name="colorOnSurface">@color/textColor</item>
+        <item name="colorOnSurfaceVariant">@color/grayTextColor</item>
+
+        <!-- Ported CloudStream player attributes. -->
+        <item name="textColor">@color/textColor</item>
+        <item name="grayTextColor">@color/grayTextColor</item>
+        <item name="primaryGrayBackground">@color/primaryGrayBackground</item>
+        <item name="primaryBlackBackground">@color/primaryBlackBackground</item>
+        <item name="iconGrayBackground">@color/iconGrayBackground</item>
+        <item name="boxItemBackground">@color/boxItemBackground</item>
+        <item name="bitDarkerGrayBackground">@color/boxItemBackground</item>
+        <item name="iconColor">@color/iconGrayBackground</item>
+        <item name="white">@color/white</item>
+        <item name="black">@color/black</item>
+        <item name="focusBackground">?android:attr/selectableItemBackground</item>
     </style>
 
     <style name="Theme.KodaStream.Player" parent="Theme.KodaStream.Player.Base" />
