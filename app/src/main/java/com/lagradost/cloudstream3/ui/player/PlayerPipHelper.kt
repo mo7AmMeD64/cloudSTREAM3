@@ -18,9 +18,16 @@ import com.lagradost.cloudstream3.CommonActivity
 import com.kodastream.app.R
 import com.lagradost.cloudstream3.mvvm.logError
 import com.lagradost.cloudstream3.mvvm.safe
+import java.util.UUID
 import kotlin.math.roundToInt
 
 object PlayerPipHelper {
+    /**
+     * Randomized per-process action. The PiP PendingIntent still carries it through
+     * SystemUI, but other apps cannot guess it and spoof playback controls.
+     */
+    val mediaControlAction: String = "$ACTION_MEDIA_CONTROL.${UUID.randomUUID()}"
+
     /** Is pip (Player in Player) supported, and enabled? */
     fun Context.isPIPPossible() : Boolean {
         return try {
@@ -80,7 +87,9 @@ object PlayerPipHelper {
         return PendingIntent.getBroadcast(
             activity,
             code,
-            Intent(ACTION_MEDIA_CONTROL).putExtra(EXTRA_CONTROL_TYPE, code),
+            Intent(mediaControlAction)
+                .setPackage(activity.packageName)
+                .putExtra(EXTRA_CONTROL_TYPE, code),
             PendingIntent.FLAG_IMMUTABLE
         )
     }

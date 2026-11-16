@@ -79,9 +79,16 @@ private fun JSONObject.strList(key: String): List<String>? {
 object RepositoryManager {
     const val ONLINE_PLUGINS_FOLDER = "Extensions"
 
+    /** Extension code and its manifest are only trusted over TLS. */
+    internal fun isSecureUrl(url: String): Boolean =
+        url.trim().startsWith("https://", ignoreCase = true)
+
     internal suspend fun httpGetString(url: String): String = withContext(Dispatchers.IO) {
+        if (!isSecureUrl(url)) throw java.io.IOException("HTTPS required for $url")
         val request = Request.Builder().url(url).header("User-Agent", USER_AGENT).build()
-        app.baseClient.newCall(request).execute().use { response ->
+        // Do not follow an HTTPS -> HTTP redirect; that would silently downgrade the manifest.
+        val client = app.baseClient.newBuilder().followSslRedirects(false).build()
+        client.newCall(request).execute().use { response ->
             if (!response.isSuccessful) throw java.io.IOException("HTTP ${response.code} for $url")
             response.body?.string() ?: throw java.io.IOException("Empty body for $url")
         }
@@ -107,7 +114,7 @@ object RepositoryManager {
             val client = app.baseClient.newBuilder().followRedirects(false).followSslRedirects(false).build()
             val request = Request.Builder().url(url).header("User-Agent", USER_AGENT).build()
             client.newCall(request).execute().use { response ->
-                response.header("Location")
+                response.header("Location")?.takeIf { isSecureUrl(it) }
             }
         } catch (t: Throwable) {
             logError(t)
@@ -123,10 +130,15 @@ object RepositoryManager {
         val fixedUrl = url.trim()
         val schemeRegex = "^(cloudstreamrepo://)|(https://cs\\.repo/\\??)".toRegex()
         return when {
-            fixedUrl.contains("^https?://".toRegex()) -> fixedUrl
+            isSecureUrl(fixedUrl) -> fixedUrl
+            fixedUrl.startsWith("http://", ignoreCase = true) -> null
             fixedUrl.contains(schemeRegex) -> {
                 val stripped = fixedUrl.replace(schemeRegex, "")
-                if (stripped.contains("^https?://".toRegex())) stripped else "https://$stripped"
+                when {
+                    isSecureUrl(stripped) -> stripped
+                    stripped.startsWith("http://", ignoreCase = true) -> null
+                    else -> "https://$stripped"
+                }
             }
             fixedUrl.matches("^[a-zA-Z0-9!_-]+$".toRegex()) -> {
                 if (fixedUrl.startsWith("!")) {
@@ -142,6 +154,7 @@ object RepositoryManager {
     }
 
     suspend fun parseRepository(url: String): Repository? {
+        if (!isSecureUrl(url)) return null
         return try {
             val json = JSONObject(httpGetString(url))
             val lists = json.optJSONArray("pluginLists") ?: JSONArray()
@@ -159,6 +172,7 @@ object RepositoryManager {
     }
 
     private suspend fun parsePlugins(pluginsUrl: String): List<SitePlugin> {
+        if (!isSecureUrl(pluginsUrl)) return emptyList()
         return try {
             val array = JSONArray(httpGetString(pluginsUrl))
             (0 until array.length()).mapNotNull { i ->
@@ -197,6 +211,7 @@ object RepositoryManager {
         file: File,
         expectedFileHash: String?,
     ): String? = withContext(Dispatchers.IO) {
+        if (!isSecureUrl(pluginUrl)) return@withContext "Plugin URL must use HTTPS"
         try {
             val parentDir = file.parentFile ?: return@withContext "No parent folder"
             parentDir.mkdirs()
@@ -204,7 +219,9 @@ object RepositoryManager {
             // Download to a temp file first so a failed download never corrupts a working plugin.
             val tempFile = File.createTempFile("plugin", ".tmp", context.cacheDir)
             val request = Request.Builder().url(pluginUrl).header("User-Agent", USER_AGENT).build()
-            app.baseClient.newCall(request).execute().use { response ->
+            // followSslRedirects(false) rejects any redirect that changes HTTP <-> HTTPS.
+            val client = app.baseClient.newBuilder().followSslRedirects(false).build()
+            client.newCall(request).execute().use { response ->
                 if (!response.isSuccessful) {
                     tempFile.delete()
                     return@withContext "HTTP ${response.code}"

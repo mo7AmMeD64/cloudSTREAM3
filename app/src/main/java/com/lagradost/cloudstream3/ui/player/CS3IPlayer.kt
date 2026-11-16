@@ -109,15 +109,12 @@ import com.lagradost.cloudstream3.utils.PLAYREADY_DRM_UUID
 import com.lagradost.cloudstream3.utils.SubtitleHelper.fromTagToLanguageName
 import com.lagradost.cloudstream3.utils.WIDEVINE_DRM_UUID
 import com.lagradost.cloudstream3.utils.videoskip.VideoSkipStamp
+import com.lagradost.nicehttp.ignoreAllSSLErrors
 import kotlinx.coroutines.delay
 import okhttp3.Interceptor
 import java.io.File
-import java.security.SecureRandom
 import java.util.UUID
 import java.util.concurrent.Executors
-import javax.net.ssl.HttpsURLConnection
-import javax.net.ssl.SSLContext
-import javax.net.ssl.SSLSession
 import kotlin.uuid.toJavaUuid
 
 const val TAG = "CS3ExoPlayer"
@@ -170,7 +167,6 @@ class CS3IPlayer : IPlayer {
             it.isCommandAvailable(Player.COMMAND_GET_CURRENT_MEDIA_ITEM) && it.isCurrentMediaItemSeekable
         } ?: false
 
-    private var ignoreSSL: Boolean = false
     private var playBackSpeed: Float = 1.0f
 
     /**
@@ -695,15 +691,20 @@ class CS3IPlayer : IPlayer {
 
         private var simpleCache: SimpleCache? = null
 
+        /** Trust-all client used only for player streams when the user opts in. */
+        private val insecurePlayerClient by lazy {
+            app.baseClient.newBuilder().ignoreAllSSLErrors().build()
+        }
+
         /// Create a small factory for small things, no cache, no cronet
         private fun createOnlineSource(
             headers: Map<String, String>?,
-            interceptor: Interceptor?
+            interceptor: Interceptor?,
+            ignoreSSL: Boolean = false,
         ): HttpDataSource.Factory {
-            val client = if (interceptor == null) {
-                app.baseClient
-            } else {
-                app.baseClient.newBuilder()
+            var client = if (ignoreSSL) insecurePlayerClient else app.baseClient
+            if (interceptor != null) {
+                client = client.newBuilder()
                     .addInterceptor(interceptor)
                     .build()
             }
@@ -718,16 +719,18 @@ class CS3IPlayer : IPlayer {
         private fun createVideoSource(
             link: ExtractorLink,
             interceptor: Interceptor?,
+            ignoreSSL: Boolean = false,
         ): HttpDataSource.Factory {
             val userAgent = link.headers.entries.find {
                 it.key.equals("User-Agent", ignoreCase = true)
             }?.value ?: USER_AGENT
 
+            val baseClient = if (ignoreSSL) insecurePlayerClient else app.baseClient
             val source = if (interceptor == null) {
-                OkHttpDataSource.Factory(app.baseClient).setUserAgent(userAgent)
+                OkHttpDataSource.Factory(baseClient).setUserAgent(userAgent)
             } else {
                 Log.d(TAG, "Using OkHttpDataSource for $link")
-                val client = app.baseClient.newBuilder()
+                val client = baseClient.newBuilder()
                     .addInterceptor(interceptor)
                     .build()
                 OkHttpDataSource.Factory(client).setUserAgent(userAgent)
@@ -1636,6 +1639,7 @@ class CS3IPlayer : IPlayer {
         offlineSourceFactory: DataSource.Factory?,
         subHelper: PlayerSubtitleHelper,
         interceptor: Interceptor?,
+        ignoreSSL: Boolean = false,
     ): Pair<List<SingleSampleMediaSource>, List<SubtitleData>> {
         val activeSubtitles = ArrayList<SubtitleData>()
         val subSources = subHelper.getAllSubtitles().mapNotNull { sub ->
@@ -1657,7 +1661,7 @@ class CS3IPlayer : IPlayer {
                 }
 
                 SubtitleOrigin.URL -> {
-                    val dataSourceFactory = createOnlineSource(sub.headers, interceptor)
+                    val dataSourceFactory = createOnlineSource(sub.headers, interceptor, ignoreSSL)
                     activeSubtitles.add(sub)
                     SingleSampleMediaSource.Factory(dataSourceFactory)
                         .createMediaSource(subConfig, TIME_UNSET)
@@ -1675,11 +1679,12 @@ class CS3IPlayer : IPlayer {
     private fun getAudioSources(
         audioTracks: List<AudioFile>,
         interceptor: Interceptor?,
+        ignoreSSL: Boolean = false,
     ): List<MediaSource> {
         return audioTracks.mapNotNull { audio ->
             try {
                 val mediaItem = getMediaItem(MimeTypes.AUDIO_UNKNOWN, audio.url)
-                val dataSourceFactory = createOnlineSource(audio.headers, interceptor)
+                val dataSourceFactory = createOnlineSource(audio.headers, interceptor, ignoreSSL)
                 DefaultMediaSourceFactory(dataSourceFactory).createMediaSource(mediaItem)
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to create audio source for ${audio.url}: ${e.message}")
@@ -1715,18 +1720,8 @@ class CS3IPlayer : IPlayer {
 
             currentLink = link
 
-            ignoreSSL = AppPrefs.allowInvalidSsl(context)
-            if (ignoreSSL) {
-                // Disables ssl check
-                val sslContext: SSLContext = SSLContext.getInstance("TLS")
-                sslContext.init(null, arrayOf(SSLTrustManager()), SecureRandom())
-                sslContext.createSSLEngine()
-                HttpsURLConnection.setDefaultHostnameVerifier { _: String, _: SSLSession ->
-                    true
-                }
-                HttpsURLConnection.setDefaultSSLSocketFactory(sslContext.socketFactory)
-            }
-
+            // Scoped to the player's OkHttp streams; never mutate process-wide TLS defaults.
+            val ignoreSSL = AppPrefs.allowInvalidSsl(context)
 
             val mediaItems = when (link) {
                 is ExtractorLinkPlayList -> link.playlist.map {
@@ -1769,7 +1764,8 @@ class CS3IPlayer : IPlayer {
             val onlineSourceFactory =
                 createVideoSource(
                     link = link,
-                    interceptor = interceptor
+                    interceptor = interceptor,
+                    ignoreSSL = ignoreSSL,
                 )
 
             val offlineSourceFactory = context.createOfflineSource()
@@ -1778,12 +1774,14 @@ class CS3IPlayer : IPlayer {
                 offlineSourceFactory = offlineSourceFactory,
                 subHelper = subtitleHelper,
                 interceptor = interceptor, // Backwards compatibility, needs a new api to work properly
+                ignoreSSL = ignoreSSL,
             )
 
             // Create audio sources from ExtractorLink's audioTracks
             val audioSources = getAudioSources(
                 audioTracks = link.audioTracks,
                 interceptor = interceptor, // Backwards compatibility, needs a new api to work properly
+                ignoreSSL = ignoreSSL,
             )
 
             subtitleHelper.setActiveSubtitles(activeSubtitles.toSet())

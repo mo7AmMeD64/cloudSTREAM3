@@ -25,8 +25,9 @@ android {
         versionName = "0.12.5"
     }
 
-    // CI decodes the stable release keystore from secrets; without it (local
-    // builds, forks) fall back to the debug key.
+    // CI decodes the stable release keystore from secrets. There is deliberately no
+    // debug-key fallback: without a keystore the release APK stays unsigned, and the
+    // workflow refuses to publish it.
     val releaseKeystore = System.getenv("ANDROID_KEYSTORE_FILE")?.takeIf { file(it).exists() }
     signingConfigs {
         if (releaseKeystore != null) {
@@ -46,10 +47,8 @@ android {
             // stays OFF (CloudStream itself ships the same way).
             isMinifyEnabled = false
             isShrinkResources = false
-            signingConfig = if (releaseKeystore != null) {
-                signingConfigs.getByName("release")
-            } else {
-                signingConfigs.getByName("debug")
+            if (releaseKeystore != null) {
+                signingConfig = signingConfigs.getByName("release")
             }
         }
         debug {

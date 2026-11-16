@@ -245,13 +245,14 @@ actual class WebViewResolver actual constructor(
                         }
                     }
 
-                    @SuppressLint("WebViewClientOnReceivedSslError")
                     override fun onReceivedSslError(
                         view: WebView?,
                         handler: SslErrorHandler?,
                         error: SslError?
                     ) {
-                        handler?.proceed() // Ignore ssl issues
+                        // This hidden browser shares the app's cookie jar, so accepting a
+                        // bad certificate would expose authenticated cookies to a MITM.
+                        handler?.cancel()
                     }
                 }
                 webView?.loadUrl(url, headers.toMap())

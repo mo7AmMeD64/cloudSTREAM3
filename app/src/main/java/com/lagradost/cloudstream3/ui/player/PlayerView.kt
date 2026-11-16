@@ -500,18 +500,21 @@ class PlayerView @JvmOverloads constructor(
             if (isInPictureInPictureMode) {
                 // Hide the full-screen UI (controls, etc.) while in picture-in-picture mode.
                 piphide?.isVisible = false
+                val controlAction = PlayerPipHelper.mediaControlAction
                 pipReceiver = object : BroadcastReceiver() {
                     override fun onReceive(context: Context, intent: Intent) {
-                        if (ACTION_MEDIA_CONTROL != intent.action) return
-                        player.handleEvent(
-                            CSPlayerEvent.entries[intent.getIntExtra(EXTRA_CONTROL_TYPE, 0)],
-                            source = PlayerEventSource.UI
-                        )
+                        if (controlAction != intent.action) return
+                        val event = CSPlayerEvent.entries.getOrNull(
+                            intent.getIntExtra(EXTRA_CONTROL_TYPE, 0)
+                        ) ?: return
+                        safe {
+                            player.handleEvent(event, source = PlayerEventSource.UI)
+                        }
                     }
                 }
-                val filter = IntentFilter().apply { addAction(ACTION_MEDIA_CONTROL) }
+                val filter = IntentFilter().apply { addAction(controlAction) }
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                    activity?.registerReceiver(pipReceiver, filter, Context.RECEIVER_EXPORTED)
+                    activity?.registerReceiver(pipReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
                 } else {
                     @SuppressLint("UnspecifiedRegisterReceiverFlag")
                     activity?.registerReceiver(pipReceiver, filter)

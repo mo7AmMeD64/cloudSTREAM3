@@ -440,10 +440,15 @@ object AppPrefs {
         prefs(context).edit { if (name == null) remove(KEY_PROVIDER) else putString(KEY_PROVIDER, name) }
     }
 
-    /** Keys that are safe to export/import (excludes provider selection and machine-specific download paths). */
+    /**
+     * Keys that are safe to export/import. Provider selection, download paths,
+     * security overrides and update state stay local to this device.
+     */
     fun isExportablePrefKey(key: String): Boolean {
         if (key == KEY_PROVIDER) return false
         if (key.startsWith("download_")) return false
+        if (key == KEY_ALLOW_INVALID_SSL) return false
+        if (key.startsWith("update_")) return false
         return true
     }
 

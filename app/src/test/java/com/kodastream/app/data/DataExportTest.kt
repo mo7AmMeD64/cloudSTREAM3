@@ -224,20 +224,26 @@ class DataExportTest {
     }
 
     @Test
-    fun appPrefsSkipsDownloadAndProviderKeys() {
+    fun appPrefsSkipsMachineSpecificAndSecurityKeys() {
         assertFalse(AppPrefs.isExportablePrefKey("selected_provider"))
         assertFalse(AppPrefs.isExportablePrefKey("download_tree_uri"))
         assertFalse(AppPrefs.isExportablePrefKey("download_wifi_only"))
         assertFalse(AppPrefs.isExportablePrefKey("download_max_concurrent"))
         assertFalse(AppPrefs.isExportablePrefKey("download_last_server"))
         assertFalse(AppPrefs.isExportablePrefKey("download_folders_migrated"))
+        assertFalse(AppPrefs.isExportablePrefKey("allow_invalid_ssl"))
+        assertFalse(AppPrefs.isExportablePrefKey("update_last_check"))
+        assertFalse(AppPrefs.isExportablePrefKey("update_skipped_version"))
+        assertFalse(AppPrefs.isExportablePrefKey("update_version"))
+        assertFalse(AppPrefs.isExportablePrefKey("update_url"))
+        assertFalse(AppPrefs.isExportablePrefKey("update_notes"))
+        assertFalse(AppPrefs.isExportablePrefKey("update_etag"))
 
         assertTrue(AppPrefs.isExportablePrefKey("keep_screen_on"))
         assertTrue(AppPrefs.isExportablePrefKey("ui_style"))
         assertTrue(AppPrefs.isExportablePrefKey("nav_position"))
         assertTrue(AppPrefs.isExportablePrefKey("playback_speed"))
         assertTrue(AppPrefs.isExportablePrefKey("pause_history"))
-        assertTrue(AppPrefs.isExportablePrefKey("allow_invalid_ssl"))
 
         val targetPrefs = mapOf(
             "keep_screen_on" to false,

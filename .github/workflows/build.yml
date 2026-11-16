@@ -43,10 +43,13 @@ jobs:
       - name: Decode signing keystore
         env:
           KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
-          if [[ -z "$KEYSTORE_BASE64" ]]; then
-            echo "No signing secret; this build falls back to the debug key."
-            exit 0
+          if [[ -z "$KEYSTORE_BASE64" || -z "$KEYSTORE_PASSWORD" || -z "$KEY_ALIAS" || -z "$KEY_PASSWORD" ]]; then
+            echo "::error::All ANDROID_KEYSTORE_* secrets are required for a signed release build."
+            exit 1
           fi
           echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.keystore"
 
@@ -60,9 +63,22 @@ jobs:
         run: ./gradlew :app:testDebugUnitTest :mihon-compat:test :app:assembleRelease --stacktrace 2>&1 | tee build.log
 
       - name: Collect APK
+        shell: bash
         run: |
           mkdir -p dist
-          cp app/build/outputs/apk/release/*.apk "dist/cloud3-${GITHUB_RUN_NUMBER}.apk"
+          shopt -s nullglob
+          signed=()
+          for apk in app/build/outputs/apk/release/*.apk; do
+            if [[ "$apk" == *-unsigned.apk ]]; then
+              continue
+            fi
+            signed+=("$apk")
+          done
+          if [[ ${#signed[@]} -ne 1 ]]; then
+            echo "::error::Expected exactly one signed release APK, found ${#signed[@]}."
+            exit 1
+          fi
+          cp "${signed[0]}" "dist/cloud3-${GITHUB_RUN_NUMBER}.apk"
           ls -lh dist
 
       - name: Upload APK
