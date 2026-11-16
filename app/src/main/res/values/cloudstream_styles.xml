@@ -136,11 +136,15 @@
     </style>
 
     <style name="DialogFullscreenPlayer" parent="DialogFullscreen">
-        <item name="android:windowBackground">?attr/primaryBlackBackground</item>
+        <!-- mpvKt PlayerSheet surface, 0.5 scrim alpha and 350ms slide-up. -->
+        <item name="android:windowBackground">@drawable/mpvkt_sheet_background</item>
+        <item name="android:backgroundDimAmount">0.5</item>
+        <item name="android:windowEnterAnimation">@anim/mpvkt_dialog_enter</item>
+        <item name="android:windowExitAnimation">@anim/mpvkt_dialog_exit</item>
         <item name="android:windowTranslucentNavigation">false</item>
         <item name="android:windowTranslucentStatus">false</item>
         <item name="android:windowIsFloating">false</item>
-        <item name="android:navigationBarColor">?attr/primaryBlackBackground</item>
-        <item name="android:statusBarColor">?attr/primaryBlackBackground</item>
+        <item name="android:navigationBarColor">@color/mpvkt_sheet_surface</item>
+        <item name="android:statusBarColor">@color/mpvkt_sheet_surface</item>
     </style>
 </resources>

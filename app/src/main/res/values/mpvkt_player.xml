@@ -5,6 +5,8 @@
     <color name="mpvkt_seek_progress">#E9B5EE</color>
     <color name="mpvkt_seek_track">#171217</color>
     <color name="mpvkt_button_ripple">#80E9B5EE</color>
+    <color name="mpvkt_sheet_surface">#1F1A1F</color>
+    <color name="mpvkt_sheet_button">#2E282D</color>
 
     <!-- Bare white icon button: 20dp icon with 14dp padding, circular ripple, no label. -->
     <style name="MpvKtVideoButton">
@@ -29,5 +31,14 @@
         <item name="android:textSize">0sp</item>
         <item name="android:layout_marginStart">2dp</item>
         <item name="android:layout_marginEnd">2dp</item>
+    </style>
+
+    <!-- mpvKt sheet button, layered on the ported player's existing button style. -->
+    <style name="MpvKtSheetButton" parent="@style/BlackButton">
+        <item name="backgroundTint">@color/mpvkt_sheet_button</item>
+        <item name="textColor">@color/mpvkt_seek_progress</item>
+        <item name="android:textColor">@color/mpvkt_seek_progress</item>
+        <item name="rippleColor">@color/mpvkt_button_ripple</item>
+        <item name="cornerRadius">28dp</item>
     </style>
 </resources>

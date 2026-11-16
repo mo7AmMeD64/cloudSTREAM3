@@ -40,7 +40,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
                     android:layout_rowWeight="1"
-                    android:background="?attr/primaryBlackBackground"
+                    android:background="@color/mpvkt_sheet_surface"
                     android:nextFocusRight="@id/audio_tracks_holder"
 
                     tools:listitem="@layout/sort_bottom_single_choice" />
@@ -111,7 +111,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
                 android:layout_rowWeight="1"
-                android:background="?attr/primaryBlackBackground"
+                android:background="@color/mpvkt_sheet_surface"
                 android:nextFocusRight="@id/apply_btt"
                 android:nextFocusLeft="@id/video_tracks_list"
                 tools:listfooter="@layout/sort_bottom_footer_add_choice"

@@ -290,6 +290,35 @@
                         android:textStyle="bold" />
                 </LinearLayout>
 
+                <!-- mpvKt top-right control cluster -->
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="top|end"
+                    android:layout_marginTop="8dp"
+                    android:layout_marginEnd="8dp"
+                    android:orientation="horizontal">
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/player_subtitle_offset_btt"
+                        style="@style/MpvKtVideoButton"
+                        android:nextFocusLeft="@id/player_tracks_btt"
+                        android:nextFocusRight="@id/player_tracks_btt"
+                        android:text="@string/subtitle_offset"
+
+                        android:visibility="gone"
+                        app:icon="@drawable/player_ic_subtitles_modern"
+                        tools:visibility="visible" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/player_tracks_btt"
+                        style="@style/MpvKtVideoButton"
+                        android:nextFocusLeft="@id/player_subtitle_offset_btt"
+                        android:nextFocusRight="@id/player_go_back"
+                        android:text="@string/tracks"
+                        app:icon="@drawable/player_ic_tracks_modern" />
+                </LinearLayout>
+
                 <!-- Removed as it has no use anymore-->
                 <!--<androidx.mediarouter.app.MediaRouteButton
                         android:id="@+id/player_media_route_button"
@@ -942,20 +971,9 @@
                                 style="@style/MpvKtVideoButton"
                                 android:nextFocusLeft="@id/player_resize_btt"
 
-                                android:nextFocusRight="@id/player_subtitle_offset_btt"
+                                android:nextFocusRight="@id/player_sources_btt"
                                 android:textSize="14sp"
                                 tools:text="1.0x" />
-
-                            <com.google.android.material.button.MaterialButton
-                                android:id="@+id/player_subtitle_offset_btt"
-                                style="@style/MpvKtVideoButton"
-                                android:nextFocusLeft="@id/player_speed_btt"
-                                android:nextFocusRight="@id/player_sources_btt"
-                                android:text="@string/subtitle_offset"
-
-                                android:visibility="gone"
-                                app:icon="@drawable/player_ic_subtitles_modern"
-                                tools:visibility="visible" />
 
                             </LinearLayout>
 
@@ -969,7 +987,7 @@
                             <com.google.android.material.button.MaterialButton
                                 android:id="@+id/player_sources_btt"
                                 style="@style/MpvKtVideoButton"
-                                android:nextFocusLeft="@id/player_subtitle_offset_btt"
+                                android:nextFocusLeft="@id/player_speed_btt"
                                 android:nextFocusRight="@id/player_cast_btt"
                                 android:text="@string/video_source"
                                 app:icon="@drawable/player_ic_source_modern" />
@@ -986,23 +1004,14 @@
                                 android:id="@+id/player_external_btt"
                                 style="@style/MpvKtVideoButton"
                                 android:nextFocusLeft="@id/player_cast_btt"
-                                android:nextFocusRight="@id/player_tracks_btt"
+                                android:nextFocusRight="@id/player_compressor_btt"
                                 android:text="@string/open_in_external_player"
                                 app:icon="@drawable/ic_baseline_open_in_new_24" />
 
                             <com.google.android.material.button.MaterialButton
-                                android:id="@+id/player_tracks_btt"
-                                style="@style/MpvKtVideoButton"
-
-                                android:nextFocusLeft="@id/player_external_btt"
-                                android:nextFocusRight="@id/player_compressor_btt"
-                                android:text="@string/tracks"
-                                app:icon="@drawable/player_ic_tracks_modern" />
-
-                            <com.google.android.material.button.MaterialButton
                                 android:id="@+id/player_compressor_btt"
                                 style="@style/MpvKtVideoButton"
-                                android:nextFocusLeft="@id/player_tracks_btt"
+                                android:nextFocusLeft="@id/player_external_btt"
                                 android:nextFocusRight="@id/player_skip_op"
                                 android:text="@string/compressor"
                                 app:icon="@drawable/ic_compressor_24" />
