@@ -261,6 +261,8 @@ KodaStream's player control styling is reproduced from mpvKt
 License v3.0. Reproduced resources:
 
 - app/src/main/res/drawable/mpvkt_control_scrim.xml
+- app/src/main/res/drawable/mpvkt_seek_triangle_left.xml (mirrored)
+- app/src/main/res/drawable/mpvkt_seek_triangle_right.xml
 - app/src/main/res/values/mpvkt_player.xml
 - app/src/main/res/layout/player_custom_layout.xml (control styling only)
 

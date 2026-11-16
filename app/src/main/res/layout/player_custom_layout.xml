@@ -128,12 +128,17 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent">
 
+        <View
+            android:id="@+id/mpvkt_scrim"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@drawable/mpvkt_control_scrim" />
 
         <View
             android:id="@+id/shadow_overlay"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:background="@drawable/mpvkt_control_scrim" />
+            android:background="@android:color/transparent" />
 
         <RelativeLayout
             android:layout_width="match_parent"
@@ -147,8 +152,8 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_centerInParent="true"
-                android:background="@drawable/player_seek_preview_bubble"
                 android:gravity="center"
+                android:textStyle="bold"
                 android:minWidth="56dp"
                 android:maxWidth="160dp"
                 android:paddingStart="12dp"
@@ -460,9 +465,12 @@
 
                     <TextView
                         android:id="@+id/exo_rew_text"
-                        android:layout_width="200dp"
+                        android:layout_width="wrap_content"
                         android:layout_height="40dp"
                         android:layout_gravity="center"
+                        android:minWidth="48dp"
+                        android:drawableStart="@drawable/mpvkt_seek_triangle_left"
+                        android:drawablePadding="4dp"
 
                         android:gravity="center"
                         android:textColor="@color/white"
@@ -532,9 +540,12 @@
 
                     <TextView
                         android:id="@+id/exo_ffwd_text"
-                        android:layout_width="200dp"
+                        android:layout_width="wrap_content"
                         android:layout_height="40dp"
                         android:layout_gravity="center"
+                        android:minWidth="48dp"
+                        android:drawableEnd="@drawable/mpvkt_seek_triangle_right"
+                        android:drawablePadding="4dp"
                         android:gravity="center"
                         android:textColor="@color/white"
                         android:textSize="19sp"
@@ -872,17 +883,18 @@
 
                 <HorizontalScrollView
                     android:id="@+id/player_controls_scroll"
-                    android:layout_width="wrap_content"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_gravity="center">
+                    android:layout_gravity="center"
+                    android:fillViewport="true">
 
                     <LinearLayout
-                        android:layout_width="wrap_content"
+                        android:layout_width="match_parent"
                         android:layout_height="60dp"
-                        android:gravity="center"
+                        android:gravity="center_vertical"
                         android:orientation="horizontal"
-                        android:paddingTop="10dp"
-                        android:paddingBottom="10dp">
+                        android:paddingTop="6dp"
+                        android:paddingBottom="6dp">
 
                         <com.google.android.material.button.MaterialButton
                             android:id="@+id/player_lock"
@@ -894,9 +906,18 @@
 
                         <LinearLayout
                             android:id="@+id/player_lock_holder"
-                            android:layout_width="wrap_content"
+                            android:layout_width="0dp"
                             android:layout_height="match_parent"
+                            android:layout_weight="1"
                             android:orientation="horizontal">
+
+                            <LinearLayout
+                                android:id="@+id/mpvkt_controls_left"
+                                android:layout_width="0dp"
+                                android:layout_height="match_parent"
+                                android:layout_weight="1"
+                                android:gravity="start|center_vertical"
+                                android:orientation="horizontal">
 
                             <com.google.android.material.button.MaterialButton
                                 android:id="@+id/player_rotate_btt"
@@ -935,6 +956,15 @@
                                 android:visibility="gone"
                                 app:icon="@drawable/player_ic_subtitles_modern"
                                 tools:visibility="visible" />
+
+                            </LinearLayout>
+
+                            <LinearLayout
+                                android:id="@+id/mpvkt_controls_right"
+                                android:layout_width="wrap_content"
+                                android:layout_height="match_parent"
+                                android:gravity="end|center_vertical"
+                                android:orientation="horizontal">
 
                             <com.google.android.material.button.MaterialButton
                                 android:id="@+id/player_sources_btt"
@@ -993,6 +1023,8 @@
                                 android:nextFocusRight="@id/player_lock"
                                 android:text="@string/next_episode"
                                 app:icon="@drawable/ic_baseline_skip_next_24" />
+
+                            </LinearLayout>
 
                         </LinearLayout>
                     </LinearLayout>
