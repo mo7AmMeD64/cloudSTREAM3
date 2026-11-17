@@ -136,9 +136,9 @@
     </style>
 
     <style name="DialogFullscreenPlayer" parent="DialogFullscreen">
-        <!-- mpvKt PlayerSheet surface, 0.5 scrim alpha and 350ms slide-up. -->
+        <!-- M3 modal sheet surface, 32% scrim and 400/200ms slide transitions. -->
         <item name="android:windowBackground">@drawable/mpvkt_sheet_background</item>
-        <item name="android:backgroundDimAmount">0.5</item>
+        <item name="android:backgroundDimAmount">0.32</item>
         <item name="android:windowEnterAnimation">@anim/mpvkt_dialog_enter</item>
         <item name="android:windowExitAnimation">@anim/mpvkt_dialog_exit</item>
         <item name="android:windowTranslucentNavigation">false</item>

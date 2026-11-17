@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- mpvKt PlayerSheet entrance: 350ms slide-up + fade. -->
+<!-- M3 Expressive transition: enter the screen, 400ms emphasized decelerate. -->
 <set xmlns:android="http://schemas.android.com/apk/res/android">
     <translate
-        android:duration="350"
+        android:duration="@integer/md3_player_motion_enter"
         android:fromYDelta="100%"
         android:interpolator="@android:interpolator/fast_out_slow_in"
         android:toYDelta="0" />
     <alpha
-        android:duration="350"
+        android:duration="@integer/md3_player_motion_enter"
         android:fromAlpha="0"
         android:interpolator="@android:interpolator/fast_out_slow_in"
         android:toAlpha="1" />

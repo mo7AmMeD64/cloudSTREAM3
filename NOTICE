@@ -256,9 +256,10 @@ player's refreshed look, watch statistics, the "More" rail on the title page
 of provider results. The code was re-integrated into this project's current
 structure and is covered by the same licence.
 
-KodaStream's player control styling is reproduced from mpvKt
+KodaStream's player control styling was originally reproduced from mpvKt
 (https://github.com/mpvKt/mpvKt), licensed under the GNU General Public
-License v3.0. Reproduced resources:
+License v3.0, and subsequently re-themed with Material Design 3 (Google
+I/O 2026 Expressive update) tokens. Reproduced resources:
 
 - app/src/main/res/drawable/mpvkt_control_scrim.xml
 - app/src/main/res/drawable/mpvkt_sheet_background.xml
@@ -266,6 +267,7 @@ License v3.0. Reproduced resources:
 - app/src/main/res/drawable/mpvkt_seek_triangle_right.xml
 - app/src/main/res/anim/mpvkt_dialog_enter.xml
 - app/src/main/res/anim/mpvkt_dialog_exit.xml
+- app/src/main/res/values/md3_player_tokens.xml (Material Design 3 palette)
 - app/src/main/res/values/mpvkt_player.xml
 - app/src/main/res/layout/player_custom_layout.xml (control styling only)
 - app/src/main/res/layout/speed_dialog.xml (speed sheet styling)

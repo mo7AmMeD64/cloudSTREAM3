@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- mpvKt PlayerSheet exit: 350ms slide-down + fade. -->
+<!-- M3 Expressive transition: exit the screen, 200ms emphasized accelerate. -->
 <set xmlns:android="http://schemas.android.com/apk/res/android">
     <translate
-        android:duration="350"
+        android:duration="@integer/md3_player_motion_exit"
         android:fromYDelta="0"
-        android:interpolator="@android:interpolator/fast_out_slow_in"
+        android:interpolator="@android:interpolator/accelerate_interpolator"
         android:toYDelta="100%" />
     <alpha
-        android:duration="350"
+        android:duration="@integer/md3_player_motion_exit"
         android:fromAlpha="1"
-        android:interpolator="@android:interpolator/fast_out_slow_in"
+        android:interpolator="@android:interpolator/accelerate_interpolator"
         android:toAlpha="0" />
 </set>

@@ -295,8 +295,8 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_gravity="top|end"
-                    android:layout_marginTop="8dp"
-                    android:layout_marginEnd="8dp"
+                    android:layout_marginTop="@dimen/md3_player_space_1"
+                    android:layout_marginEnd="@dimen/md3_player_space_1"
                     android:orientation="horizontal">
 
                     <com.google.android.material.button.MaterialButton
@@ -848,7 +848,7 @@
                         app:layout_constraintTop_toTopOf="@id/exo_position"
                         app:played_color="@color/mpvkt_seek_progress"
                         app:scrubber_color="@color/mpvkt_seek_progress"
-                        app:scrubber_dragged_size="18dp"
+                        app:scrubber_dragged_size="20dp"
                         app:scrubber_enabled_size="12dp"
                         app:unplayed_color="@color/mpvkt_seek_track" />
 
