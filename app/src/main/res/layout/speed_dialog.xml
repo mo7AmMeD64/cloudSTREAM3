@@ -44,17 +44,17 @@
             android:nextFocusRight="@id/speed_plus"
             android:nextFocusUp="@id/speed_bar"
             android:nextFocusDown="@id/speed_125"
-            android:progressTint="@color/mpvkt_seek_progress"
+            android:progressTint="?attr/white"
             android:stepSize="0.05"
-            android:thumbTint="@color/mpvkt_seek_progress"
+            android:thumbTint="?attr/white"
             android:value="1.0"
             android:valueFrom="0.1"
             android:valueTo="2.0"
             app:labelStyle="@style/BlackLabel"
-            app:thumbColor="@color/mpvkt_seek_progress"
+            app:thumbColor="?attr/white"
             app:tickVisible="false"
-            app:trackColorActive="@color/mpvkt_seek_progress"
-            app:trackColorInactive="@color/mpvkt_seek_track">
+            app:trackColorActive="?attr/white"
+            app:trackColorInactive="?attr/primaryGrayBackground">
 
             <requestFocus />
         </com.google.android.material.slider.Slider>
@@ -78,7 +78,7 @@
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/speed_25"
-            style="@style/MpvKtSheetButton"
+            style="@style/BlackButton"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
@@ -91,7 +91,7 @@
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/speed_100"
-            style="@style/MpvKtSheetButton"
+            style="@style/BlackButton"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
@@ -104,7 +104,7 @@
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/speed_125"
-            style="@style/MpvKtSheetButton"
+            style="@style/BlackButton"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
@@ -117,7 +117,7 @@
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/speed_150"
-            style="@style/MpvKtSheetButton"
+            style="@style/BlackButton"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
@@ -130,7 +130,7 @@
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/speed_200"
-            style="@style/MpvKtSheetButton"
+            style="@style/BlackButton"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
