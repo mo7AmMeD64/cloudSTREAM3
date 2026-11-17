@@ -1,6 +1,9 @@
 package com.kodastream.app.ui.player.compose
 
 import android.app.Activity
+import android.content.pm.ActivityInfo
+import android.content.res.Configuration
+import android.os.Build
 import android.content.Context
 import android.media.AudioManager
 import android.view.View
@@ -14,8 +17,12 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -32,7 +39,12 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Audiotrack
+import androidx.compose.material.icons.filled.Fullscreen
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlaylistPlay
+import androidx.compose.material.icons.filled.Source
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Replay
 import androidx.compose.material.icons.filled.Settings
@@ -53,6 +65,7 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.fragment.app.FragmentActivity
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -71,8 +84,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.kodastream.app.ui.theme.KodaStreamTheme
 import com.lagradost.cloudstream3.ui.player.CSPlayerLoading
+import com.lagradost.cloudstream3.ui.player.PlayerPipHelper
+import com.lagradost.cloudstream3.ui.player.PlayerPipHelper.isPIPPossible
+import com.lagradost.cloudstream3.ui.subtitles.SubtitleStyleDialog
 
-private enum class PlayerSheet { None, Speed, Tracks, Audio, Subtitles, Settings }
+private enum class PlayerSheet {
+    None, Speed, Tracks, Audio, Subtitles, Sources, Episodes, Settings
+}
 
 /**
  * Fully Compose player UI. The video output is the only platform view (Compose has
@@ -98,6 +116,7 @@ fun ComposePlayerScreen(
     val exo by vm.exoPlayer.collectAsState()
 
     var sheet by remember { mutableStateOf(PlayerSheet.None) }
+    var locked by remember { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState()
     var surfaceView by remember { mutableStateOf<SurfaceView?>(null) }
     var seekFraction by remember { mutableFloatStateOf(0f) }
@@ -106,7 +125,11 @@ fun ComposePlayerScreen(
     LaunchedEffect(Unit) { vm.load(context) }
     LaunchedEffect(Unit) {
         vm.effects.collect { effect ->
-            if (effect is ComposePlayerViewModel.UiEffect.Close) onBack()
+            when (effect) {
+                ComposePlayerViewModel.UiEffect.Close -> onBack()
+                ComposePlayerViewModel.UiEffect.Reload -> vm.load(context)
+                else -> Unit
+            }
         }
     }
     DisposableEffect(Unit) { onDispose { surfaceView = null } }
@@ -142,6 +165,7 @@ fun ComposePlayerScreen(
                     Modifier
                         .fillMaxSize()
                         .pointerInput(Unit) {
+                            if (locked) return@pointerInput
                             detectTapGestures(
                                 onTap = { vm.setControlsVisible(!vm.controlsVisible.value) },
                                 onDoubleTap = { offset ->
@@ -151,13 +175,15 @@ fun ComposePlayerScreen(
                             )
                         }
                         .pointerInput(Unit) {
+                            if (locked) return@pointerInput
                             detectHorizontalDragGestures(
                                 onHorizontalDrag = { _, delta -> vm.seekBy(delta.toLong() * 50L) },
                             )
                         }
                         .pointerInput(Unit) {
+                            if (locked) return@pointerInput
                             detectVerticalDragGestures(
-                                onVerticalDrag = { _, delta -> adjustVolume(context, delta) },
+                                onVerticalDrag = { _, delta -> adjustVolume(context, delta); adjustBrightness(context, -delta) },
                             )
                         }
                 )
@@ -264,10 +290,18 @@ fun ComposePlayerScreen(
                         }
                         Spacer(Modifier.height(8.dp))
                         Row(
-                            Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceEvenly,
+                            Modifier
+                                .fillMaxWidth()
+                                .horizontalScroll(rememberScrollState()),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
+                            SmallControl(if (locked) Icons.Filled.Lock else Icons.Filled.LockOpen, "Lock") {
+                                locked = !locked
+                            }
+                            SmallControl(Icons.Filled.Fullscreen, "Rotate") {
+                                toggleRotation(context, configuration)
+                            }
+                            SmallControl(Icons.Filled.Source, "Sources") { sheet = PlayerSheet.Sources }
                             SmallControl(Icons.Filled.Subtitles, "Subtitles") { sheet = PlayerSheet.Subtitles }
                             SmallControl(Icons.Filled.Audiotrack, "Audio") { sheet = PlayerSheet.Audio }
                             Text(
@@ -275,12 +309,11 @@ fun ComposePlayerScreen(
                                 color = MaterialTheme.colorScheme.onSurface,
                                 modifier = Modifier
                                     .padding(horizontal = 8.dp)
-                                    .background(
-                                        MaterialTheme.colorScheme.secondaryContainer,
-                                        CircleShape,
-                                    )
-                                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                                    .background(MaterialTheme.colorScheme.secondaryContainer, CircleShape)
+                                    .padding(horizontal = 12.dp, vertical = 8.dp)
+                                    .clickable { sheet = PlayerSheet.Speed },
                             )
+                            SmallControl(Icons.Filled.PlaylistPlay, "Episodes") { sheet = PlayerSheet.Episodes }
                             SmallControl(Icons.Filled.Settings, "Settings") { sheet = PlayerSheet.Settings }
                         }
                     }
@@ -317,6 +350,33 @@ private fun TimeLabel(ms: Long) {
     )
 }
 
+@Suppress("DEPRECATION")
+private fun enterPip(context: Context, status: CSPlayerLoading, aspect: android.util.Rational?) {
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
+        context is Activity && context.isPIPPossible()
+    ) {
+        PlayerPipHelper.updatePIPModeActions(context, status, true, aspect)
+        context.enterPictureInPictureMode()
+    }
+}
+
+private fun toggleRotation(context: Context, configuration: Configuration) {
+    val activity = context as? Activity ?: return
+    activity.requestedOrientation = if (configuration.orientation == Configuration.ORIENTATION_PORTRAIT) {
+        ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+    } else {
+        ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT
+    }
+}
+
+private fun adjustBrightness(context: Context, delta: Float) {
+    val activity = context as? Activity ?: return
+    val params = activity.window.attributes
+    val current = if (params.screenBrightness > 0) params.screenBrightness else 0.5f
+    params.screenBrightness = (current + delta / 5000f).coerceIn(0.01f, 1f)
+    activity.window.attributes = params
+}
+
 private fun adjustVolume(context: Context, delta: Float) {
     val manager = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager ?: return
     manager.adjustStreamVolume(
@@ -334,44 +394,135 @@ private fun PlayerSheetContent(
     onDismiss: () -> Unit,
     sheetState: androidx.compose.material3.SheetState,
 ) {
+    val context = LocalContext.current
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
-        when (sheet) {
-            PlayerSheet.Speed -> {
-                Text("Playback speed", style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(16.dp))
-                val speeds = listOf(0.25f, 0.5f, 1f, 1.25f, 1.5f, 2f)
-                val current by vm.speed.collectAsState()
-                Row(
-                    Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
-                ) {
-                    speeds.forEachIndexed { index, value ->
-                        ToggleButton(
-                            checked = current == value,
-                            onCheckedChange = { vm.setSpeed(value) },
-                            shapes = when (index) {
-                                0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
-                                speeds.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
-                                else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
-                            },
-                            modifier = Modifier.weight(1f).height(48.dp),
-                        ) { Text("${value}x") }
+        Column(Modifier.verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
+            Text(
+                when (sheet) {
+                    PlayerSheet.Speed -> "Playback speed"
+                    PlayerSheet.Subtitles -> "Subtitles"
+                    PlayerSheet.Audio -> "Audio tracks"
+                    PlayerSheet.Tracks -> "Video tracks"
+                    PlayerSheet.Sources -> "Sources"
+                    PlayerSheet.Episodes -> "Episodes"
+                    PlayerSheet.Settings -> "Playback settings"
+                    PlayerSheet.None -> ""
+                },
+                style = MaterialTheme.typography.titleLarge,
+                modifier = Modifier.padding(bottom = 12.dp),
+            )
+
+            when (sheet) {
+                PlayerSheet.Speed -> {
+                    val speeds = listOf(0.25f, 0.5f, 1f, 1.25f, 1.5f, 2f)
+                    val current by vm.speed.collectAsState()
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
+                    ) {
+                        speeds.forEachIndexed { index, value ->
+                            ToggleButton(
+                                checked = current == value,
+                                onCheckedChange = { vm.setSpeed(value) },
+                                shapes = when (index) {
+                                    0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
+                                    speeds.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
+                                    else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
+                                },
+                                modifier = Modifier.weight(1f).height(48.dp),
+                            ) { Text("${value}x") }
+                        }
                     }
                 }
+
+                PlayerSheet.Sources -> {
+                    val sources by vm.sources.collectAsState()
+                    val selected by vm.selectedSource.collectAsState()
+                    sources.forEachIndexed { index, link ->
+                        SheetRow(
+                            text = "${link.name} · ${link.quality}p · ${link.source}",
+                            selected = index == selected,
+                        ) { vm.selectSource(index); onDismiss() }
+                    }
+                }
+
+                PlayerSheet.Subtitles -> {
+                    val subs by vm.subtitles.collectAsState()
+                    SheetRow(text = "Subtitle appearance") {
+                        (context as? FragmentActivity)?.supportFragmentManager?.let {
+                            SubtitleStyleDialog().show(it, "subtitle_style")
+                        }
+                    }
+                    SheetRow(text = "Off", selected = true) { vm.selectSubtitle(null); onDismiss() }
+                    subs.forEach { sub ->
+                        SheetRow(text = sub.originalName + sub.nameSuffix) {
+                            vm.selectSubtitle(sub); onDismiss()
+                        }
+                    }
+                }
+
+                PlayerSheet.Audio -> {
+                    val tracks by vm.tracks.collectAsState()
+                    tracks?.allAudioTracks?.forEach { track ->
+                        SheetRow(
+                            text = track.label ?: track.language ?: "Track ${track.id}",
+                            selected = tracks?.currentAudioTrack?.id == track.id,
+                        ) {
+                            vm.selectAudio(track.language, track.id, track.formatIndex)
+                            onDismiss()
+                        }
+                    }
+                }
+
+                PlayerSheet.Tracks -> {
+                    val tracks by vm.tracks.collectAsState()
+                    tracks?.allVideoTracks?.forEach { track ->
+                        SheetRow(text = track.label ?: "${track.width}x${track.height}") { onDismiss() }
+                    }
+                }
+
+                PlayerSheet.Episodes -> {
+                    val index by vm.index.collectAsState()
+                    (0 until vm.episodeCount).forEach { i ->
+                        SheetRow(text = vm.episodeTitle(i), selected = i == index) {
+                            vm.switchEpisode(i); onDismiss()
+                        }
+                    }
+                }
+
+                PlayerSheet.Settings -> {
+                    val status by vm.status.collectAsState()
+                    SheetRow(text = "Picture in picture") {
+                        enterPip(context, status, vm.player.getAspectRatio())
+                        onDismiss()
+                    }
+                    SheetRow(text = "Subtitle delay -0.5s") { vm.adjustSubtitleOffset(-500L) }
+                    SheetRow(text = "Subtitle delay +0.5s") { vm.adjustSubtitleOffset(500L) }
+                    SheetRow(text = "Reset subtitle delay") {
+                        vm.player.setSubtitleOffset(-vm.player.getSubtitleOffset())
+                    }
+                }
+
+                PlayerSheet.None -> Unit
             }
-            PlayerSheet.Subtitles, PlayerSheet.Audio, PlayerSheet.Tracks, PlayerSheet.Settings -> {
-                Text(
-                    when (sheet) {
-                        PlayerSheet.Subtitles -> "Subtitles"
-                        PlayerSheet.Audio -> "Audio tracks"
-                        PlayerSheet.Tracks -> "Video tracks"
-                        else -> "Settings"
-                    },
-                    style = MaterialTheme.typography.titleLarge,
-                    modifier = Modifier.padding(16.dp),
-                )
-            }
-            PlayerSheet.None -> Unit
+            Spacer(Modifier.height(24.dp))
         }
-        Spacer(Modifier.height(24.dp))
+    }
+}
+
+@Composable
+private fun SheetRow(text: String, selected: Boolean = false, onClick: () -> Unit) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .background(
+                if (selected) MaterialTheme.colorScheme.secondaryContainer else Color.Transparent,
+                androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+            )
+            .padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(text, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface)
     }
 }

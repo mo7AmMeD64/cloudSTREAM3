@@ -49,6 +49,9 @@ class ComposePlayerViewModel(
     private val _tracks = MutableStateFlow<CurrentTracks?>(null)
     private val _exoPlayer = MutableStateFlow<androidx.media3.common.Player?>(null)
     private val _subtitles = MutableStateFlow<List<SubtitleData>>(emptyList())
+    private val _sources = MutableStateFlow<List<ExtractorLink>>(emptyList())
+    private val _selectedSource = MutableStateFlow(0)
+    private var appContext: Context? = null
     private val _error = MutableStateFlow<String?>(null)
     private val _controlsVisible = MutableStateFlow(true)
     private val _index = MutableStateFlow(initialIndex)
@@ -61,16 +64,21 @@ class ComposePlayerViewModel(
     val tracks: StateFlow<CurrentTracks?> = _tracks.asStateFlow()
     val exoPlayer: StateFlow<androidx.media3.common.Player?> = _exoPlayer.asStateFlow()
     val subtitles: StateFlow<List<SubtitleData>> = _subtitles.asStateFlow()
+    val sources: StateFlow<List<ExtractorLink>> = _sources.asStateFlow()
+    val selectedSource: StateFlow<Int> = _selectedSource.asStateFlow()
     val error: StateFlow<String?> = _error.asStateFlow()
     val controlsVisible: StateFlow<Boolean> = _controlsVisible.asStateFlow()
     val index: StateFlow<Int> = _index.asStateFlow()
     val effects = _events.asSharedFlow()
 
     val currentEpisode: ResultEpisode? get() = episodes.getOrNull(_index.value)
+    val episodeCount: Int get() = episodes.size
+    fun episodeTitle(i: Int): String = episodes.getOrNull(i)?.name ?: "Episode ${i + 1}"
     val mediaTitle: String get() = currentEpisode?.name ?: title
 
     sealed interface UiEffect {
         data object Close : UiEffect
+        data object Reload : UiEffect
         data class Message(val text: String) : UiEffect
     }
 
@@ -100,6 +108,7 @@ class ComposePlayerViewModel(
     }
 
     fun load(context: Context) {
+        appContext = context.applicationContext
         viewModelScope.launch {
             val i = _index.value
             val generator = makeGenerator(episodes)
@@ -117,6 +126,8 @@ class ComposePlayerViewModel(
                 return@launch
             }
             _subtitles.value = subs.toList()
+            _sources.value = links.mapNotNull { it.first }
+            _selectedSource.value = 0
             player.loadPlayer(
                 context,
                 false,
@@ -142,6 +153,31 @@ class ComposePlayerViewModel(
         _position.value = 0L
         _duration.value = 0L
         player.release()
+        _events.tryEmit(UiEffect.Reload)
+    }
+
+    fun selectSource(index: Int) {
+        val link = _sources.value.getOrNull(index) ?: return
+        val ctx = appContext ?: return
+        _selectedSource.value = index
+        player.loadPlayer(
+            ctx, true, link, null, null, _subtitles.value.toSet(),
+            player.getCurrentPreferredSubtitle(), true, true,
+        )
+    }
+
+    fun selectSubtitle(subtitle: SubtitleData?) {
+        player.setPreferredSubtitles(subtitle)
+        _tracks.value = player.getVideoTracks()
+    }
+
+    fun selectAudio(language: String?, id: String?, formatIndex: Int?) {
+        player.setPreferredAudioTrack(language, id, formatIndex)
+        _tracks.value = player.getVideoTracks()
+    }
+
+    fun adjustSubtitleOffset(deltaMs: Long) {
+        player.setSubtitleOffset(player.getSubtitleOffset() + deltaMs)
     }
 
     fun playPause() = player.handleEvent(com.lagradost.cloudstream3.ui.player.CSPlayerEvent.PlayPauseToggle)
