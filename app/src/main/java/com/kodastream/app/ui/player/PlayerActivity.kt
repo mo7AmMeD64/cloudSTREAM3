@@ -11,7 +11,10 @@ import android.os.Handler
 import android.os.Looper
 import android.view.WindowManager
 import androidx.activity.SystemBarStyle
+import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
@@ -37,6 +40,8 @@ import com.lagradost.cloudstream3.ui.player.SubtitleOrigin
 import com.lagradost.cloudstream3.ui.result.ResultEpisode
 import com.lagradost.cloudstream3.ui.result.VideoWatchState
 import com.lagradost.cloudstream3.utils.DataStoreHelper
+import com.kodastream.app.ui.player.compose.ComposePlayerScreen
+import com.kodastream.app.ui.player.compose.ComposePlayerViewModel
 
 /**
  * Hosts the original CloudStream player fragment. Playback arguments come in
@@ -57,6 +62,7 @@ class PlayerActivity : AppCompatActivity() {
 
     /** The player whose real play/pause state feeds the watch-time counter. */
     private var watchStatsPlayer: CS3IPlayer? = null
+    private lateinit var playerVm: ComposePlayerViewModel
 
     private val handler = Handler(Looper.getMainLooper())
     private val progressTicker = object : Runnable {
@@ -85,27 +91,37 @@ class PlayerActivity : AppCompatActivity() {
             return
         }
 
-        if (savedInstanceState == null) {
-            val (episodes, index) = episodesFor(this)
-            @Suppress("DEPRECATION")
-            val offlineSubs = args.offlineSubtitleUri?.let { uri ->
-                listOf(
-                    PlayerSubtitleHelper.getSubtitleData(
-                        SubtitleFile(args.subtitle ?: "Subtitle", uri)
-                    ).copy(origin = SubtitleOrigin.DOWNLOADED_FILE)
-                )
-            } ?: emptyList()
-            supportFragmentManager.beginTransaction()
-                .replace(
-                    android.R.id.content,
-                    GeneratorPlayer().apply {
-                        arguments = GeneratorPlayer.newInstance(
-                            KodaPlayerGenerator(episodes, offlineSubs, response = args.loadResponse),
-                            index,
-                        )
-                    },
-                )
-                .commit()
+        val (episodes, index) = episodesFor(this)
+        @Suppress("DEPRECATION")
+        val offlineSubs = args.offlineSubtitleUri?.let { uri ->
+            listOf(
+                PlayerSubtitleHelper.getSubtitleData(
+                    SubtitleFile(args.subtitle ?: "Subtitle", uri)
+                ).copy(origin = SubtitleOrigin.DOWNLOADED_FILE)
+            )
+        } ?: emptyList()
+
+        playerVm = ViewModelProvider(
+            this,
+            object : ViewModelProvider.Factory {
+                override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                    @Suppress("UNCHECKED_CAST")
+                    return ComposePlayerViewModel(
+                        makeGenerator = { eps ->
+                            KodaPlayerGenerator(eps, offlineSubs, response = args.loadResponse)
+                        },
+                        episodes = episodes,
+                        initialIndex = index,
+                        title = args.title,
+                        initialSubtitle = offlineSubs.firstOrNull(),
+                        startPosition = args.history?.positionMs,
+                    ) as T
+                }
+            },
+        )[ComposePlayerViewModel::class.java]
+
+        setContent {
+            ComposePlayerScreen(vm = playerVm, onBack = { finish() })
         }
     }
 
@@ -199,9 +215,8 @@ class PlayerActivity : AppCompatActivity() {
 
     /** Puts back the user's speed after a hold was interrupted before ACTION_UP. */
     private fun restorePlaybackSpeed() {
-        val fragment = supportFragmentManager
-            .findFragmentById(android.R.id.content) as? GeneratorPlayer ?: return
-        val player = fragment.player
+        if (!::playerVm.isInitialized) return
+        val player = playerVm.player
         val stored = DataStoreHelper.playBackSpeed
         if (player.getPlaybackSpeed() != stored) player.setPlaybackSpeed(stored)
     }
@@ -209,15 +224,14 @@ class PlayerActivity : AppCompatActivity() {
     /** Mirrors the fragment's position into Koda's history and per-episode prefs. */
     private fun recordProgress() {
         if (!::args.isInitialized) return
-        val fragment = supportFragmentManager
-            .findFragmentById(android.R.id.content) as? GeneratorPlayer ?: return
+        if (!::playerVm.isInitialized) return
         // Viewing time is counted from the player's own play/pause state, so it is
         // updated before any of the position guards below.
-        syncWatchStatistics(fragment)
-        val episode = fragment.currentEpisode ?: return
-        val position = fragment.player.getPosition() ?: return
+        syncWatchStatistics()
+        val episode = playerVm.currentEpisode ?: return
+        val position = playerVm.player.getPosition() ?: return
         if (position < 5_000L) return
-        val duration = fragment.player.getDuration()?.takeIf { it > 0 } ?: 0L
+        val duration = playerVm.player.getDuration()?.takeIf { it > 0 } ?: 0L
         val base = args.history ?: return
 
         val resumeKey = episode.resumeKey ?: base.resumeKey
@@ -284,9 +298,10 @@ class PlayerActivity : AppCompatActivity() {
     }
 
     /** Binds the real ExoPlayer play/pause state to the wall-clock watch-time counter. */
-    private fun syncWatchStatistics(fragment: GeneratorPlayer) {
+    private fun syncWatchStatistics() {
+        if (!::playerVm.isInitialized) return
         val mediaType = args.queue?.type ?: args.history?.type.orEmpty()
-        val player = fragment.player as? CS3IPlayer
+        val player = playerVm.player as? CS3IPlayer
         val enabled = AppPrefs.watchStatisticsEnabled(this) && isCountableWatchStatsType(mediaType)
         if (!enabled || player == null) {
             watchStatsPlayer?.setPlaybackStateObserver(null)

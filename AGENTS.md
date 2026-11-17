@@ -16,10 +16,11 @@ Compose UI (`:app`) with a full CloudStream engine fork (`:library`) that loads
 - `com.lagradost.cloudstream3.*` — CloudStream engine (providers, extractors,
   plugin loader, ported player)
 
-The player, dialogs, and several helpers under `com.lagradost.cloudstream3.ui.*`
-are **ported verbatim-ish from CloudStream** and still use ViewBinding/RecyclerView.
-Do not "modernise" them to Compose unless the task explicitly asks for it — the
-ported player depends on their exact behaviour.
+The player **UI** is now Jetpack Compose (Material 3 Expressive) under
+`com.kodastream.app.ui.player.compose.*`, hosted by `PlayerActivity`. The ported
+`com.lagradost.cloudstream3.ui.player.*` classes remain the **playback engine**
+(Media3/ExoPlayer via `CS3IPlayer`) and must not be rewritten; call them through
+`ComposePlayerViewModel`. Legacy ported dialogs still use ViewBinding.
 
 License: **GPL‑3.0**. Attribution to `mo7AmMeD64` and Nuvio must stay visible in
 the repo, the About screen, and `NOTICE`.
@@ -330,8 +331,11 @@ for HLS).
 
 ### 7.5 Touch the player
 
-- Player code lives in `com.lagradost.cloudstream3.ui.player.*` and is
-**ported**. Do not refactor its structure.
+- Player **UI** lives in `com.kodastream.app.ui.player.compose.*` (Compose,
+Material 3 Expressive). Playback still runs in the ported
+`com.lagradost.cloudstream3.ui.player.CS3IPlayer` engine — do not rewrite it.
+- Keep XML changes limited to resources still used by ported dialogs; do not
+restore the XML player as the primary implementation.
 - Any change must be verified on a physical device with a real HLS + MP4
 stream: play, seek, change subtitle, rotate, PiP, exit.
 - The `CS3IPlayer` `ignoreSSL = true` default is a known security issue —
@@ -404,7 +408,7 @@ data.
 
 **Non‑goals (do not "fix"):**
 
-- Migrating ported XML player/dialogs to Compose.
+- Restoring the ported XML player UI as the primary player (Compose is now primary).
 - Removing `usesCleartextTraffic="true"` — some providers need HTTP.
 - Touching `library/` for style reasons.
 - Adding analytics or crash reporting.
@@ -501,7 +505,7 @@ in tests and imports.
 implement it or open a tracked item in this file.
 - ❌ Do not add Turkish, German, or other language strings — only English +
 Arabic in this repo.
-- ❌ Do not convert ported ViewBinding code to Compose.
+- ❌ Do not restore the XML player UI as primary; keep the Compose player.
 - ❌ Do not format untouched files (avoid large diffs).
 
 ---
