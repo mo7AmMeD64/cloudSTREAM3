@@ -34,7 +34,7 @@ import kotlinx.coroutines.launch
 class ComposePlayerViewModel(
     private val makeGenerator: (List<ResultEpisode>) -> KodaPlayerGenerator,
     private val episodes: List<ResultEpisode>,
-    initialIndex: Int,
+    private val initialIndex: Int,
     private val title: String,
     private val initialSubtitle: SubtitleData?,
     private val startPosition: Long?,

@@ -5,7 +5,7 @@ import android.content.Context
 import android.media.AudioManager
 import android.view.View
 import android.view.WindowManager
-import android.widget.SurfaceView
+import android.view.SurfaceView
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
@@ -66,6 +66,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.kodastream.app.ui.theme.KodaStreamTheme
@@ -161,12 +162,13 @@ fun ComposePlayerScreen(
                         }
                 )
 
-                val spring = spring<Float>(dampingRatio = Spring.DampingRatioMediumBouncy)
+                val springFloat = spring<Float>(dampingRatio = Spring.DampingRatioMediumBouncy)
+    val springOffset = spring<IntOffset>(dampingRatio = Spring.DampingRatioMediumBouncy)
 
                 AnimatedVisibility(
                     visible = controls,
-                    enter = fadeIn(animationSpec = spring) + slideInVertically(animationSpec = spring) { -it },
-                    exit = fadeOut(animationSpec = spring) + slideOutVertically(animationSpec = spring) { -it },
+                    enter = fadeIn(animationSpec = springFloat) + slideInVertically(animationSpec = springOffset) { -it },
+                    exit = fadeOut(animationSpec = springFloat) + slideOutVertically(animationSpec = springOffset) { -it },
                     modifier = Modifier.align(Alignment.TopCenter),
                 ) {
                     Row(
@@ -194,8 +196,8 @@ fun ComposePlayerScreen(
                 // Center play / pause with spring scale.
                 AnimatedVisibility(
                     visible = controls && status != CSPlayerLoading.IsBuffering,
-                    enter = fadeIn(animationSpec = spring),
-                    exit = fadeOut(animationSpec = spring),
+                    enter = fadeIn(animationSpec = springFloat),
+                    exit = fadeOut(animationSpec = springFloat),
                     modifier = Modifier.align(Alignment.Center),
                 ) {
                     Surface(
@@ -228,8 +230,8 @@ fun ComposePlayerScreen(
 
                 AnimatedVisibility(
                     visible = controls,
-                    enter = fadeIn(animationSpec = spring) + slideInVertically(animationSpec = spring) { it },
-                    exit = fadeOut(animationSpec = spring) + slideOutVertically(animationSpec = spring) { it },
+                    enter = fadeIn(animationSpec = springFloat) + slideInVertically(animationSpec = springOffset) { it },
+                    exit = fadeOut(animationSpec = springFloat) + slideOutVertically(animationSpec = springOffset) { it },
                     modifier = Modifier.align(Alignment.BottomCenter),
                 ) {
                     Column(
