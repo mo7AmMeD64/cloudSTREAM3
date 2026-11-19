@@ -5,18 +5,15 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -39,7 +36,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -47,7 +43,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -77,6 +72,8 @@ import com.kodastream.app.ui.home.hero.LocalScreenActive
 import com.kodastream.app.ui.home.hero.rememberHeroStretchState
 import com.kodastream.app.ui.home.hero.rememberHomeHeroState
 import com.kodastream.app.ui.home.hero.toHeroItem
+import com.kodastream.app.ui.sources.SourceAvatar
+import com.kodastream.app.ui.sources.SourceChip
 import com.kodastream.app.ui.sources.SourceViewModel
 import com.kodastream.app.ui.theme.ArtworkStatusBarIcons
 import com.lagradost.cloudstream3.MainAPI
@@ -342,7 +339,6 @@ private fun HomeShelves(
     } else {
         heroItems
     }
-    val chooseSourceLabel = stringResource(R.string.cd_choose_source)
     val listState = rememberLazyListState()
     val topInset = with(LocalDensity.current) { contentPadding.calculateTopPadding().roundToPx() }
     val heroUnderBar by remember(listState, topInset) {
@@ -407,24 +403,14 @@ private fun HomeShelves(
                         color = MaterialTheme.colorScheme.onBackground,
                         modifier = Modifier.semantics { heading() },
                     )
-                    // With the chip row gone, this line names the provider and opens the sheet.
+                    // The provider belongs to this page, not the app shell.
                     if (selectedSource != null) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .heightIn(min = 48.dp)
-                                .clip(MaterialTheme.shapes.small)
-                                .clickable(onClickLabel = chooseSourceLabel, onClick = onOpenSources),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Text(
-                                text = selectedSource,
-                                style = MaterialTheme.typography.labelLarge,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                        }
+                        SourceChip(
+                            label = selectedSource,
+                            onClick = onOpenSources,
+                            leading = { SourceAvatar(name = selectedSource) },
+                            modifier = Modifier.padding(top = 6.dp),
+                        )
                     }
                 }
             }

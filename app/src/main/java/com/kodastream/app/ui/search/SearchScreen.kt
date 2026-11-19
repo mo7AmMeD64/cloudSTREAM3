@@ -19,6 +19,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Apps
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.Search
@@ -56,6 +57,8 @@ import com.kodastream.app.engine.Engine
 import com.kodastream.app.ui.components.EmptyBox
 import com.kodastream.app.ui.components.PosterCard
 import com.kodastream.app.ui.components.SectionHeader
+import com.kodastream.app.ui.sources.SourceAvatar
+import com.kodastream.app.ui.sources.SourceChip
 import com.kodastream.app.ui.sources.SourceViewModel
 import com.lagradost.cloudstream3.SearchResponse
 import kotlinx.coroutines.Job
@@ -194,6 +197,7 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
 fun SearchScreen(
     contentPadding: PaddingValues,
     onOpenItem: (SearchResponse) -> Unit,
+    onOpenSources: () -> Unit,
     sourceViewModel: SourceViewModel,
     viewModel: SearchViewModel = viewModel(),
 ) {
@@ -235,14 +239,6 @@ fun SearchScreen(
                     }
                 }
             },
-            supportingText = {
-                Text(
-                    text = stringResource(
-                        R.string.searching_in,
-                        scope ?: stringResource(R.string.search_scope_all),
-                    )
-                )
-            },
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
             keyboardActions = KeyboardActions(onSearch = { viewModel.submit(query, scope) }),
             shape = MaterialTheme.shapes.extraLarge,
@@ -255,6 +251,28 @@ fun SearchScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 8.dp),
+        )
+
+        SourceChip(
+            label = scope ?: stringResource(R.string.search_scope_all),
+            onClick = onOpenSources,
+            leading = {
+                SourceAvatar(
+                    name = scope.orEmpty(),
+                    icon = if (scope == null) {
+                        {
+                            Icon(
+                                Icons.Rounded.Apps,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp),
+                            )
+                        }
+                    } else {
+                        null
+                    },
+                )
+            },
+            modifier = Modifier.padding(start = 16.dp, bottom = 4.dp),
         )
 
         Box(Modifier.fillMaxSize()) {

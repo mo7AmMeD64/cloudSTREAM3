@@ -635,6 +635,8 @@
     <string name="manga_store_refresh">Refresh stores</string>
 
     <!-- Manga navigation -->
+    <string name="mode_watch">Watch</string>
+    <string name="mode_manga">Manga</string>
     <string name="manga_switch_to_manga">Switch to manga</string>
     <string name="manga_switch_to_watch">Switch to watch</string>
     <string name="manga_mode_manga">Manga mode</string>

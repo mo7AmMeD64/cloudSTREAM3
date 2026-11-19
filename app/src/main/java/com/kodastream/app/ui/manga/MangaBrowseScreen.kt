@@ -25,13 +25,11 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Dns
-import androidx.compose.material.icons.rounded.ExpandMore
+import androidx.compose.material.icons.rounded.AutoStories
 import androidx.compose.material.icons.rounded.Language
 import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -55,7 +53,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.kodastream.app.R
@@ -78,6 +75,8 @@ import com.kodastream.app.ui.components.ExpressivePullToRefresh
 import com.kodastream.app.ui.components.PosterSizeButton
 import com.kodastream.app.ui.components.SearchField
 import com.kodastream.app.ui.components.SkeletonPulseProvider
+import com.kodastream.app.ui.sources.SourceAvatar
+import com.kodastream.app.ui.sources.SourceChip
 import eu.kanade.tachiyomi.source.CatalogueSource
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.rememberCoroutineScope
@@ -202,23 +201,36 @@ fun MangaBrowseScreen(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            FilledTonalButton(
+            SourceChip(
+                label = selected?.source?.name ?: stringResource(R.string.manga_sources_title),
                 onClick = { showSources = true },
-                modifier = Modifier.weight(1f),
-            ) {
-                Icon(Icons.Rounded.Dns, contentDescription = null, modifier = Modifier.size(18.dp))
-                Spacer(Modifier.width(8.dp))
-                Text(
-                    text = selected?.source?.name ?: stringResource(R.string.manga_sources_title),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f, fill = false),
-                )
-                Icon(Icons.Rounded.ExpandMore, contentDescription = null)
-            }
+                leading = {
+                    val pkgName = selected?.extension?.pkgName
+                    SourceAvatar(
+                        name = selected?.source?.name.orEmpty(),
+                        icon = {
+                            if (pkgName != null) {
+                                MangaExtensionIconImage(
+                                    url = iconByPackage[pkgName],
+                                    contentDescription = null,
+                                    modifier = Modifier.fillMaxSize(),
+                                )
+                            } else {
+                                Icon(
+                                    Icons.Rounded.AutoStories,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp),
+                                )
+                            }
+                        },
+                    )
+                },
+                modifier = Modifier.weight(1f, fill = false),
+            )
             OutlinedButton(
                 onClick = { showFilters = true },
                 enabled = catalogue != null && hasUsableFilters(catalogue.getFilterList()),
+                modifier = Modifier.heightIn(min = 48.dp),
             ) {
                 Icon(Icons.Rounded.Tune, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(6.dp))

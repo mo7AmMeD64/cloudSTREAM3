@@ -9,8 +9,6 @@ import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
 import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInVertically
@@ -18,6 +16,7 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.border
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.material3.FloatingToolbarDefaults
 import androidx.compose.ui.draw.shadow
 import androidx.compose.foundation.layout.Arrangement
@@ -32,6 +31,7 @@ import androidx.compose.foundation.layout.displayCutoutPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
@@ -59,17 +59,19 @@ import androidx.compose.material.icons.rounded.Explore
 import androidx.compose.material.icons.rounded.Extension
 import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material.icons.rounded.History
-import androidx.compose.material.icons.rounded.Dns
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.VideoLibrary
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.HorizontalFloatingToolbar
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.ToggleButton
+import androidx.compose.material3.ToggleButtonDefaults
+import androidx.compose.material3.ToggleButtonShapes
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -81,14 +83,15 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
@@ -312,6 +315,7 @@ private fun NavHostController.openDetails(item: SearchResponse) {
     )
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun AppRoot(themeViewModel: ThemeViewModel) {
     val context = LocalContext.current
@@ -331,7 +335,6 @@ fun AppRoot(themeViewModel: ThemeViewModel) {
     val backStackEntry by navController.currentBackStackEntryAsState()
     val route = backStackEntry?.destination?.route
     val showBar = destinations.any { it.route == route }
-    val sourceVisible = !mangaActive && (route == Routes.HOME || route == Routes.SEARCH)
 
     val sources: SourceViewModel = viewModel()
     // Activity-scoped: paged Home sections survive rotation and Back to Home.
@@ -399,7 +402,7 @@ fun AppRoot(themeViewModel: ThemeViewModel) {
         sideMode -> PaddingValues(top = topInset, bottom = navInset)
         else -> PaddingValues(
             top = topInset,
-            bottom = 84.dp + navInset + if (sourceVisible || mangaSection) 60.dp else 0.dp,
+            bottom = 84.dp + navInset + if (mangaSection) 60.dp else 0.dp,
         )
     }
 
@@ -444,8 +447,6 @@ fun AppRoot(themeViewModel: ThemeViewModel) {
                 destinations = destinations,
                 selectedRoute = route,
                 onSelect = { navController.navigateTopLevel(it) },
-                sourceVisible = sourceVisible,
-                onOpenSources = { sourceSheetOpen = true },
                 showModeSwitch = mangaSection,
                 inMangaMode = mangaActive,
                 onToggleMode = switchMode,
@@ -471,35 +472,24 @@ fun AppRoot(themeViewModel: ThemeViewModel) {
                         // Nuvio sits 14dp above the inset (6dp + 8dp); Cloud's
                         // own pill keeps its 20dp.
                         .padding(bottom = if (nuvioBar) 14.dp else 20.dp),
-                    horizontalAlignment = Alignment.End,
+                    horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
-                    // App-level controls live above the pill: inside it they
-                    // squeezed the sixth destination off narrow screens.
-                    Row(
-                        modifier = Modifier.padding(end = 16.dp, bottom = 12.dp),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        verticalAlignment = Alignment.CenterVertically,
+                    // The mode belongs to the navigation shell; it sits with
+                    // the pill, not over the page.
+                    AnimatedVisibility(
+                        visible = mangaSection,
+                        enter = fadeIn(tween(180)) +
+                            expandVertically(animationSpec = MaterialTheme.motionScheme.fastSpatialSpec()),
+                        exit = fadeOut(tween(140)) +
+                            shrinkVertically(animationSpec = MaterialTheme.motionScheme.fastSpatialSpec()),
                     ) {
-                        if (mangaSection) {
-                            ModeSwitchButton(
-                                inMangaMode = mangaActive,
-                                onToggle = switchMode,
-                            )
-                        }
-                        AnimatedVisibility(
-                            visible = sourceVisible,
-                            enter = scaleIn(tween(220)) + fadeIn(tween(220)),
-                            exit = scaleOut(tween(180)) + fadeOut(tween(180)),
-                        ) {
-                            SmallFloatingActionButton(
-                                onClick = { sourceSheetOpen = true },
-                            ) {
-                                Icon(
-                                    Icons.Rounded.Dns,
-                                    contentDescription = stringResource(R.string.cd_choose_source),
-                                )
-                            }
-                        }
+                        ModeSwitchGroup(
+                            inMangaMode = mangaActive,
+                            onSelect = { manga ->
+                                if (manga != mangaActive) switchMode()
+                            },
+                            modifier = Modifier.padding(bottom = 12.dp),
+                        )
                     }
                     if (navBarStyle == AppPrefs.NAV_BAR_NUVIO) {
                         NuvioNavBar(
@@ -586,6 +576,7 @@ private fun AppNavGraph(
             SearchScreen(
                 contentPadding = contentPadding,
                 onOpenItem = navController::openDetails,
+                onOpenSources = onOpenSources,
                 sourceViewModel = sources,
             )
         }
@@ -879,8 +870,6 @@ private fun FloatingSideBar(
     destinations: List<TopLevel>,
     selectedRoute: String?,
     onSelect: (String) -> Unit,
-    sourceVisible: Boolean,
-    onOpenSources: () -> Unit,
     showModeSwitch: Boolean,
     inMangaMode: Boolean,
     onToggleMode: () -> Unit,
@@ -920,9 +909,9 @@ private fun FloatingSideBar(
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             if (showModeSwitch) {
-                ModeSwitchButton(
+                ModeRailGroup(
                     inMangaMode = inMangaMode,
-                    onToggle = onToggleMode,
+                    onSelect = { manga -> if (manga != inMangaMode) onToggleMode() },
                 )
             }
             destinations.forEach { destination ->
@@ -932,67 +921,166 @@ private fun FloatingSideBar(
                     onClick = { onSelect(destination.route) },
                 )
             }
-            AnimatedVisibility(
-                visible = sourceVisible,
-                enter = scaleIn(tween(220)) + fadeIn(tween(220)),
-                exit = scaleOut(tween(180)) + fadeOut(tween(180)),
-            ) {
-                Surface(
-                    onClick = onOpenSources,
-                    shape = RoundedCornerShape(50),
-                    color = Color.Transparent,
-                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Box(
-                        modifier = Modifier.height(48.dp),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Icon(
-                            Icons.Rounded.Dns,
-                            contentDescription = stringResource(R.string.cd_choose_source),
-                            modifier = Modifier.size(NavIconSize),
-                        )
-                    }
-                }
-            }
         }
     }
 }
 
 /**
- * The compact mode switch that opens both navigation shells. The icon shows
- * where the tap goes; the state description names the mode that is open now.
+ * The Watch/Manga switch, expressed as one connected M3E button group. It is
+ * app navigation, so the bottom shell keeps it above the nav pill and the
+ * side rail stacks it at the top. The open mode is a filled pill inside the
+ * group; the other stays a quiet surface, so the current context reads at a
+ * glance without a second bright accent.
  */
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun ModeSwitchButton(
+private fun ModeSwitchGroup(
     inMangaMode: Boolean,
-    onToggle: () -> Unit,
+    onSelect: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val action = stringResource(
-        if (inMangaMode) R.string.manga_switch_to_watch else R.string.manga_switch_to_manga
-    )
-    val state = stringResource(
-        if (inMangaMode) R.string.manga_mode_manga else R.string.manga_mode_watch
-    )
-    Surface(
-        onClick = onToggle,
-        shape = CircleShape,
-        color = MaterialTheme.colorScheme.tertiaryContainer,
-        contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
-        modifier = modifier
-            .size(48.dp)
-            .semantics {
-                contentDescription = action
-                stateDescription = state
-            },
+    Row(
+        modifier = modifier.selectableGroup(),
+        horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        ModeToggle(
+            checked = !inMangaMode,
+            label = stringResource(R.string.mode_watch),
+            icon = Icons.Rounded.VideoLibrary,
+            shapes = ButtonGroupDefaults.connectedLeadingButtonShapes(),
+            onClick = { onSelect(false) },
+        )
+        ModeToggle(
+            checked = inMangaMode,
+            label = stringResource(R.string.mode_manga),
+            icon = Icons.Rounded.AutoStories,
+            shapes = ButtonGroupDefaults.connectedTrailingButtonShapes(),
+            onClick = { onSelect(true) },
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun ModeToggle(
+    checked: Boolean,
+    label: String,
+    icon: ImageVector,
+    shapes: ToggleButtonShapes,
+    onClick: () -> Unit,
+) {
+    ToggleButton(
+        checked = checked,
+        onCheckedChange = { if (it) onClick() },
+        shapes = shapes,
+        icon = {
             Icon(
-                imageVector = if (inMangaMode) Icons.Rounded.VideoLibrary else Icons.Rounded.AutoStories,
+                imageVector = icon,
                 contentDescription = null,
-                modifier = Modifier.size(NavIconSize),
+                modifier = Modifier.size(ToggleButtonDefaults.IconSize),
+            )
+        },
+        colors = ToggleButtonDefaults.colors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+            contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+            checkedContainerColor = MaterialTheme.colorScheme.primary,
+            checkedContentColor = MaterialTheme.colorScheme.onPrimary,
+        ),
+        contentPadding = PaddingValues(start = 14.dp, end = 18.dp, top = 8.dp, bottom = 8.dp),
+        modifier = Modifier
+            .heightIn(min = 48.dp)
+            .semantics { role = Role.RadioButton },
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelLarge,
+            maxLines = 1,
+        )
+    }
+}
+
+/** The rail is 48dp wide inside its padding, so the group stacks icon over label. */
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun ModeRailGroup(
+    inMangaMode: Boolean,
+    onSelect: (Boolean) -> Unit,
+) {
+    val topShape = RoundedCornerShape(
+        topStart = 24.dp,
+        topEnd = 24.dp,
+        bottomStart = 8.dp,
+        bottomEnd = 8.dp,
+    )
+    val bottomShape = RoundedCornerShape(
+        topStart = 8.dp,
+        topEnd = 8.dp,
+        bottomStart = 24.dp,
+        bottomEnd = 24.dp,
+    )
+    Column(
+        modifier = Modifier.selectableGroup(),
+        verticalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        RailModeToggle(
+            checked = !inMangaMode,
+            label = stringResource(R.string.mode_watch),
+            icon = Icons.Rounded.VideoLibrary,
+            shape = topShape,
+            onClick = { onSelect(false) },
+        )
+        RailModeToggle(
+            checked = inMangaMode,
+            label = stringResource(R.string.mode_manga),
+            icon = Icons.Rounded.AutoStories,
+            shape = bottomShape,
+            onClick = { onSelect(true) },
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun RailModeToggle(
+    checked: Boolean,
+    label: String,
+    icon: ImageVector,
+    shape: Shape,
+    onClick: () -> Unit,
+) {
+    ToggleButton(
+        checked = checked,
+        onCheckedChange = { if (it) onClick() },
+        shapes = ToggleButtonShapes(
+            shape = shape,
+            pressedShape = shape,
+            checkedShape = CircleShape,
+        ),
+        colors = ToggleButtonDefaults.colors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+            contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+            checkedContainerColor = MaterialTheme.colorScheme.primary,
+            checkedContentColor = MaterialTheme.colorScheme.onPrimary,
+        ),
+        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 6.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 48.dp)
+            .semantics { role = Role.RadioButton },
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                modifier = Modifier.size(18.dp),
+            )
+            Spacer(Modifier.height(2.dp))
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelSmall,
+                maxLines = 1,
             )
         }
     }

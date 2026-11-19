@@ -520,6 +520,8 @@
     <string name="manga_store_refresh">تحديث المتاجر</string>
 
     <!-- تنقل المانجا -->
+    <string name="mode_watch">مشاهدة</string>
+    <string name="mode_manga">مانجا</string>
     <string name="manga_switch_to_manga">التبديل إلى المانجا</string>
     <string name="manga_switch_to_watch">التبديل إلى المشاهدة</string>
     <string name="manga_mode_manga">وضع المانجا</string>

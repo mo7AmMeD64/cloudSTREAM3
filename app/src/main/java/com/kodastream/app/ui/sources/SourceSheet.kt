@@ -4,12 +4,16 @@ import android.app.Application
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Apps
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -144,6 +148,7 @@ fun SourceSheet(
                             SourceRow(
                                 name = stringResource(R.string.search_scope_all),
                                 selected = selected == null,
+                                allSources = true,
                                 onClick = { onSelect(null) },
                             )
                         }
@@ -171,6 +176,7 @@ private fun SourceRow(
     selected: Boolean,
     supporting: String? = null,
     enabled: Boolean = true,
+    allSources: Boolean = false,
     onClick: () -> Unit,
 ) {
     Surface(
@@ -178,12 +184,12 @@ private fun SourceRow(
         enabled = enabled,
         shape = MaterialTheme.shapes.medium,
         color = if (selected) {
-            MaterialTheme.colorScheme.primaryContainer
+            MaterialTheme.colorScheme.secondaryContainer
         } else {
             Color.Transparent
         },
         contentColor = when {
-            selected -> MaterialTheme.colorScheme.onPrimaryContainer
+            selected -> MaterialTheme.colorScheme.onSecondaryContainer
             !enabled -> MaterialTheme.colorScheme.onSurfaceVariant
             else -> MaterialTheme.colorScheme.onSurface
         },
@@ -196,6 +202,21 @@ private fun SourceRow(
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
+            SourceAvatar(
+                name = if (allSources) "" else name,
+                icon = if (allSources) {
+                    {
+                        Icon(
+                            Icons.Rounded.Apps,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp),
+                        )
+                    }
+                } else {
+                    null
+                },
+            )
+            Spacer(Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = name,
