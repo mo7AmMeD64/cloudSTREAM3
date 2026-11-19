@@ -126,6 +126,7 @@ import com.kodastream.app.manga.MangaRef
 import com.kodastream.app.manga.reader.MangaReaderActivity
 import com.kodastream.app.manga.extension.MangaSourceManager
 import com.kodastream.app.manga.store.MangaStoreRepository
+import com.kodastream.app.ui.components.AnimatedBackground
 import com.kodastream.app.ui.components.softSpring
 import com.kodastream.app.ui.details.DetailsScreen
 import com.kodastream.app.ui.details.DetailsViewModel
@@ -407,6 +408,7 @@ fun AppRoot(themeViewModel: ThemeViewModel) {
     }
 
     Box(Modifier.fillMaxSize()) {
+        AnimatedBackground()
         // The bar mirrors with the locale: left in LTR, right in Arabic.
         // `start` on both the content padding and the bar keeps them on the
         // same side without direction-dependent branches.
