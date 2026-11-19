@@ -40,9 +40,6 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.heading
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -392,26 +389,21 @@ private fun HomeShelves(
                 }
             }
 
-            item(key = "title") {
-                Column(
-                    modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 12.dp, bottom = 4.dp),
-                ) {
-                    Text(
-                        text = stringResource(R.string.home_title),
-                        style = MaterialTheme.typography.headlineMedium,
-                        fontWeight = FontWeight.Black,
-                        color = MaterialTheme.colorScheme.onBackground,
-                        modifier = Modifier.semantics { heading() },
+            // The provider belongs to this page, not the app shell.
+            if (selectedSource != null) {
+                item(key = "source") {
+                    SourceChip(
+                        label = selectedSource,
+                        onClick = onOpenSources,
+                        leading = { SourceAvatar(name = selectedSource) },
+                        modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 12.dp),
                     )
-                    // The provider belongs to this page, not the app shell.
-                    if (selectedSource != null) {
-                        SourceChip(
-                            label = selectedSource,
-                            onClick = onOpenSources,
-                            leading = { SourceAvatar(name = selectedSource) },
-                            modifier = Modifier.padding(top = 6.dp),
-                        )
-                    }
+                }
+            }
+
+            if (!showCinematicHero && hero.isNotEmpty() && heroStyle != HeroStyle.OFF) {
+                item(key = "hero") {
+                    HomeHero(items = hero, onOpen = onOpenItem)
                 }
             }
 
@@ -425,15 +417,9 @@ private fun HomeShelves(
                 }
             }
 
-            if (!showCinematicHero && hero.isNotEmpty() && heroStyle != HeroStyle.OFF) {
-                item(key = "hero") {
-                    HomeHero(items = hero, onOpen = onOpenItem)
-                }
-            }
-
             if (rows.isEmpty() && loading) {
                 // The carousel needs its own placeholder; the cinematic hero
-                // already reserved the exact same space above the title.
+                // already reserved the exact same space above the source chip.
                 item(key = "skeleton") {
                     SkeletonPulseProvider {
                         Column {

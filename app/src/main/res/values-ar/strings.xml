@@ -369,7 +369,6 @@
     <string name="update_dont_show">عدم الإظهار مرة أخرى</string>
     <string name="update_link_failed">تعذّر فتح الرابط</string>
     <!-- تصميم الرئيسية والتفاصيل -->
-    <string name="home_title">KodaStream</string>
     <string name="type_movie">فيلم</string>
     <string name="type_series">مسلسل</string>
     <string name="type_anime">أنمي</string>
@@ -809,7 +808,7 @@
     <string name="manga_reader_orientation_portrait">عمودي</string>
     <string name="manga_reader_orientation_landscape">أفقي</string>
     <string name="crash_dialog_title">أُغلق التطبيق بشكل غير متوقع</string>
-    <string name="crash_dialog_body">أُغلق KodaStream بشكل غير متوقع في المرة السابقة. لا يُرسل أي شيء إلى أي جهة؛ انسخ هذه التفاصيل أو شاركها بنفسك.</string>
+    <string name="crash_dialog_body">أُغلق التطبيق بشكل غير متوقع في المرة السابقة. لا يُرسل أي شيء إلى أي جهة؛ انسخ هذه التفاصيل أو شاركها بنفسك.</string>
     <string name="crash_copy">نسخ التفاصيل</string>
     <string name="crash_share">مشاركة</string>
     <string name="crash_dismiss">إغلاق</string>
