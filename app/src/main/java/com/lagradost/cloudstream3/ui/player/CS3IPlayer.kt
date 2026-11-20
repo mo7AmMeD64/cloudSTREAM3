@@ -304,11 +304,13 @@ class CS3IPlayer : IPlayer {
             playbackPosition = it
         }
 
-        // we want autoplay because of TV and UX
-        isPlaying = autoPlay ?: isPlaying
+        // We want autoplay because of TV and UX. releasePlayer publishes a paused
+        // state, so capture the target first and restore it after releasing.
+        val shouldPlay = autoPlay ?: isPlaying
 
         // release the current exoplayer and cache
         releasePlayer()
+        isPlaying = shouldPlay
 
         if (link != null) {
             // only video support atm

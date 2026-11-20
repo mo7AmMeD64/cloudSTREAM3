@@ -10,8 +10,10 @@ import android.content.Intent
 import android.content.res.ColorStateList
 import android.graphics.Bitmap
 import android.graphics.Typeface
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.provider.OpenableColumns
 import android.text.Spanned
 import android.util.Log
 import android.view.LayoutInflater
@@ -25,6 +27,7 @@ import android.widget.ListView
 import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.MainThread
 import androidx.annotation.OptIn
 import androidx.core.animation.addListener
@@ -42,6 +45,7 @@ import com.kodastream.app.ui.details.castToWebVideoCaster
 import com.kodastream.app.ui.player.openInExternalPlayer
 import com.kodastream.app.ui.player.OnlineSubtitle
 import com.kodastream.app.ui.player.OnlineSubtitlesHelper
+import com.kodastream.app.ui.player.SubtitleImport
 import com.lagradost.cloudstream3.CommonActivity
 import com.lagradost.cloudstream3.SubtitleFile
 import com.lagradost.cloudstream3.newSubtitleFile
@@ -115,10 +119,13 @@ import com.lagradost.cloudstream3.utils.UIHelper.toPx
 import com.lagradost.cloudstream3.utils.setText
 import com.lagradost.cloudstream3.utils.txt
 import com.lagradost.cloudstream3.utils.videoskip.VideoSkipStamp
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.launch
+import java.io.File
 import java.io.Serializable
 import java.lang.ref.WeakReference
 import java.util.Calendar
@@ -269,6 +276,53 @@ class GeneratorPlayer : FullScreenPlayer() {
     }
 
     private var cachedPlayerNotificationManager: PlayerNotificationManager? = null
+
+    private val importSubtitle = registerForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri -> uri?.let(::importSubtitleFile) }
+
+    /** Copies a picked subtitle into cache so media3 can still read it after the picker closes. */
+    private fun importSubtitleFile(uri: Uri) {
+        val ctx = context ?: return
+        lifecycleScope.launch {
+            val subFile = try {
+                withContext(Dispatchers.IO) {
+                    val resolver = ctx.contentResolver
+                    val display = resolver.query(uri, null, null, null, null)?.use { cursor ->
+                        val index = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                        if (index >= 0 && cursor.moveToFirst()) cursor.getString(index) else null
+                    }
+                    val fileName = SubtitleImport.fileName(
+                        display ?: "",
+                        System.currentTimeMillis(),
+                    ) ?: return@withContext null
+                    val dir = File(ctx.cacheDir, "imported_subtitles").apply { mkdirs() }
+                    val file = File(dir, fileName)
+                    resolver.openInputStream(uri)?.use { input ->
+                        file.outputStream().use { output -> input.copyTo(output) }
+                    } ?: return@withContext null
+                    newSubtitleFile(
+                        display?.substringBeforeLast('.')?.ifBlank { null } ?: "Subtitle",
+                        file.absolutePath,
+                    )
+                }
+            } catch (t: Throwable) {
+                logError(t)
+                null
+            }
+
+            if (subFile == null) {
+                showToast(R.string.player_import_subtitle_failed, Toast.LENGTH_SHORT)
+                return@launch
+            }
+
+            val subData = PlayerSubtitleHelper.getSubtitleData(subFile).copy(
+                origin = SubtitleOrigin.DOWNLOADED_FILE,
+            )
+            viewModel.addSubtitles(setOf(subData))
+            if (setSubtitles(subData, true)) loadLink(currentSelectedLink, true)
+        }
+    }
 
     private fun getMediaNotification(context: Context): PlayerNotificationManager {
         val cache = cachedPlayerNotificationManager
@@ -461,6 +515,8 @@ class GeneratorPlayer : FullScreenPlayer() {
                 (if (sameEpisode) currentSelectedSubtitles else null) ?: getAutoSelectSubtitle(
                     subtitles, settings = true, downloads = true
                 ),
+                // Keep a paused player paused when only the source/subtitle reloads.
+                autoPlay = if (sameEpisode) player.getIsPlaying() else true,
                 preview = true
             )
         }
@@ -648,6 +704,17 @@ class GeneratorPlayer : FullScreenPlayer() {
                     }
                     subtitleList.addFooterView(onlineSubsFooter, null, false)
                 }
+
+                val importSubsFooter = layoutInflater.inflate(
+                    R.layout.sort_bottom_footer_add_choice, null
+                ) as TextView
+                importSubsFooter.text = ctx.getString(R.string.player_import_subtitle)
+                importSubsFooter.setOnClickListener {
+                    sourceDialog.dismissSafe(activity)
+                    selectSourceDialog = null
+                    importSubtitle.launch(arrayOf("*/*"))
+                }
+                subtitleList.addFooterView(importSubsFooter, null, false)
 
                 subtitleList.adapter = subsArrayAdapter
                 subtitleList.choiceMode = AbsListView.CHOICE_MODE_SINGLE

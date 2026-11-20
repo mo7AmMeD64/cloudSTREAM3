@@ -1008,6 +1008,8 @@
     <string name="settings_subtitles_audio">الترجمة والصوت</string>
     <string name="player_subtitles_encoding">ترميز الترجمة</string>
     <string name="player_subtitles_encoding_summary">ترميز الأحرف المستخدم لنصوص الترجمة</string>
+    <string name="player_import_subtitle">استيراد ترجمة من التخزين</string>
+    <string name="player_import_subtitle_failed">تعذّر قراءة ملف الترجمة</string>
     <string name="player_preferred_audio_lang">لغة الصوت المفضلة</string>
     <string name="player_preferred_audio_lang_summary">المسار الصوتي الافتراضي عند توفر عدة لغات</string>
     <string name="player_subtitles_style">مظهر الترجمة</string>
