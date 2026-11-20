@@ -19,6 +19,7 @@ object AppPrefs {
     private const val KEY_NAV_BAR_STYLE = "nav_bar_style"
     private const val KEY_HIDE_STATUS_BAR = "hide_status_bar"
     internal const val KEY_HIDE_POSTER_TITLES = "hide_poster_titles"
+    internal const val KEY_ANIMATED_BACKGROUND = "animated_background"
     internal const val KEY_TRANSLATION_API_KEY = "translation_api_key"
     internal const val KEY_TRANSLATION_TARGET = "translation_target"
     internal const val KEY_TRANSLATION_MODEL = "translation_model"
@@ -155,6 +156,21 @@ object AppPrefs {
     fun setHidePosterTitles(context: Context, value: Boolean) {
         _hidePosterTitles.value = value
         prefs(context).edit { putBoolean(KEY_HIDE_POSTER_TITLES, value) }
+    }
+
+    private val _animatedBackground = MutableStateFlow<Boolean?>(null)
+
+    /** The particles behind every screen, as a flow so turning them off applies at once. */
+    val animatedBackground: StateFlow<Boolean?> = _animatedBackground.asStateFlow()
+
+    fun animatedBackground(context: Context): Boolean =
+        _animatedBackground.value
+            ?: prefs(context).getBoolean(KEY_ANIMATED_BACKGROUND, true)
+                .also { _animatedBackground.value = it }
+
+    fun setAnimatedBackground(context: Context, value: Boolean) {
+        _animatedBackground.value = value
+        prefs(context).edit { putBoolean(KEY_ANIMATED_BACKGROUND, value) }
     }
 
     /** The Gemini key is stored encrypted; it never goes into data export. */
@@ -545,6 +561,7 @@ object AppPrefs {
         }
         _navPosition.value = p.getString(KEY_NAV_POSITION, null)
         _uiStyle.value = p.getString(KEY_UI_STYLE, null)
+        _animatedBackground.value = p.getBoolean(KEY_ANIMATED_BACKGROUND, true)
     }
 
     fun autoUpdate(context: Context): Boolean = prefs(context).getBoolean(KEY_AUTO_UPDATE, true)

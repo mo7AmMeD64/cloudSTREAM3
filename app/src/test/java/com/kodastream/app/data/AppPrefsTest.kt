@@ -32,6 +32,11 @@ class AppPrefsTest {
     }
 
     @Test
+    fun animatedBackgroundKeyConstant() {
+        assertEquals("animated_background", AppPrefs.KEY_ANIMATED_BACKGROUND)
+    }
+
+    @Test
     fun translationKeyConstants() {
         assertEquals("translation_api_key", AppPrefs.KEY_TRANSLATION_API_KEY)
         assertEquals("translation_target", AppPrefs.KEY_TRANSLATION_TARGET)

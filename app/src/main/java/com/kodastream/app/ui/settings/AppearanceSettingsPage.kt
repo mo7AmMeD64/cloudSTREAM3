@@ -4,6 +4,7 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AppShortcut
 import androidx.compose.material.icons.rounded.AspectRatio
+import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.Contrast
 import androidx.compose.material.icons.rounded.DarkMode
 import androidx.compose.material.icons.rounded.Height
@@ -43,6 +44,7 @@ internal fun AppearanceSettingsPage(
     var navBarStyle by remember { mutableStateOf(AppPrefs.navBarStyle(context)) }
     var hideStatusBar by remember { mutableStateOf(AppPrefs.hideStatusBar(context)) }
     var hidePosterTitles by remember { mutableStateOf(AppPrefs.hidePosterTitles(context)) }
+    var animatedBackground by remember { mutableStateOf(AppPrefs.animatedBackground(context)) }
     var navBarIconSize by remember { mutableStateOf(AppPrefs.navBarIconSize(context)) }
     var navBarWidth by remember { mutableStateOf(AppPrefs.navBarWidth(context)) }
     var navBarHeight by remember { mutableStateOf(AppPrefs.navBarHeight(context)) }
@@ -62,7 +64,7 @@ internal fun AppearanceSettingsPage(
         onBack = onBack,
     ) {
         item(key = "appearance") {
-            val count = 8 + if (resolvedDark) 1 else 0
+            val count = 9 + if (resolvedDark) 1 else 0
             SettingsGroup(stringResource(R.string.settings_group_general)) {
                 ChoiceRow(
                     index = 0,
@@ -193,6 +195,18 @@ internal fun AppearanceSettingsPage(
                     title = stringResource(R.string.settings_home_hero),
                     supporting = stringResource(heroStyle.labelRes),
                     onClick = { heroDialog = true },
+                )
+                SwitchRow(
+                    index = if (resolvedDark) 9 else 8,
+                    count = count,
+                    icon = Icons.Rounded.AutoAwesome,
+                    title = stringResource(R.string.settings_animated_background),
+                    supporting = stringResource(R.string.settings_animated_background_summary),
+                    checked = animatedBackground,
+                    onCheckedChange = { checked ->
+                        AppPrefs.setAnimatedBackground(context, checked)
+                        animatedBackground = checked
+                    },
                 )
             }
         }

@@ -142,6 +142,8 @@
     <string name="settings_wallpaper_colors_summary">Take the colors from your wallpaper (Android 12 and later).</string>
     <string name="settings_palette_style">Color style</string>
     <string name="settings_home_hero">Home hero</string>
+    <string name="settings_animated_background">Animated background</string>
+    <string name="settings_animated_background_summary">Slow glowing particles behind every screen. Turn off to save battery.</string>
     <string name="hero_style_carousel">Carousel</string>
     <string name="hero_style_carousel_desc">Material carousel with neighbouring posters</string>
     <string name="hero_style_cinematic">Cinematic</string>

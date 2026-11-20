@@ -389,6 +389,9 @@ fun AppRoot(themeViewModel: ThemeViewModel) {
     }
 
     val navPosition by AppPrefs.navPosition.collectAsState(initial = AppPrefs.navPosition(context))
+    val animatedBackground by AppPrefs.animatedBackground.collectAsState(
+        initial = AppPrefs.animatedBackground(context)
+    )
     val navBarStyle by AppPrefs.navBarStyle.collectAsState(initial = AppPrefs.navBarStyle(context))
     val sideMode = showBar && navPosition != AppPrefs.NAV_BOTTOM
     val nuvioBar = showBar && !sideMode && navBarStyle == AppPrefs.NAV_BAR_NUVIO
@@ -408,7 +411,9 @@ fun AppRoot(themeViewModel: ThemeViewModel) {
     }
 
     Box(Modifier.fillMaxSize()) {
-        AnimatedBackground()
+        if (animatedBackground != false) {
+            AnimatedBackground()
+        }
         // The bar mirrors with the locale: left in LTR, right in Arabic.
         // `start` on both the content padding and the bar keeps them on the
         // same side without direction-dependent branches.
