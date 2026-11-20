@@ -19,6 +19,12 @@ object AppPrefs {
     private const val KEY_NAV_BAR_STYLE = "nav_bar_style"
     private const val KEY_HIDE_STATUS_BAR = "hide_status_bar"
     internal const val KEY_HIDE_POSTER_TITLES = "hide_poster_titles"
+    internal const val KEY_TRANSLATION_API_KEY = "translation_api_key"
+    internal const val KEY_TRANSLATION_TARGET = "translation_target"
+    internal const val KEY_TRANSLATION_MODEL = "translation_model"
+    const val TRANSLATION_TARGET_ARABIC = "ar"
+    const val TRANSLATION_TARGET_ENGLISH = "en"
+    const val DEFAULT_TRANSLATION_MODEL = "gemini-2.5-flash-lite"
     private const val KEY_NAV_BAR_ICON_SIZE = "nav_bar_icon_size"
     private const val KEY_NAV_BAR_WIDTH = "nav_bar_width"
     private const val KEY_NAV_BAR_HEIGHT = "nav_bar_height"
@@ -149,6 +155,50 @@ object AppPrefs {
     fun setHidePosterTitles(context: Context, value: Boolean) {
         _hidePosterTitles.value = value
         prefs(context).edit { putBoolean(KEY_HIDE_POSTER_TITLES, value) }
+    }
+
+    /** The Gemini key is stored encrypted; it never goes into data export. */
+    fun translationApiKey(context: Context): String? =
+        prefs(context).getString(KEY_TRANSLATION_API_KEY, null)?.let(SecretCipher::decrypt)
+
+    fun setTranslationApiKey(context: Context, value: String?): Boolean {
+        if (value.isNullOrBlank()) {
+            prefs(context).edit { remove(KEY_TRANSLATION_API_KEY) }
+            return true
+        }
+        val encrypted = SecretCipher.encrypt(value) ?: return false
+        prefs(context).edit { putString(KEY_TRANSLATION_API_KEY, encrypted) }
+        return true
+    }
+
+    fun translationTarget(context: Context): String =
+        prefs(context).getString(KEY_TRANSLATION_TARGET, TRANSLATION_TARGET_ARABIC)
+            ?.takeIf {
+                it == TRANSLATION_TARGET_ARABIC || it == TRANSLATION_TARGET_ENGLISH
+            }
+            ?: TRANSLATION_TARGET_ARABIC
+
+    fun setTranslationTarget(context: Context, value: String) {
+        val target = if (value == TRANSLATION_TARGET_ENGLISH) {
+            TRANSLATION_TARGET_ENGLISH
+        } else {
+            TRANSLATION_TARGET_ARABIC
+        }
+        prefs(context).edit { putString(KEY_TRANSLATION_TARGET, target) }
+    }
+
+    fun translationModel(context: Context): String =
+        prefs(context).getString(KEY_TRANSLATION_MODEL, null)
+            ?.takeIf { it.isNotBlank() }
+            ?: DEFAULT_TRANSLATION_MODEL
+
+    fun setTranslationModel(context: Context, value: String) {
+        prefs(context).edit {
+            putString(
+                KEY_TRANSLATION_MODEL,
+                value.trim().ifBlank { DEFAULT_TRANSLATION_MODEL },
+            )
+        }
     }
 
     internal const val KEY_APP_ICON = "app_icon"
@@ -446,6 +496,7 @@ object AppPrefs {
      */
     fun isExportablePrefKey(key: String): Boolean {
         if (key == KEY_PROVIDER) return false
+        if (key == KEY_TRANSLATION_API_KEY) return false
         if (key.startsWith("download_")) return false
         if (key == KEY_ALLOW_INVALID_SSL) return false
         if (key.startsWith("update_")) return false

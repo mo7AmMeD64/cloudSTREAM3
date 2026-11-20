@@ -62,6 +62,9 @@ class WebtoonStripImageView(context: Context) : View(context) {
     var onLoaded: (() -> Unit)? = null
     var onError: ((Throwable) -> Unit)? = null
 
+    /** Called with the source size once the header pass knows it. */
+    var onSizeKnown: ((Int, Int) -> Unit)? = null
+
     fun setImage(file: File) {
         decodeJob?.cancel()
         releaseStrips()
@@ -85,6 +88,7 @@ class WebtoonStripImageView(context: Context) : View(context) {
                 sampleSize = sample
                 sourceRowsPerStrip = stripRows
                 firstVisibleStrip = stripNearest()
+                onSizeKnown?.invoke(imageWidth, imageHeight)
                 requestLayout()
                 invalidate()
 
@@ -134,6 +138,7 @@ class WebtoonStripImageView(context: Context) : View(context) {
         sourceFile = null
         onLoaded = null
         onError = null
+        onSizeKnown = null
         imageWidth = 0
         imageHeight = 0
         isReleasedOffScreen = false

@@ -32,6 +32,16 @@ class AppPrefsTest {
     }
 
     @Test
+    fun translationKeyConstants() {
+        assertEquals("translation_api_key", AppPrefs.KEY_TRANSLATION_API_KEY)
+        assertEquals("translation_target", AppPrefs.KEY_TRANSLATION_TARGET)
+        assertEquals("translation_model", AppPrefs.KEY_TRANSLATION_MODEL)
+        assertEquals("ar", AppPrefs.TRANSLATION_TARGET_ARABIC)
+        assertEquals("en", AppPrefs.TRANSLATION_TARGET_ENGLISH)
+        assertEquals("gemini-2.5-flash-lite", AppPrefs.DEFAULT_TRANSLATION_MODEL)
+    }
+
+    @Test
     fun appIconKeyConstant() {
         assertEquals("app_icon", AppPrefs.KEY_APP_ICON)
     }

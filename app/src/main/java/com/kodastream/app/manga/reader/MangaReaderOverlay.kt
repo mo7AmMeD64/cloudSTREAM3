@@ -45,7 +45,11 @@ import androidx.compose.material.icons.rounded.OpenInBrowser
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.Share
+import androidx.compose.material.icons.rounded.Stop
+import androidx.compose.material.icons.rounded.Translate
 import androidx.compose.material.icons.rounded.ViewList
+import androidx.compose.material.icons.rounded.Visibility
+import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
@@ -125,6 +129,13 @@ fun MangaReaderOverlay(
     /** Closes the top and bottom bars, used when the drawer opens. */
     onCloseMenu: () -> Unit = {},
     onShowDiagnostics: () -> Unit,
+    translationVisible: Boolean = true,
+    translationStatus: String? = null,
+    translationRunning: Boolean = false,
+    onTranslatePage: () -> Unit = {},
+    onTranslateChapter: () -> Unit = {},
+    onStopTranslation: () -> Unit = {},
+    onToggleTranslation: () -> Unit = {},
 ) {
     var showChapters by remember { mutableStateOf(false) }
     Box(Modifier.fillMaxSize()) {
@@ -165,6 +176,12 @@ fun MangaReaderOverlay(
                 onSavePage = onSavePage,
                 onOpenChapterList = { showChapters = true; onCloseMenu() },
                 onShowDiagnostics = onShowDiagnostics,
+                translationVisible = translationVisible,
+                translationRunning = translationRunning,
+                onTranslatePage = onTranslatePage,
+                onTranslateChapter = onTranslateChapter,
+                onStopTranslation = onStopTranslation,
+                onToggleTranslation = onToggleTranslation,
             )
         }
 
@@ -193,6 +210,27 @@ fun MangaReaderOverlay(
                 onModeChange = onModeChange,
                 onSliderDragging = onSliderDragging,
             )
+        }
+
+        translationStatus?.let { status ->
+            Surface(
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .windowInsetsPadding(
+                        WindowInsets.safeDrawing.only(WindowInsetsSides.Top),
+                    )
+                    .padding(top = 68.dp),
+                shape = RoundedCornerShape(50),
+                color = MaterialTheme.colorScheme.surfaceColorAtElevation(3.dp),
+                tonalElevation = 3.dp,
+            ) {
+                Text(
+                    text = status,
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+                    style = MaterialTheme.typography.labelMedium,
+                    textAlign = TextAlign.Center,
+                )
+            }
         }
 
         if (showChapters) {
@@ -241,6 +279,12 @@ private fun ReaderTopBar(
     onSavePage: () -> Unit,
     onOpenChapterList: () -> Unit,
     onShowDiagnostics: () -> Unit,
+    translationVisible: Boolean,
+    translationRunning: Boolean,
+    onTranslatePage: () -> Unit,
+    onTranslateChapter: () -> Unit,
+    onStopTranslation: () -> Unit,
+    onToggleTranslation: () -> Unit,
 ) {
     var menu by remember { mutableStateOf(false) }
     Surface(color = readerBarColor()) {
@@ -280,6 +324,15 @@ private fun ReaderTopBar(
                     overflow = TextOverflow.Ellipsis,
                 )
             }
+            IconButton(
+                onClick = onTranslatePage,
+                enabled = state.pageCount > 0 && !translationRunning,
+            ) {
+                Icon(
+                    Icons.Rounded.Translate,
+                    contentDescription = stringResource(R.string.manga_reader_translate_page),
+                )
+            }
             IconButton(onClick = onOpenChapterList) {
                 Icon(
                     Icons.Rounded.ViewList,
@@ -305,6 +358,60 @@ private fun ReaderTopBar(
                     )
                 }
                 DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.manga_reader_translate_page)) },
+                        leadingIcon = {
+                            Icon(Icons.Rounded.Translate, contentDescription = null)
+                        },
+                        enabled = state.pageCount > 0 && !translationRunning,
+                        onClick = {
+                            menu = false
+                            onTranslatePage()
+                        },
+                    )
+                    DropdownMenuItem(
+                        text = {
+                            Text(
+                                stringResource(
+                                    if (translationRunning) R.string.manga_reader_translate_stop
+                                    else R.string.manga_reader_translate_chapter,
+                                ),
+                            )
+                        },
+                        leadingIcon = {
+                            Icon(
+                                if (translationRunning) Icons.Rounded.Stop
+                                else Icons.Rounded.Translate,
+                                contentDescription = null,
+                            )
+                        },
+                        enabled = state.pageCount > 0,
+                        onClick = {
+                            menu = false
+                            if (translationRunning) onStopTranslation() else onTranslateChapter()
+                        },
+                    )
+                    DropdownMenuItem(
+                        text = {
+                            Text(
+                                stringResource(
+                                    if (translationVisible) R.string.manga_reader_translation_hide
+                                    else R.string.manga_reader_translation_show,
+                                ),
+                            )
+                        },
+                        leadingIcon = {
+                            Icon(
+                                if (translationVisible) Icons.Rounded.VisibilityOff
+                                else Icons.Rounded.Visibility,
+                                contentDescription = null,
+                            )
+                        },
+                        onClick = {
+                            menu = false
+                            onToggleTranslation()
+                        },
+                    )
                     DropdownMenuItem(
                         text = { Text(stringResource(R.string.manga_reader_open_browser)) },
                         leadingIcon = { Icon(Icons.Rounded.OpenInBrowser, contentDescription = null) },

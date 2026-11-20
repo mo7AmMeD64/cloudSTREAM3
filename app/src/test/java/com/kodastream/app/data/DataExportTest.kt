@@ -232,6 +232,7 @@ class DataExportTest {
         assertFalse(AppPrefs.isExportablePrefKey("download_last_server"))
         assertFalse(AppPrefs.isExportablePrefKey("download_folders_migrated"))
         assertFalse(AppPrefs.isExportablePrefKey("allow_invalid_ssl"))
+        assertFalse(AppPrefs.isExportablePrefKey(AppPrefs.KEY_TRANSLATION_API_KEY))
         assertFalse(AppPrefs.isExportablePrefKey("update_last_check"))
         assertFalse(AppPrefs.isExportablePrefKey("update_skipped_version"))
         assertFalse(AppPrefs.isExportablePrefKey("update_version"))

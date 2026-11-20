@@ -2,7 +2,11 @@ package com.kodastream.app.ui.settings
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.unit.dp
 import eu.kanade.tachiyomi.network.PREF_DOH_SHECAN
 import eu.kanade.tachiyomi.network.PREF_DOH_QUAD9
 import eu.kanade.tachiyomi.network.PREF_DOH_QUAD101
@@ -21,7 +25,10 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material.icons.rounded.Public
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import android.webkit.WebView
 import android.webkit.WebStorage
 import android.widget.Toast
@@ -34,6 +41,9 @@ import androidx.compose.material.icons.rounded.Dns
 import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.Extension
 import androidx.compose.material.icons.rounded.Folder
+import androidx.compose.material.icons.rounded.Language
+import androidx.compose.material.icons.rounded.Lock
+import androidx.compose.material.icons.rounded.Memory
 import androidx.compose.material.icons.rounded.Restore
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Storage
@@ -54,12 +64,15 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import com.kodastream.app.R
+import com.kodastream.app.data.AppPrefs
 import com.kodastream.app.manga.MangaPageCache
 import com.kodastream.app.manga.MangaPageListStore
 import com.kodastream.app.manga.MangaPrefs
 import com.kodastream.app.manga.MangaReadingMode
 import com.kodastream.app.manga.TapInvert
 import com.kodastream.app.manga.TapZoneLayout
+import com.kodastream.app.manga.translate.GeminiTranslator
+import com.kodastream.app.manga.translate.TranslationCache
 import com.kodastream.app.manga.download.MangaDownloadStorage
 import com.kodastream.app.manga.store.MangaStoreRepository
 import com.kodastream.app.ui.manga.MangaLanguageDialog
@@ -176,6 +189,12 @@ internal fun MangaSettingsPage(
     var readerPageNumber by remember { mutableStateOf(readerDefaults.showPageNumber) }
     var readerVolume by remember { mutableStateOf(readerDefaults.volumeKeys) }
     var readerCacheMb by remember { mutableStateOf(MangaPrefs.readerCacheMb(context)) }
+    var translationKey by remember { mutableStateOf(AppPrefs.translationApiKey(context)) }
+    var translationTarget by remember { mutableStateOf(AppPrefs.translationTarget(context)) }
+    var translationModel by remember { mutableStateOf(AppPrefs.translationModel(context)) }
+    var translationKeyDialog by remember { mutableStateOf(false) }
+    var translationTargetDialog by remember { mutableStateOf(false) }
+    var translationModelDialog by remember { mutableStateOf(false) }
     var cacheUsed by remember { mutableStateOf(0L) }
     LaunchedEffect(Unit) {
         // The first call walks the whole page cache; keep it off the UI thread.
@@ -372,6 +391,74 @@ internal fun MangaSettingsPage(
                     onCheckedChange = { value ->
                         readerVolume = value
                         MangaPrefs.setReaderVolumeKeys(context, value)
+                    },
+                )
+            }
+        }
+
+        item(key = "manga_translation") {
+            val count = 4
+            var row = -1
+            SettingsGroup(stringResource(R.string.settings_manga_group_translation)) {
+                NavigationRow(
+                    index = ++row,
+                    count = count,
+                    icon = Icons.Rounded.Lock,
+                    title = stringResource(R.string.settings_manga_translation_key),
+                    supporting = if (translationKey.isNullOrBlank()) {
+                        stringResource(R.string.settings_manga_translation_key_missing)
+                    } else {
+                        stringResource(R.string.settings_manga_translation_key_set)
+                    },
+                    onClick = { translationKeyDialog = true },
+                )
+                ChoiceRow(
+                    index = ++row,
+                    count = count,
+                    icon = Icons.Rounded.Translate,
+                    title = stringResource(R.string.settings_manga_translation_target),
+                    options = listOf(
+                        AppPrefs.TRANSLATION_TARGET_ARABIC,
+                        AppPrefs.TRANSLATION_TARGET_ENGLISH,
+                    ),
+                    selected = translationTarget,
+                    label = {
+                        stringResource(
+                            if (it == AppPrefs.TRANSLATION_TARGET_ENGLISH) {
+                                R.string.settings_manga_translation_target_english
+                            } else {
+                                R.string.settings_manga_translation_target_arabic
+                            },
+                        )
+                    },
+                    onSelect = { value ->
+                        translationTarget = value
+                        AppPrefs.setTranslationTarget(context, value)
+                    },
+                )
+                NavigationRow(
+                    index = ++row,
+                    count = count,
+                    icon = Icons.Rounded.Memory,
+                    title = stringResource(R.string.settings_manga_translation_model),
+                    supporting = translationModel,
+                    onClick = { translationModelDialog = true },
+                )
+                NavigationRow(
+                    index = ++row,
+                    count = count,
+                    icon = Icons.Rounded.DeleteSweep,
+                    title = stringResource(R.string.settings_manga_translation_clear_cache),
+                    supporting = stringResource(R.string.settings_manga_translation_clear_cache_summary),
+                    onClick = {
+                        settingsScope.launch {
+                            withContext(Dispatchers.IO) { TranslationCache.clear(context) }
+                            Toast.makeText(
+                                context,
+                                R.string.settings_manga_translation_cache_cleared,
+                                Toast.LENGTH_SHORT,
+                            ).show()
+                        }
                     },
                 )
             }
@@ -614,6 +701,145 @@ internal fun MangaSettingsPage(
                         },
                     ) { Text(stringResource(R.string.settings_manga_user_agent_reset)) }
                     TextButton(onClick = { userAgentDialog = false }) {
+                        Text(stringResource(R.string.cancel))
+                    }
+                }
+            },
+        )
+    }
+
+    if (translationKeyDialog) {
+        var draft by remember { mutableStateOf(translationKey.orEmpty()) }
+        var testing by remember { mutableStateOf(false) }
+        AlertDialog(
+            onDismissRequest = { translationKeyDialog = false },
+            title = { Text(stringResource(R.string.settings_manga_translation_key)) },
+            text = {
+                Column {
+                    OutlinedTextField(
+                        value = draft,
+                        onValueChange = { draft = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        visualTransformation = PasswordVisualTransformation(),
+                        placeholder = {
+                            Text(stringResource(R.string.settings_manga_translation_key_hint))
+                        },
+                    )
+                    Text(
+                        text = stringResource(R.string.settings_manga_translation_key_summary),
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(top = 8.dp),
+                    )
+                }
+            },
+            confirmButton = {
+                Row {
+                    TextButton(
+                        enabled = draft.isNotBlank() && !testing,
+                        onClick = {
+                            testing = true
+                            settingsScope.launch {
+                                val result = runCatching {
+                                    GeminiTranslator().checkKey(draft.trim(), translationModel)
+                                }
+                                testing = false
+                                Toast.makeText(
+                                    context,
+                                    result.fold(
+                                        {
+                                            context.getString(
+                                                R.string.settings_manga_translation_key_ok,
+                                            )
+                                        },
+                                        { error ->
+                                            context.getString(
+                                                R.string.settings_manga_translation_key_failed,
+                                                error.message.orEmpty(),
+                                            )
+                                        },
+                                    ),
+                                    Toast.LENGTH_LONG,
+                                ).show()
+                            }
+                        },
+                    ) { Text(stringResource(R.string.settings_manga_translation_test)) }
+                    TextButton(
+                        onClick = {
+                            val value = draft.trim()
+                            if (AppPrefs.setTranslationApiKey(context, value)) {
+                                translationKey = value.ifBlank { null }
+                                translationKeyDialog = false
+                            } else {
+                                Toast.makeText(
+                                    context,
+                                    R.string.settings_manga_translation_key_save_failed,
+                                    Toast.LENGTH_SHORT,
+                                ).show()
+                            }
+                        },
+                    ) { Text(stringResource(R.string.ok)) }
+                }
+            },
+            dismissButton = {
+                Row {
+                    if (!translationKey.isNullOrBlank()) {
+                        TextButton(
+                            onClick = {
+                                AppPrefs.setTranslationApiKey(context, null)
+                                translationKey = null
+                                translationKeyDialog = false
+                            },
+                        ) { Text(stringResource(R.string.settings_manga_translation_key_remove)) }
+                    }
+                    TextButton(onClick = { translationKeyDialog = false }) {
+                        Text(stringResource(R.string.cancel))
+                    }
+                }
+            },
+        )
+    }
+
+    if (translationModelDialog) {
+        var draft by remember { mutableStateOf(translationModel) }
+        AlertDialog(
+            onDismissRequest = { translationModelDialog = false },
+            title = { Text(stringResource(R.string.settings_manga_translation_model)) },
+            text = {
+                OutlinedTextField(
+                    value = draft,
+                    onValueChange = { draft = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    placeholder = {
+                        Text(stringResource(R.string.settings_manga_translation_model_hint))
+                    },
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val value = draft.trim()
+                            .ifBlank { AppPrefs.DEFAULT_TRANSLATION_MODEL }
+                        AppPrefs.setTranslationModel(context, value)
+                        translationModel = AppPrefs.translationModel(context)
+                        translationModelDialog = false
+                    },
+                ) { Text(stringResource(R.string.ok)) }
+            },
+            dismissButton = {
+                Row {
+                    TextButton(
+                        onClick = {
+                            AppPrefs.setTranslationModel(
+                                context,
+                                AppPrefs.DEFAULT_TRANSLATION_MODEL,
+                            )
+                            translationModel = AppPrefs.DEFAULT_TRANSLATION_MODEL
+                            translationModelDialog = false
+                        },
+                    ) { Text(stringResource(R.string.settings_manga_translation_model_reset)) }
+                    TextButton(onClick = { translationModelDialog = false }) {
                         Text(stringResource(R.string.cancel))
                     }
                 }

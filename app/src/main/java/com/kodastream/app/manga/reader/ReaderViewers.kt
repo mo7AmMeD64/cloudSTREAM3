@@ -60,6 +60,10 @@ interface ReaderViewerHost {
     val sourceId: Long
     val readerScope: CoroutineScope
 
+    /** Null in tests and anywhere page views are used without the reader activity. */
+    val translation: TranslationController?
+        get() = null
+
     fun onPageSelected(page: ReaderPage)
     fun onTransitionSelected(transition: ChapterTransition)
     fun onTap(xFraction: Float, yFraction: Float)
@@ -594,11 +598,21 @@ private class PagerPageHolder(
 
     private val state = ReaderPageState(this, host) { ready -> loadImage(ready) }
     private var loadJob: Job? = null
+    private var translationJob: Job? = null
 
     init {
         onImageLoaded = { state.onImageLoaded() }
         onImageLoadError = { e -> state.onImageError(e) }
         onScaleChanged = { host.hideMenu() }
+        translationJob = host.readerScope.launch {
+            val translation = host.translation ?: return@launch
+            translation.state.collect { state ->
+                setTranslation(
+                    state.translations[translation.pageKey(page)],
+                    state.visible,
+                )
+            }
+        }
         state.bind(page)
     }
 
@@ -625,6 +639,8 @@ private class PagerPageHolder(
     override fun recycle() {
         loadJob?.cancel()
         loadJob = null
+        translationJob?.cancel()
+        translationJob = null
         state.recycle()
         super.recycle()
     }
@@ -826,6 +842,7 @@ private class WebtoonPageHolder(
 ) : RecyclerView.ViewHolder(frame) {
 
     private val state = ReaderPageState(frame, host) { page -> setImage(page) }
+    private var translationJob: Job? = null
 
     init {
         frame.onImageLoaded = { onImageDecoded() }
@@ -839,6 +856,16 @@ private class WebtoonPageHolder(
         frame.onImageLoadError = { e -> state.onImageError(e) }
         refreshLayoutParams()
         frame.minimumHeight = parentHeight()
+        translationJob?.cancel()
+        translationJob = host.readerScope.launch {
+            val translation = host.translation ?: return@launch
+            translation.state.collect { state ->
+                frame.setTranslation(
+                    state.translations[translation.pageKey(page)],
+                    state.visible,
+                )
+            }
+        }
         state.bind(page)
     }
 
@@ -878,6 +905,8 @@ private class WebtoonPageHolder(
         viewer.view.height.takeIf { it > 0 } ?: frame.resources.displayMetrics.heightPixels
 
     fun recycle() {
+        translationJob?.cancel()
+        translationJob = null
         state.recycle()
         frame.minimumHeight = 0
         frame.recycle()
@@ -1003,7 +1032,7 @@ private fun transitionLabel(transition: ChapterTransition, from: String, to: Str
     return finished + "\n" + other
 }
 
-private fun MangaReaderSettings.asDualPageSettings(): DualPageSettings = object : DualPageSettings {
+internal fun MangaReaderSettings.asDualPageSettings(): DualPageSettings = object : DualPageSettings {
     override val dualPageSplit: Boolean get() = this@asDualPageSettings.dualPageSplit
     override val dualPageInvert: Boolean get() = this@asDualPageSettings.dualPageInvert
     override val dualPageRotateToFit: Boolean get() = this@asDualPageSettings.dualPageRotateToFit

@@ -20,6 +20,7 @@ import androidx.activity.SystemBarStyle
 import androidx.activity.addCallback
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -90,6 +91,7 @@ class MangaReaderActivity : AppCompatActivity(), ReaderViewerHost {
     private lateinit var readerModel: MangaReaderViewModel
     private lateinit var viewerHost: FrameLayout
     private lateinit var readerRoot: FrameLayout
+    private lateinit var translationController: TranslationController
 
     private fun Intent.mangaRefOrNull(): MangaRef? {
         val url = getStringExtra(EXTRA_MANGA_URL)?.takeIf { it.isNotBlank() } ?: return null
@@ -108,6 +110,7 @@ class MangaReaderActivity : AppCompatActivity(), ReaderViewerHost {
 
     override val sourceId: Long get() = ref.sourceId
     override val readerScope: CoroutineScope get() = lifecycleScope
+    override val translation: TranslationController get() = translationController
 
     private var viewer: ReaderViewer? = null
     private var currentChapters: ViewerChapters? = null
@@ -156,6 +159,7 @@ class MangaReaderActivity : AppCompatActivity(), ReaderViewerHost {
 
         settings = readerModel.overlay.value.settings
         overlayState.value = readerModel.overlay.value
+        translationController = TranslationController(this, lifecycleScope) { settings }
 
         viewerHost = FrameLayout(this).apply {
             layoutParams = FrameLayout.LayoutParams(
@@ -171,6 +175,7 @@ class MangaReaderActivity : AppCompatActivity(), ReaderViewerHost {
                     setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
                     setContent {
                         val state = overlayState.value
+                        val translationState by translationController.state.collectAsState()
                         var diagnosticsText by remember { mutableStateOf<String?>(null) }
                         KodaStreamTheme(
                             darkTheme = when (state.settings.theme) {
@@ -200,6 +205,23 @@ class MangaReaderActivity : AppCompatActivity(), ReaderViewerHost {
                                 onCloseMenu = { readerModel.setMenuVisible(false) },
                                 onShowDiagnostics = {
                                     diagnosticsText = buildDiagnosticsText()
+                                },
+                                translationVisible = translationState.visible,
+                                translationStatus = translationState.status,
+                                translationRunning = translationState.running,
+                                onTranslatePage = {
+                                    currentPage?.let(translationController::translatePage)
+                                },
+                                onTranslateChapter = {
+                                    val pages = currentPage?.chapter?.pages
+                                        ?: currentChapters?.currChapter?.pages
+                                    if (pages != null) {
+                                        translationController.translateChapter(pages)
+                                    }
+                                },
+                                onStopTranslation = translationController::stop,
+                                onToggleTranslation = {
+                                    translationController.setVisible(!translationState.visible)
                                 },
                             )
                             diagnosticsText?.let { text ->

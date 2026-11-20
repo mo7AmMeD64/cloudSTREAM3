@@ -24,6 +24,7 @@ import com.davemorrissey.labs.subscaleview.SubsamplingScaleImageView.EASE_OUT_QU
 import com.davemorrissey.labs.subscaleview.SubsamplingScaleImageView.SCALE_TYPE_CENTER_INSIDE
 import com.github.chrisbanes.photoview.PhotoView
 import com.kodastream.app.manga.MangaImageLoader
+import com.kodastream.app.manga.translate.PageTranslation
 import okio.BufferedSource
 import java.io.File
 import java.nio.ByteBuffer
@@ -46,6 +47,10 @@ open class ReaderPageImageView @JvmOverloads constructor(
     private var animatedRequest: Disposable? = null
 
     private var config: Config? = null
+
+    private var translationOverlay: TranslationOverlayView? = null
+    private var pendingTranslation: PageTranslation? = null
+    private var translationVisible = true
 
     var onImageLoaded: (() -> Unit)? = null
     var onImageLoadError: ((Throwable?) -> Unit)? = null
@@ -107,9 +112,38 @@ open class ReaderPageImageView @JvmOverloads constructor(
         }
     }
 
+    /** The reader controller pushes each page's translation to its page view. */
+    fun setTranslation(translation: PageTranslation?, visible: Boolean) {
+        pendingTranslation = translation
+        translationVisible = visible
+        applyTranslation()
+    }
+
+    private fun applyTranslation() {
+        val overlay = translationOverlay ?: return
+        overlay.setTranslation(pendingTranslation)
+        overlay.visibility =
+            if (translationVisible && pendingTranslation != null) VISIBLE else GONE
+    }
+
+    private fun ensureOverlay(): TranslationOverlayView {
+        val overlay = translationOverlay ?: TranslationOverlayView(context).also {
+            it.layoutParams = LayoutParams(MATCH_PARENT, MATCH_PARENT)
+            it.visibility = GONE
+            addView(it)
+            translationOverlay = it
+        }
+        overlay.bringToFront()
+        applyTranslation()
+        return overlay
+    }
+
     open fun recycle() {
         animatedRequest?.dispose()
         animatedRequest = null
+        translationOverlay?.clear()
+        translationOverlay?.visibility = GONE
+        pendingTranslation = null
         pageView?.let {
             when (it) {
                 is SubsamplingScaleImageView -> it.recycle()
@@ -161,14 +195,18 @@ open class ReaderPageImageView @JvmOverloads constructor(
                 object : SubsamplingScaleImageView.OnStateChangedListener {
                     override fun onScaleChanged(newScale: Float, origin: Int) {
                         this@ReaderPageImageView.onScaleChanged?.invoke(newScale)
+                        this@ReaderPageImageView.translationOverlay?.invalidate()
                     }
 
-                    override fun onCenterChanged(newCenter: PointF?, origin: Int) = Unit
+                    override fun onCenterChanged(newCenter: PointF?, origin: Int) {
+                        this@ReaderPageImageView.translationOverlay?.invalidate()
+                    }
                 },
             )
             setOnClickListener { this@ReaderPageImageView.onViewClicked?.invoke() }
         }
         addView(pageView, MATCH_PARENT, MATCH_PARENT)
+        ensureOverlay().bindPaged(pageView as SubsamplingScaleImageView)
     }
 
     private fun SubsamplingScaleImageView.setupZoom(config: Config?) {
@@ -237,10 +275,13 @@ open class ReaderPageImageView @JvmOverloads constructor(
         removeView(pageView)
         pageView = WebtoonStripImageView(context)
         addView(pageView, MATCH_PARENT, WRAP_CONTENT)
+        ensureOverlay()
     }
 
     private fun setStripImage(file: File) {
         val view = pageView as? WebtoonStripImageView ?: return
+        val overlay = ensureOverlay()
+        view.onSizeKnown = { width, height -> overlay.bindStrip(width, height) }
         view.onLoaded = {
             view.isVisible = true
             onImageLoaded?.invoke()
@@ -290,6 +331,7 @@ open class ReaderPageImageView @JvmOverloads constructor(
             MATCH_PARENT,
             if (isWebtoon) WRAP_CONTENT else MATCH_PARENT,
         )
+        ensureOverlay().visibility = GONE
     }
 
     private fun setAnimatedImage(data: Any, config: Config) =
