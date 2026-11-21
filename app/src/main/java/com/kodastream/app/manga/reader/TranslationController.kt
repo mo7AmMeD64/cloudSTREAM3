@@ -4,15 +4,21 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.BitmapRegionDecoder
+import android.graphics.Color
 import android.graphics.Rect
 import com.kodastream.app.R
 import com.kodastream.app.data.AppPrefs
 import com.kodastream.app.manga.MangaReaderSettings
 import com.kodastream.app.manga.translate.GeminiTranslator
+import com.kodastream.app.manga.translate.OpenAiCompatTranslator
 import com.kodastream.app.manga.translate.PageTranslation
 import com.kodastream.app.manga.translate.TranslatedBlock
 import com.kodastream.app.manga.translate.TranslationCache
+import com.kodastream.app.manga.translate.TranslationConfig
+import com.kodastream.app.manga.translate.TranslationContext
 import com.kodastream.app.manga.translate.TranslationException
+import com.kodastream.app.manga.translate.TranslationProvider
+import com.kodastream.app.manga.translate.chatCompletionsUrl
 import com.kodastream.app.manga.translate.moveToPage
 import eu.kanade.tachiyomi.source.model.Page
 import kotlinx.coroutines.CancellationException
@@ -59,8 +65,13 @@ class TranslationController(
     private val _state = MutableStateFlow(State())
     val state: StateFlow<State> = _state.asStateFlow()
 
-    private val translator = GeminiTranslator()
+    private val gemini = GeminiTranslator()
+    private val openAi = OpenAiCompatTranslator()
     private var job: Job? = null
+
+    /** The work's title is sent as context so names and tone stay consistent. */
+    @Volatile
+    var seriesTitle: String? = null
 
     /** Stable per displayed page; the two halves of a split spread are different pages. */
     fun pageKey(page: ReaderPage): String =
@@ -89,18 +100,29 @@ class TranslationController(
     }
 
     private fun start(pages: List<ReaderPage>) {
-        val apiKey = AppPrefs.translationApiKey(context)
-        if (apiKey.isNullOrBlank()) {
+        val provider = AppPrefs.translationProvider(context)
+        val config = TranslationConfig(
+            provider = provider,
+            apiKey = AppPrefs.translationApiKey(context, provider).orEmpty(),
+            model = AppPrefs.translationModel(context, provider),
+            baseUrl = AppPrefs.translationBaseUrl(context, provider),
+            target = AppPrefs.translationTarget(context),
+        )
+        // Local OpenAI-compatible servers accept no key; every cloud provider needs one.
+        if (config.apiKey.isBlank() && provider != TranslationProvider.CUSTOM) {
             _state.update { it.copy(status = context.getString(R.string.manga_translation_no_key)) }
             return
         }
-        job = scope.launch { translatePages(pages, apiKey) }
+        if (!provider.isGemini && chatCompletionsUrl(config.baseUrl) == null) {
+            _state.update { it.copy(status = context.getString(R.string.manga_translation_bad_base_url)) }
+            return
+        }
+        job = scope.launch { translatePages(pages, config) }
     }
 
-    private suspend fun translatePages(pages: List<ReaderPage>, apiKey: String) {
-        val target = AppPrefs.translationTarget(context)
-        val model = AppPrefs.translationModel(context)
+    private suspend fun translatePages(pages: List<ReaderPage>, config: TranslationConfig) {
         val total = pages.size
+        val recent = mutableListOf<TranslatedBlock>()
         _state.update { it.copy(running = true, status = progress(1, total)) }
         try {
             pages.forEachIndexed { index, page ->
@@ -115,14 +137,19 @@ class TranslationController(
 
                 val variant = variant(page)
                 val (cached, cacheKey) = withContext(Dispatchers.IO) {
-                    val key = TranslationCache.key(fileHash(file), variant, target, model)
+                    val key = TranslationCache.key(
+                        fileHash(file),
+                        variant,
+                        config.cacheSignature,
+                    )
                     TranslationCache.read(context, key) to key
                 }
+                val promptContext = TranslationContext(seriesTitle, recent.toList())
                 val translation = cached ?: withContext(Dispatchers.IO) {
                     val result = if (currentSettings().mode.isPaged) {
-                        translatePaged(page, file, apiKey, model, target)
+                        translatePaged(page, file, config, promptContext)
                     } else {
-                        translateWebtoon(file, apiKey, model, target)
+                        translateWebtoon(file, config, promptContext)
                     }
                     if (result.blocks.isNotEmpty()) {
                         TranslationCache.write(context, cacheKey, result)
@@ -134,6 +161,7 @@ class TranslationController(
                         it.copy(translations = it.translations + (key to translation))
                     }
                 }
+                appendContext(recent, translation.blocks)
             }
             _state.update { it.copy(status = context.getString(R.string.manga_translation_done)) }
             delay(DONE_VISIBLE_MS)
@@ -168,9 +196,8 @@ class TranslationController(
     private suspend fun translatePaged(
         page: ReaderPage,
         file: File,
-        apiKey: String,
-        model: String,
-        target: String,
+        config: TranslationConfig,
+        context: TranslationContext,
     ): PageTranslation {
         val settings = currentSettings()
         val bitmap = withContext(Dispatchers.Default) {
@@ -188,8 +215,9 @@ class TranslationController(
             }
         }
         try {
-            val blocks = translator.translate(bitmap, target, apiKey, model)
-            delay(REQUEST_SPACING_MS)
+            val blocks = translate(bitmap, config, context)
+                .map { it.copy(background = sampleBubbleColor(bitmap, it) ?: 0) }
+            delay(config.requestSpacingMs)
             return PageTranslation(blocks = blocks)
         } finally {
             bitmap.recycle()
@@ -203,9 +231,8 @@ class TranslationController(
      */
     private suspend fun translateWebtoon(
         file: File,
-        apiKey: String,
-        model: String,
-        target: String,
+        config: TranslationConfig,
+        context: TranslationContext,
     ): PageTranslation {
         val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
         BitmapFactory.decodeFile(file.path, bounds)
@@ -229,20 +256,90 @@ class TranslationController(
                     BitmapFactory.Options().apply { inSampleSize = sample },
                 ) ?: throw TranslationException(0, "Unreadable page")
                 val slice = try {
-                    translator.translate(bitmap, target, apiKey, model)
+                    translate(bitmap, config, context).mapNotNull { block ->
+                        block.copy(background = sampleBubbleColor(bitmap, block) ?: 0)
+                            .moveToPage(top, bottom - top, height)
+                    }
                 } finally {
                     bitmap.recycle()
                 }
-                slice.mapNotNullTo(blocks) { it.moveToPage(top, bottom - top, height) }
+                blocks += slice
                 top = bottom
                 // Space every request, including the last slice, so the next
                 // page does not start inside the same free-tier minute.
-                delay(REQUEST_SPACING_MS)
+                delay(config.requestSpacingMs)
             }
         } finally {
             region.recycle()
         }
         return PageTranslation(blocks = blocks)
+    }
+
+    private suspend fun translate(
+        bitmap: Bitmap,
+        config: TranslationConfig,
+        context: TranslationContext,
+    ): List<TranslatedBlock> =
+        if (config.provider.isGemini) {
+            gemini.translate(bitmap, config.target, config.apiKey, config.model, context)
+        } else {
+            openAi.translate(bitmap, config, context)
+        }
+
+    /**
+     * Averages the brighter half of the box, which is the bubble fill rather than
+     * the dark printed text. The overlay then blends the translation into that fill.
+     */
+    private fun sampleBubbleColor(bitmap: Bitmap, block: TranslatedBlock): Int? {
+        val box = block.normalizedBox() ?: return null
+        val left = (box[0] * bitmap.width).toInt().coerceIn(0, bitmap.width - 1)
+        val top = (box[1] * bitmap.height).toInt().coerceIn(0, bitmap.height - 1)
+        val right = (box[2] * bitmap.width).toInt().coerceIn(left + 1, bitmap.width)
+        val bottom = (box[3] * bitmap.height).toInt().coerceIn(top + 1, bitmap.height)
+        val stepX = max(1, (right - left) / 12)
+        val stepY = max(1, (bottom - top) / 12)
+        val samples = ArrayList<Int>(256)
+        var y = top
+        while (y < bottom) {
+            var x = left
+            while (x < right) {
+                val color = bitmap.getPixel(x, y)
+                if (Color.alpha(color) >= 64) samples += color
+                x += stepX
+            }
+            y += stepY
+        }
+        if (samples.isEmpty()) return null
+        val luminances = samples.map(::luminance).sorted()
+        val threshold = luminances[luminances.size / 2]
+        var red = 0L
+        var green = 0L
+        var blue = 0L
+        var count = 0
+        samples.forEach { color ->
+            if (luminance(color) >= threshold) {
+                red += Color.red(color)
+                green += Color.green(color)
+                blue += Color.blue(color)
+                count++
+            }
+        }
+        if (count == 0) return null
+        return Color.rgb((red / count).toInt(), (green / count).toInt(), (blue / count).toInt())
+    }
+
+    private fun luminance(color: Int): Float =
+        (0.299f * Color.red(color) + 0.587f * Color.green(color) + 0.114f * Color.blue(color)) / 255f
+
+    /** Keeps the last bubbles of this chapter for the next page's prompt. */
+    private fun appendContext(
+        recent: MutableList<TranslatedBlock>,
+        blocks: List<TranslatedBlock>,
+    ) {
+        blocks.asSequence()
+            .filter { it.type != "sfx" && it.text.isNotBlank() && it.translation.isNotBlank() }
+            .forEach { recent += it }
+        while (recent.size > CONTEXT_LINES) recent.removeAt(0)
     }
 
     private fun decodeScaled(source: BufferedSource): Bitmap {
@@ -304,7 +401,7 @@ class TranslationController(
 
     private companion object {
         const val MAX_EDGE = 1600
-        const val REQUEST_SPACING_MS = 4_000L
+        const val CONTEXT_LINES = 10
         const val DONE_VISIBLE_MS = 2_500L
         const val PAGE_LOAD_TIMEOUT_MS = 90_000L
     }

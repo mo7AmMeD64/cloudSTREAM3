@@ -6,6 +6,7 @@ import androidx.core.content.edit
 import androidx.core.os.LocaleListCompat
 import androidx.preference.PreferenceManager
 import com.kodastream.app.R
+import com.kodastream.app.manga.translate.TranslationProvider
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -23,9 +24,11 @@ object AppPrefs {
     internal const val KEY_TRANSLATION_API_KEY = "translation_api_key"
     internal const val KEY_TRANSLATION_TARGET = "translation_target"
     internal const val KEY_TRANSLATION_MODEL = "translation_model"
+    private const val KEY_TRANSLATION_PROVIDER = "translation_provider"
+    private const val KEY_TRANSLATION_BASE_URL = "translation_base_url"
     const val TRANSLATION_TARGET_ARABIC = "ar"
     const val TRANSLATION_TARGET_ENGLISH = "en"
-    const val DEFAULT_TRANSLATION_MODEL = "gemini-2.5-flash-lite"
+    const val DEFAULT_TRANSLATION_MODEL = "gemini-2.5-flash"
     private const val KEY_NAV_BAR_ICON_SIZE = "nav_bar_icon_size"
     private const val KEY_NAV_BAR_WIDTH = "nav_bar_width"
     private const val KEY_NAV_BAR_HEIGHT = "nav_bar_height"
@@ -173,17 +176,42 @@ object AppPrefs {
         prefs(context).edit { putBoolean(KEY_ANIMATED_BACKGROUND, value) }
     }
 
-    /** The Gemini key is stored encrypted; it never goes into data export. */
-    fun translationApiKey(context: Context): String? =
-        prefs(context).getString(KEY_TRANSLATION_API_KEY, null)?.let(SecretCipher::decrypt)
+    /** The selected backend; existing installs keep Gemini. */
+    fun translationProvider(context: Context): TranslationProvider =
+        TranslationProvider.fromId(prefs(context).getString(KEY_TRANSLATION_PROVIDER, null))
 
-    fun setTranslationApiKey(context: Context, value: String?): Boolean {
+    fun setTranslationProvider(context: Context, value: TranslationProvider) {
+        prefs(context).edit { putString(KEY_TRANSLATION_PROVIDER, value.id) }
+    }
+
+    // Gemini keeps the original pref names so an existing key and model survive the update.
+    private fun apiKeyPref(provider: TranslationProvider): String =
+        if (provider.isGemini) KEY_TRANSLATION_API_KEY
+        else "${KEY_TRANSLATION_API_KEY}_${provider.id}"
+
+    private fun modelPref(provider: TranslationProvider): String =
+        if (provider.isGemini) KEY_TRANSLATION_MODEL
+        else "${KEY_TRANSLATION_MODEL}_${provider.id}"
+
+    private fun baseUrlPref(provider: TranslationProvider): String =
+        "${KEY_TRANSLATION_BASE_URL}_${provider.id}"
+
+    /** Keys are stored encrypted and never go into data export. */
+    fun translationApiKey(context: Context, provider: TranslationProvider): String? =
+        prefs(context).getString(apiKeyPref(provider), null)?.let(SecretCipher::decrypt)
+
+    fun setTranslationApiKey(
+        context: Context,
+        provider: TranslationProvider,
+        value: String?,
+    ): Boolean {
+        val name = apiKeyPref(provider)
         if (value.isNullOrBlank()) {
-            prefs(context).edit { remove(KEY_TRANSLATION_API_KEY) }
+            prefs(context).edit { remove(name) }
             return true
         }
         val encrypted = SecretCipher.encrypt(value) ?: return false
-        prefs(context).edit { putString(KEY_TRANSLATION_API_KEY, encrypted) }
+        prefs(context).edit { putString(name, encrypted) }
         return true
     }
 
@@ -203,17 +231,29 @@ object AppPrefs {
         prefs(context).edit { putString(KEY_TRANSLATION_TARGET, target) }
     }
 
-    fun translationModel(context: Context): String =
-        prefs(context).getString(KEY_TRANSLATION_MODEL, null)
+    fun translationModel(context: Context, provider: TranslationProvider): String =
+        prefs(context).getString(modelPref(provider), null)
             ?.takeIf { it.isNotBlank() }
-            ?: DEFAULT_TRANSLATION_MODEL
+            ?: if (provider.isGemini) DEFAULT_TRANSLATION_MODEL else provider.defaultModel
 
-    fun setTranslationModel(context: Context, value: String) {
+    fun setTranslationModel(context: Context, provider: TranslationProvider, value: String) {
+        val fallback = if (provider.isGemini) DEFAULT_TRANSLATION_MODEL else provider.defaultModel
         prefs(context).edit {
-            putString(
-                KEY_TRANSLATION_MODEL,
-                value.trim().ifBlank { DEFAULT_TRANSLATION_MODEL },
-            )
+            putString(modelPref(provider), value.trim().ifBlank { fallback })
+        }
+    }
+
+    fun translationBaseUrl(context: Context, provider: TranslationProvider): String =
+        prefs(context).getString(baseUrlPref(provider), null)
+            ?.trim()
+            ?.takeIf { it.isNotBlank() }
+            ?: provider.defaultBaseUrl
+
+    fun setTranslationBaseUrl(context: Context, provider: TranslationProvider, value: String) {
+        val name = baseUrlPref(provider)
+        val trimmed = value.trim()
+        prefs(context).edit {
+            if (trimmed.isBlank()) remove(name) else putString(name, trimmed)
         }
     }
 

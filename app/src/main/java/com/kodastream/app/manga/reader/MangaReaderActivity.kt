@@ -160,6 +160,7 @@ class MangaReaderActivity : AppCompatActivity(), ReaderViewerHost {
         settings = readerModel.overlay.value.settings
         overlayState.value = readerModel.overlay.value
         translationController = TranslationController(this, lifecycleScope) { settings }
+        translationController.seriesTitle = ref.title
 
         viewerHost = FrameLayout(this).apply {
             layoutParams = FrameLayout.LayoutParams(

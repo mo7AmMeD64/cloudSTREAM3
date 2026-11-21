@@ -33,9 +33,7 @@ internal class TranslationOverlayView(context: Context) : View(context) {
         color = Color.BLACK
         typeface = Typeface.DEFAULT
     }
-    private val bubblePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.argb(236, 255, 255, 255)
-    }
+    private val bubblePaint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val box = RectF()
 
     init {
@@ -123,12 +121,17 @@ internal class TranslationOverlayView(context: Context) : View(context) {
 
             val radius = min(boxWidth, boxHeight) * 0.16f
             box.set(left, top, right, bottom)
+            // The sampled fill hides the original lettering without a white patch
+            // over coloured bubbles; 240 alpha leaves a trace of the artwork.
+            val fill = block.background.takeIf { it != 0 } ?: FALLBACK_FILL
+            bubblePaint.color = Color.argb(240, Color.red(fill), Color.green(fill), Color.blue(fill))
             canvas.drawRoundRect(box, radius, radius, bubblePaint)
 
             val padding = min(boxWidth, boxHeight) * 0.08f
             val innerWidth = (boxWidth - padding * 2).toInt().coerceAtLeast(1)
             val innerHeight = (boxHeight - padding * 2).toInt().coerceAtLeast(1)
-            val layout = layout(block.translation, innerWidth, innerHeight) ?: continue
+            val textColor = if (isDark(fill)) Color.WHITE else Color.BLACK
+            val layout = layout(block.translation, innerWidth, innerHeight, textColor) ?: continue
             canvas.save()
             canvas.clipRect(left, top, right, bottom)
             canvas.translate(left + padding, top + padding)
@@ -137,29 +140,37 @@ internal class TranslationOverlayView(context: Context) : View(context) {
         }
     }
 
-    private fun layout(text: String, width: Int, height: Int): StaticLayout? {
+    private fun layout(text: String, width: Int, height: Int, textColor: Int): StaticLayout? {
         if (text.isBlank()) return null
-        val key = "$width|$height|$text"
+        val key = "$width|$height|$textColor|$text"
         layouts[key]?.let { return it }
 
         var size = min(height * 0.62f, width * 0.34f).coerceAtLeast(6f)
         var built: StaticLayout? = null
         while (size >= 6f) {
-            val candidate = buildLayout(text, width, size)
+            val candidate = buildLayout(text, width, size, textColor)
             if (candidate.height <= height) {
                 built = candidate
                 break
             }
             size *= 0.86f
         }
-        val result = built ?: buildLayout(text, width, 6f)
+        val result = built ?: buildLayout(text, width, 6f, textColor)
         if (layouts.size > MAX_CACHED_LAYOUTS) layouts.clear()
         layouts[key] = result
         return result
     }
 
-    private fun buildLayout(text: String, width: Int, textSize: Float): StaticLayout {
-        val paint = TextPaint(textPaint).apply { this.textSize = textSize }
+    private fun buildLayout(
+        text: String,
+        width: Int,
+        textSize: Float,
+        textColor: Int,
+    ): StaticLayout {
+        val paint = TextPaint(textPaint).apply {
+            this.textSize = textSize
+            color = textColor
+        }
         return StaticLayout.Builder.obtain(text, 0, text.length, paint, width)
             .setAlignment(Layout.Alignment.ALIGN_CENTER)
             .setIncludePad(false)
@@ -172,5 +183,12 @@ internal class TranslationOverlayView(context: Context) : View(context) {
     private companion object {
         const val MAX_CACHED_LAYOUTS = 160
         const val MAX_LINES = 20
+
+        /** Used when the page bitmap could not be sampled (for example a cached entry). */
+        val FALLBACK_FILL = Color.rgb(255, 255, 255)
+
+        fun isDark(color: Int): Boolean =
+            (0.299f * Color.red(color) + 0.587f * Color.green(color) +
+                0.114f * Color.blue(color)) / 255f < 0.5f
     }
 }

@@ -11,10 +11,11 @@ import java.io.File
 object TranslationCache {
     private const val DIR = "translations"
 
-    fun key(fileHash: String, variant: String, target: String, model: String): String =
+    /** [signature] identifies provider, base URL, model, target and prompt version. */
+    fun key(fileHash: String, variant: String, signature: String): String =
         "${fileHash.take(32)}-" +
             "${Integer.toHexString(variant.hashCode())}-" +
-            "$target-${Integer.toHexString(model.hashCode())}"
+            Integer.toHexString(signature.hashCode())
 
     fun read(context: Context, key: String): PageTranslation? {
         val file = File(directory(context), "$key.json")

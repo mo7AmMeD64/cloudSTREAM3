@@ -43,7 +43,7 @@ class AppPrefsTest {
         assertEquals("translation_model", AppPrefs.KEY_TRANSLATION_MODEL)
         assertEquals("ar", AppPrefs.TRANSLATION_TARGET_ARABIC)
         assertEquals("en", AppPrefs.TRANSLATION_TARGET_ENGLISH)
-        assertEquals("gemini-2.5-flash-lite", AppPrefs.DEFAULT_TRANSLATION_MODEL)
+        assertEquals("gemini-2.5-flash", AppPrefs.DEFAULT_TRANSLATION_MODEL)
     }
 
     @Test

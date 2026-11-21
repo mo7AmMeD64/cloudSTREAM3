@@ -1,7 +1,6 @@
 package com.kodastream.app.manga.translate
 
 import android.graphics.Bitmap
-import android.util.Base64
 import eu.kanade.tachiyomi.network.await
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -20,14 +19,10 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
-import java.io.ByteArrayOutputStream
 import java.util.concurrent.TimeUnit
 
-/** A failed Gemini call; [code] is the HTTP status, or 0 for a bad response. */
+/** A failed translation call; [code] is the HTTP status, or 0 for a bad response. */
 class TranslationException(val code: Int, message: String) : Exception(message)
-
-fun translationLanguageName(target: String): String =
-    if (target == "en") "English" else "Arabic"
 
 /**
  * One page per request: Gemini spots the text and translates it in the same
@@ -41,6 +36,7 @@ class GeminiTranslator(private val client: OkHttpClient = defaultClient) {
         target: String,
         apiKey: String,
         model: String,
+        context: TranslationContext = TranslationContext(),
     ): List<TranslatedBlock> {
         val image = withContext(Dispatchers.Default) { jpegBase64(bitmap) }
         val body = buildJsonObject {
@@ -48,7 +44,7 @@ class GeminiTranslator(private val client: OkHttpClient = defaultClient) {
                 addJsonObject {
                     putJsonArray("parts") {
                         addJsonObject {
-                            put("text", prompt(target))
+                            put("text", buildTranslationPrompt(target, context))
                         }
                         addJsonObject {
                             putJsonObject("inline_data") {
@@ -107,18 +103,6 @@ class GeminiTranslator(private val client: OkHttpClient = defaultClient) {
         return "https://generativelanguage.googleapis.com/v1beta/models/$id"
     }
 
-    private fun prompt(target: String): String {
-        val language = translationLanguageName(target)
-        return """
-            Translate every speech bubble, narration box and sign in this manga page into $language.
-            Also return the original text of each region.
-            Use box_2d as [ymin, xmin, ymax, xmax], integers from 0 to 1000 relative to the image.
-            Keep translations natural and short enough to fit the bubble.
-            Skip sound effects and text that is already in $language.
-            Reply with JSON only.
-        """.trimIndent()
-    }
-
     private fun responseSchema(): JsonObject = buildJsonObject {
         put("type", "OBJECT")
         putJsonObject("properties") {
@@ -172,12 +156,6 @@ class GeminiTranslator(private val client: OkHttpClient = defaultClient) {
             )
         }
         return TranslationJson.parseBlocks(raw)
-    }
-
-    private fun jpegBase64(bitmap: Bitmap): String {
-        val out = ByteArrayOutputStream()
-        bitmap.compress(Bitmap.CompressFormat.JPEG, 85, out)
-        return Base64.encodeToString(out.toByteArray(), Base64.NO_WRAP)
     }
 
     private fun apiError(code: Int, body: String): String {

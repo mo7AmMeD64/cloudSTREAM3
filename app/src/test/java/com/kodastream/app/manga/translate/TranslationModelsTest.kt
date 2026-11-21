@@ -90,4 +90,49 @@ class TranslationModelsTest {
     fun oldCacheVersionIsIgnored() {
         assertNull(TranslationJson.decode("""{"version":0,"blocks":[]}"""))
     }
+
+    @Test
+    fun openAiChatContentIsRead() {
+        val raw = """
+            {"choices":[{"message":{"content":"{\"blocks\":[{\"box_2d\":[10,20,300,400],\"translation\":\"مرحبا\"}]}"}}]}
+        """.trimIndent()
+
+        val content = TranslationJson.chatCompletionText(raw)!!
+
+        assertEquals("مرحبا", TranslationJson.parseBlocks(content).single().translation)
+    }
+
+    @Test
+    fun openAiContentPartsAreJoined() {
+        val raw = """
+            {"choices":[{"message":{"content":[{"type":"text","text":"{\"blocks\":"},{"type":"text","text":"[]}"}]}}]}
+        """.trimIndent()
+
+        assertEquals("{\"blocks\":[]}", TranslationJson.chatCompletionText(raw))
+    }
+
+    @Test
+    fun unreadableChatCompletionReturnsNull() {
+        assertNull(TranslationJson.chatCompletionText("not json"))
+        assertNull(TranslationJson.chatCompletionText("""{"choices":[]}"""))
+        assertNull(TranslationJson.chatCompletionText("""{"choices":{}}"""))
+        assertNull(
+            TranslationJson.chatCompletionText(
+                """{"choices":[{"message":{"content":[{"image_url":{"url":"x"}}]}}]}""",
+            ),
+        )
+    }
+
+    @Test
+    fun sampledBubbleColourSurvivesTheCache() {
+        val page = PageTranslation(
+            blocks = listOf(
+                TranslatedBlock(box = listOf(10f, 20f, 300f, 400f), translation = "x", background = 0x112233),
+            ),
+        )
+
+        val decoded = TranslationJson.decode(TranslationJson.encode(page))!!
+
+        assertEquals(0x112233, decoded.blocks.single().background)
+    }
 }

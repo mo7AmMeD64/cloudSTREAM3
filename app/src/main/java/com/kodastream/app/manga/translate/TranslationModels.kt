@@ -3,16 +3,25 @@ package com.kodastream.app.manga.translate
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 
-const val TRANSLATION_CACHE_VERSION = 1
+const val TRANSLATION_CACHE_VERSION = 2
 
-/** One text region as Gemini returns it; [box] is [ymin, xmin, ymax, xmax] 0..1000. */
+/** One text region as a model returns it; [box] is [ymin, xmin, ymax, xmax] 0..1000. */
 @Serializable
 data class TranslatedBlock(
     @SerialName("box_2d") val box: List<Float> = emptyList(),
     val text: String = "",
     val translation: String = "",
     val type: String = "",
+    /** Sampled bubble fill as an ARGB colour, or 0 when the page could not be sampled. */
+    @SerialName("bg") val background: Int = 0,
 ) {
     /** The box as [left, top, right, bottom] fractions of the image, or null if unusable. */
     fun normalizedBox(): FloatArray? {
@@ -67,6 +76,20 @@ object TranslationJson {
         }.getOrDefault(emptyList())
             .filter { it.translation.isNotBlank() && it.normalizedBox() != null }
     }
+
+    /** The assistant text out of an OpenAI-compatible chat completion. */
+    fun chatCompletionText(raw: String): String? = runCatching {
+        val root = json.parseToJsonElement(raw).jsonObject
+        val content = root["choices"]?.jsonArray?.firstOrNull()?.jsonObject
+            ?.get("message")?.jsonObject?.get("content")
+        when (content) {
+            is JsonPrimitive -> content.contentOrNull
+            is JsonArray -> content.mapNotNull { part ->
+                (part as? JsonObject)?.get("text")?.jsonPrimitive?.contentOrNull
+            }.joinToString("").takeIf { it.isNotBlank() }
+            else -> null
+        }
+    }.getOrNull()
 
     fun encode(translation: PageTranslation): String = json.encodeToString(translation)
 

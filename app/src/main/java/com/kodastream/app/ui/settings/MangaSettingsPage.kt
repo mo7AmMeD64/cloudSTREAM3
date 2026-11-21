@@ -2,10 +2,13 @@ package com.kodastream.app.ui.settings
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.RadioButton
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.unit.dp
 import eu.kanade.tachiyomi.network.PREF_DOH_SHECAN
 import eu.kanade.tachiyomi.network.PREF_DOH_QUAD9
@@ -71,8 +74,9 @@ import com.kodastream.app.manga.MangaPrefs
 import com.kodastream.app.manga.MangaReadingMode
 import com.kodastream.app.manga.TapInvert
 import com.kodastream.app.manga.TapZoneLayout
-import com.kodastream.app.manga.translate.GeminiTranslator
 import com.kodastream.app.manga.translate.TranslationCache
+import com.kodastream.app.manga.translate.TranslationProvider
+import com.kodastream.app.manga.translate.testTranslationProvider
 import com.kodastream.app.manga.download.MangaDownloadStorage
 import com.kodastream.app.manga.store.MangaStoreRepository
 import com.kodastream.app.ui.manga.MangaLanguageDialog
@@ -149,6 +153,30 @@ private fun invertReaderLabel(invert: TapInvert): String = stringResource(
 )
 
 @Composable
+private fun translationProviderLabel(provider: TranslationProvider): String = stringResource(
+    when (provider) {
+        TranslationProvider.GEMINI -> R.string.settings_manga_translation_provider_gemini
+        TranslationProvider.GROK -> R.string.settings_manga_translation_provider_grok
+        TranslationProvider.GROQ -> R.string.settings_manga_translation_provider_groq
+        TranslationProvider.OPENROUTER -> R.string.settings_manga_translation_provider_openrouter
+        TranslationProvider.MISTRAL -> R.string.settings_manga_translation_provider_mistral
+        TranslationProvider.CUSTOM -> R.string.settings_manga_translation_provider_custom
+    },
+)
+
+@Composable
+private fun translationProviderHint(provider: TranslationProvider): String = stringResource(
+    when (provider) {
+        TranslationProvider.GEMINI -> R.string.settings_manga_translation_provider_gemini_hint
+        TranslationProvider.GROK -> R.string.settings_manga_translation_provider_grok_hint
+        TranslationProvider.GROQ -> R.string.settings_manga_translation_provider_groq_hint
+        TranslationProvider.OPENROUTER -> R.string.settings_manga_translation_provider_openrouter_hint
+        TranslationProvider.MISTRAL -> R.string.settings_manga_translation_provider_mistral_hint
+        TranslationProvider.CUSTOM -> R.string.settings_manga_translation_provider_custom_hint
+    },
+)
+
+@Composable
 internal fun MangaSettingsPage(
     onBack: () -> Unit,
     onOpenMangaExtensions: () -> Unit,
@@ -189,12 +217,22 @@ internal fun MangaSettingsPage(
     var readerPageNumber by remember { mutableStateOf(readerDefaults.showPageNumber) }
     var readerVolume by remember { mutableStateOf(readerDefaults.volumeKeys) }
     var readerCacheMb by remember { mutableStateOf(MangaPrefs.readerCacheMb(context)) }
-    var translationKey by remember { mutableStateOf(AppPrefs.translationApiKey(context)) }
+    var translationProvider by remember { mutableStateOf(AppPrefs.translationProvider(context)) }
+    var translationKey by remember {
+        mutableStateOf(AppPrefs.translationApiKey(context, translationProvider))
+    }
     var translationTarget by remember { mutableStateOf(AppPrefs.translationTarget(context)) }
-    var translationModel by remember { mutableStateOf(AppPrefs.translationModel(context)) }
+    var translationModel by remember {
+        mutableStateOf(AppPrefs.translationModel(context, translationProvider))
+    }
+    var translationBase by remember {
+        mutableStateOf(AppPrefs.translationBaseUrl(context, translationProvider))
+    }
     var translationKeyDialog by remember { mutableStateOf(false) }
     var translationTargetDialog by remember { mutableStateOf(false) }
     var translationModelDialog by remember { mutableStateOf(false) }
+    var translationProviderDialog by remember { mutableStateOf(false) }
+    var translationBaseDialog by remember { mutableStateOf(false) }
     var cacheUsed by remember { mutableStateOf(0L) }
     LaunchedEffect(Unit) {
         // The first call walks the whole page cache; keep it off the UI thread.
@@ -397,20 +435,51 @@ internal fun MangaSettingsPage(
         }
 
         item(key = "manga_translation") {
-            val count = 4
+            val count = if (translationProvider.isGemini) 5 else 6
             var row = -1
             SettingsGroup(stringResource(R.string.settings_manga_group_translation)) {
                 NavigationRow(
                     index = ++row,
                     count = count,
+                    icon = Icons.Rounded.Dns,
+                    title = stringResource(R.string.settings_manga_translation_provider),
+                    supporting = translationProviderLabel(translationProvider) + " · " +
+                        translationProviderHint(translationProvider),
+                    onClick = { translationProviderDialog = true },
+                )
+                NavigationRow(
+                    index = ++row,
+                    count = count,
                     icon = Icons.Rounded.Lock,
                     title = stringResource(R.string.settings_manga_translation_key),
-                    supporting = if (translationKey.isNullOrBlank()) {
-                        stringResource(R.string.settings_manga_translation_key_missing)
-                    } else {
-                        stringResource(R.string.settings_manga_translation_key_set)
+                    supporting = when {
+                        !translationKey.isNullOrBlank() ->
+                            stringResource(R.string.settings_manga_translation_key_set)
+                        translationProvider == TranslationProvider.CUSTOM ->
+                            stringResource(R.string.settings_manga_translation_key_optional)
+                        else -> stringResource(R.string.settings_manga_translation_key_missing)
                     },
                     onClick = { translationKeyDialog = true },
+                )
+                if (!translationProvider.isGemini) {
+                    NavigationRow(
+                        index = ++row,
+                        count = count,
+                        icon = Icons.Rounded.Public,
+                        title = stringResource(R.string.settings_manga_translation_base_url),
+                        supporting = translationBase.ifBlank {
+                            stringResource(R.string.settings_manga_translation_base_url_reset)
+                        },
+                        onClick = { translationBaseDialog = true },
+                    )
+                }
+                NavigationRow(
+                    index = ++row,
+                    count = count,
+                    icon = Icons.Rounded.Memory,
+                    title = stringResource(R.string.settings_manga_translation_model),
+                    supporting = translationModel,
+                    onClick = { translationModelDialog = true },
                 )
                 ChoiceRow(
                     index = ++row,
@@ -435,14 +504,6 @@ internal fun MangaSettingsPage(
                         translationTarget = value
                         AppPrefs.setTranslationTarget(context, value)
                     },
-                )
-                NavigationRow(
-                    index = ++row,
-                    count = count,
-                    icon = Icons.Rounded.Memory,
-                    title = stringResource(R.string.settings_manga_translation_model),
-                    supporting = translationModel,
-                    onClick = { translationModelDialog = true },
                 )
                 NavigationRow(
                     index = ++row,
@@ -708,6 +769,96 @@ internal fun MangaSettingsPage(
         )
     }
 
+    if (translationProviderDialog) {
+        AlertDialog(
+            onDismissRequest = { translationProviderDialog = false },
+            title = { Text(stringResource(R.string.settings_manga_translation_provider_title)) },
+            text = {
+                Column {
+                    TranslationProvider.values().forEach { option ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    translationProvider = option
+                                    AppPrefs.setTranslationProvider(context, option)
+                                    translationKey = AppPrefs.translationApiKey(context, option)
+                                    translationModel = AppPrefs.translationModel(context, option)
+                                    translationBase = AppPrefs.translationBaseUrl(context, option)
+                                    translationProviderDialog = false
+                                }
+                                .padding(vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            RadioButton(selected = option == translationProvider, onClick = null)
+                            Column(Modifier.padding(start = 12.dp)) {
+                                Text(translationProviderLabel(option))
+                                Text(
+                                    text = translationProviderHint(option),
+                                    style = MaterialTheme.typography.bodySmall,
+                                )
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { translationProviderDialog = false }) {
+                    Text(stringResource(R.string.cancel))
+                }
+            },
+        )
+    }
+
+    if (translationBaseDialog) {
+        var draft by remember(translationProvider) { mutableStateOf(translationBase) }
+        AlertDialog(
+            onDismissRequest = { translationBaseDialog = false },
+            title = { Text(stringResource(R.string.settings_manga_translation_base_url)) },
+            text = {
+                Column {
+                    OutlinedTextField(
+                        value = draft,
+                        onValueChange = { draft = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        placeholder = {
+                            Text(stringResource(R.string.settings_manga_translation_base_url_hint))
+                        },
+                    )
+                    Text(
+                        text = stringResource(R.string.settings_manga_translation_base_url_summary),
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(top = 8.dp),
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        AppPrefs.setTranslationBaseUrl(context, translationProvider, draft)
+                        translationBase = AppPrefs.translationBaseUrl(context, translationProvider)
+                        translationBaseDialog = false
+                    },
+                ) { Text(stringResource(R.string.ok)) }
+            },
+            dismissButton = {
+                Row {
+                    TextButton(
+                        onClick = {
+                            AppPrefs.setTranslationBaseUrl(context, translationProvider, "")
+                            translationBase = AppPrefs.translationBaseUrl(context, translationProvider)
+                            translationBaseDialog = false
+                        },
+                    ) { Text(stringResource(R.string.settings_manga_translation_base_url_reset)) }
+                    TextButton(onClick = { translationBaseDialog = false }) {
+                        Text(stringResource(R.string.cancel))
+                    }
+                }
+            },
+        )
+    }
+
     if (translationKeyDialog) {
         var draft by remember { mutableStateOf(translationKey.orEmpty()) }
         var testing by remember { mutableStateOf(false) }
@@ -736,12 +887,18 @@ internal fun MangaSettingsPage(
             confirmButton = {
                 Row {
                     TextButton(
-                        enabled = draft.isNotBlank() && !testing,
+                        enabled = (draft.isNotBlank() ||
+                            translationProvider == TranslationProvider.CUSTOM) && !testing,
                         onClick = {
                             testing = true
                             settingsScope.launch {
                                 val result = runCatching {
-                                    GeminiTranslator().checkKey(draft.trim(), translationModel)
+                                    testTranslationProvider(
+                                        provider = translationProvider,
+                                        apiKey = draft.trim(),
+                                        model = translationModel,
+                                        baseUrl = translationBase,
+                                    )
                                 }
                                 testing = false
                                 Toast.makeText(
@@ -767,7 +924,7 @@ internal fun MangaSettingsPage(
                     TextButton(
                         onClick = {
                             val value = draft.trim()
-                            if (AppPrefs.setTranslationApiKey(context, value)) {
+                            if (AppPrefs.setTranslationApiKey(context, translationProvider, value)) {
                                 translationKey = value.ifBlank { null }
                                 translationKeyDialog = false
                             } else {
@@ -786,7 +943,7 @@ internal fun MangaSettingsPage(
                     if (!translationKey.isNullOrBlank()) {
                         TextButton(
                             onClick = {
-                                AppPrefs.setTranslationApiKey(context, null)
+                                AppPrefs.setTranslationApiKey(context, translationProvider, null)
                                 translationKey = null
                                 translationKeyDialog = false
                             },
@@ -801,6 +958,11 @@ internal fun MangaSettingsPage(
     }
 
     if (translationModelDialog) {
+        val fallbackModel = if (translationProvider.isGemini) {
+            AppPrefs.DEFAULT_TRANSLATION_MODEL
+        } else {
+            translationProvider.defaultModel
+        }
         var draft by remember { mutableStateOf(translationModel) }
         AlertDialog(
             onDismissRequest = { translationModelDialog = false },
@@ -811,18 +973,15 @@ internal fun MangaSettingsPage(
                     onValueChange = { draft = it },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
-                    placeholder = {
-                        Text(stringResource(R.string.settings_manga_translation_model_hint))
-                    },
+                    placeholder = { Text(fallbackModel.ifBlank { "..." }) },
                 )
             },
             confirmButton = {
                 TextButton(
                     onClick = {
-                        val value = draft.trim()
-                            .ifBlank { AppPrefs.DEFAULT_TRANSLATION_MODEL }
-                        AppPrefs.setTranslationModel(context, value)
-                        translationModel = AppPrefs.translationModel(context)
+                        val value = draft.trim().ifBlank { fallbackModel }
+                        AppPrefs.setTranslationModel(context, translationProvider, value)
+                        translationModel = AppPrefs.translationModel(context, translationProvider)
                         translationModelDialog = false
                     },
                 ) { Text(stringResource(R.string.ok)) }
@@ -833,9 +992,11 @@ internal fun MangaSettingsPage(
                         onClick = {
                             AppPrefs.setTranslationModel(
                                 context,
-                                AppPrefs.DEFAULT_TRANSLATION_MODEL,
+                                translationProvider,
+                                fallbackModel,
                             )
-                            translationModel = AppPrefs.DEFAULT_TRANSLATION_MODEL
+                            translationModel =
+                                AppPrefs.translationModel(context, translationProvider)
                             translationModelDialog = false
                         },
                     ) { Text(stringResource(R.string.settings_manga_translation_model_reset)) }
