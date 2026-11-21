@@ -607,6 +607,10 @@
     <string name="manga_download_queued">في الانتظار</string>
     <string name="manga_download_percent">%1$d%%</string>
     <string name="manga_download_progress">%1$s — %2$d/%3$d</string>
+    <string name="manga_download_batch">تنزيل %1$d فصل</string>
+    <string name="manga_download_batch_title">تنزيل الفصول</string>
+    <string name="manga_download_all">تنزيل الكل (%1$d)</string>
+    <string name="manga_download_batch_message">سيتم إضافة %1$d فصلًا إلى قائمة التنزيل. يتم تخطي الفصول المنزّلة أو الموجودة في قائمة الانتظار.</string>
     <string name="manga_downloads_title">التنزيلات</string>
     <string name="manga_downloads_empty">لا شيء قيد التنزيل</string>
     <string name="manga_downloads_empty_hint">نزّل فصلًا من قائمة فصول عنوان ليظهر هنا.</string>

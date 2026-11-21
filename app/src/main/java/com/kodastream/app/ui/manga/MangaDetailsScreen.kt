@@ -72,6 +72,7 @@ import androidx.compose.material.icons.rounded.Schedule
 import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material.icons.rounded.Sort
 import androidx.compose.material.icons.rounded.Tune
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -157,6 +158,7 @@ fun MangaDetailsScreen(
 
     var showMoveSheet by remember { mutableStateOf(false) }
     var showCategoryDialog by remember { mutableStateOf(false) }
+    var pendingDownload by remember { mutableStateOf<List<MangaChapter>?>(null) }
     var categories by remember { mutableStateOf(MangaCategoryStore.categories(context)) }
 
     val shareUrl = remember(state.entry, state.favorite) { viewModel.shareUrl() }
@@ -204,6 +206,9 @@ fun MangaDetailsScreen(
         val ordered = filtered.sortedBy { it.sourceOrder }
         if (chapterState.ascending) ordered else ordered.reversed()
     }
+    val downloadableChapters = remember(shownChapters, state.entry, state.downloaded, state.queue) {
+        nextDownloadBatch(shownChapters, state.entry, state.downloaded, state.queue.keys)
+    }
     val gaps = remember(state.chapters) {
         chapterGaps(state.chapters).associateBy { it.afterNumber }
     }
@@ -226,6 +231,8 @@ fun MangaDetailsScreen(
             shownCount = shownChapters.size,
             scanlators = scanlators,
             chapterState = chapterState,
+            downloadable = downloadableChapters,
+            onDownload = { pendingDownload = it },
             modifier = modifier,
         )
     }
@@ -464,6 +471,27 @@ fun MangaDetailsScreen(
                 onDeleteDownloads = viewModel::deleteDownloads,
             )
         }
+    }
+
+    pendingDownload?.let { batch ->
+        AlertDialog(
+            onDismissRequest = { pendingDownload = null },
+            title = { Text(stringResource(R.string.manga_download_batch_title)) },
+            text = { Text(stringResource(R.string.manga_download_batch_message, batch.size)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    viewModel.downloadChapters(batch)
+                    pendingDownload = null
+                }) {
+                    Text(stringResource(R.string.manga_download_start))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingDownload = null }) {
+                    Text(stringResource(R.string.cancel))
+                }
+            },
+        )
     }
 
     if (showMoveSheet) {
@@ -955,9 +983,12 @@ private fun ChapterHeader(
     shownCount: Int,
     scanlators: List<String>,
     chapterState: ChapterListState,
+    downloadable: List<MangaChapter>,
+    onDownload: (List<MangaChapter>) -> Unit,
     modifier: Modifier,
 ) {
     var filterMenu by remember { mutableStateOf(false) }
+    var downloadMenu by remember { mutableStateOf(false) }
 
     Column(modifier) {
         Row(
@@ -1045,6 +1076,44 @@ private fun ChapterHeader(
                             )
                         }
                     }
+                }
+            }
+            Box {
+                IconButton(
+                    onClick = { downloadMenu = true },
+                    enabled = downloadable.isNotEmpty(),
+                ) {
+                    Icon(
+                        Icons.Rounded.Download,
+                        contentDescription = stringResource(R.string.manga_download_start),
+                    )
+                }
+                DropdownMenu(expanded = downloadMenu, onDismissRequest = { downloadMenu = false }) {
+                    if (downloadable.size > DOWNLOAD_BATCH_SIZE) {
+                        DropdownMenuItem(
+                            text = {
+                                Text(
+                                    stringResource(
+                                        R.string.manga_download_batch,
+                                        DOWNLOAD_BATCH_SIZE,
+                                    ),
+                                )
+                            },
+                            onClick = {
+                                downloadMenu = false
+                                onDownload(downloadable.take(DOWNLOAD_BATCH_SIZE))
+                            },
+                        )
+                    }
+                    DropdownMenuItem(
+                        text = {
+                            Text(stringResource(R.string.manga_download_all, downloadable.size))
+                        },
+                        onClick = {
+                            downloadMenu = false
+                            onDownload(downloadable)
+                        },
+                    )
                 }
             }
         }
@@ -1468,6 +1537,22 @@ private fun copyToClipboard(context: android.content.Context, text: String) {
             as android.content.ClipboardManager
         manager.setPrimaryClip(android.content.ClipData.newPlainText("manga", text))
     }
+}
+
+/** How many chapters one bulk download queues at a time. */
+private const val DOWNLOAD_BATCH_SIZE = 100
+
+/**
+ * The chapters a bulk download queues next: the shown order, skipping what is
+ * already on disk or in the queue so a later tap continues with the next ones.
+ */
+internal fun nextDownloadBatch(
+    shown: List<MangaChapter>,
+    entry: MangaEntry,
+    downloaded: Set<String>,
+    queuedKeys: Set<String>,
+): List<MangaChapter> = shown.filter { chapter ->
+    chapter.url !in downloaded && downloadKey(entry, chapter) !in queuedKeys
 }
 
 private fun Set<String>.toggle(value: String): Set<String> =

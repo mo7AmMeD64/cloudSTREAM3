@@ -731,6 +731,10 @@
     <string name="manga_download_queued">Queued</string>
     <string name="manga_download_percent">%1$d%%</string>
     <string name="manga_download_progress">%1$s — %2$d/%3$d</string>
+    <string name="manga_download_batch">Download %1$d chapters</string>
+    <string name="manga_download_batch_title">Download chapters</string>
+    <string name="manga_download_all">Download all (%1$d)</string>
+    <string name="manga_download_batch_message">%1$d chapters will be added to the download queue. Chapters already downloaded or queued are skipped.</string>
     <string name="manga_downloads_title">Downloads</string>
     <string name="manga_downloads_empty">Nothing is downloading</string>
     <string name="manga_downloads_empty_hint">Download a chapter from a title\'s chapter list to see it here.</string>
