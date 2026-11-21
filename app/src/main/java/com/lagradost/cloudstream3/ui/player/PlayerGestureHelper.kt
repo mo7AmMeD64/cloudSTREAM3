@@ -218,8 +218,12 @@ class PlayerGestureHelper(private val playerView: PlayerView) {
 
     private var overlayLayoutListener: View.OnLayoutChangeListener? = null
 
-    /** Whether the center rewind/forward buttons are shown between seek animations. */
-    private var seekButtonsVisible = true
+    /**
+     * Whether the center rewind/forward buttons are shown. Read live instead of cached so
+     * toggling the setting applies without recreating the player.
+     */
+    private val seekButtonsVisible: Boolean
+        get() = AppPrefs.playerShowSeekButtons(context)
 
     /** Called from [PlayerView.initialize] after views are bound. */
     fun initialize() {
@@ -235,14 +239,9 @@ class PlayerGestureHelper(private val playerView: PlayerView) {
         } catch (_: Exception) {
         }
 
-        // The center rewind/forward buttons are a user switch (Player settings). The same
-        // views carry the double-tap seek feedback, so rewind() and fastForward() show
-        // them for the length of that animation even while the buttons are hidden.
-        seekButtonsVisible = AppPrefs.playerShowSeekButtons(context)
         // INVISIBLE, not GONE: a GONE sibling collapses the other holder's 50% constraint
         // to the centre, so the double-tap feedback icon would sit on top of the play icon.
-        playerView.playerRewHolder?.isInvisible = !seekButtonsVisible
-        playerView.playerFfwdHolder?.isInvisible = !seekButtonsVisible
+        applySeekButtonsVisibility()
 
         // Inject the brightness overlay into the ExoPlayer content frame so it sits
         // directly on top of the video surface.  Alpha is set by handleBrightnessAdjustment.
@@ -889,11 +888,19 @@ class PlayerGestureHelper(private val playerView: PlayerView) {
     fun animateCenterControls(fadeTo: Float) {
         val from = if (fadeTo > 0.5f) 0f else 1f
         fun makeAnim() = AlphaAnimation(from, fadeTo).apply { duration = 100; fillAfter = true }
+        // Reassert the switch on every show/hide so a settings change applies to a live player.
+        applySeekButtonsVisibility()
         // Each view needs its own Animation instance; sharing one causes fillAfter to
         // not hold reliably across all views once any of them restarts the animation.
         playerView.playerRewHolder?.let  { it.alpha = 1f; it.startAnimation(makeAnim()) }
         playerView.playerFfwdHolder?.let { it.alpha = 1f; it.startAnimation(makeAnim()) }
         playerView.playerPausePlay?.startAnimation(makeAnim())
+    }
+
+    /** Shows or hides the center seek buttons; INVISIBLE keeps the pause icon centred. */
+    private fun applySeekButtonsVisibility() {
+        playerView.playerRewHolder?.isInvisible = !seekButtonsVisible
+        playerView.playerFfwdHolder?.isInvisible = !seekButtonsVisible
     }
 
     /** Plays the rewind animation and seeks back by [fastForwardTime]. */
@@ -911,9 +918,11 @@ class PlayerGestureHelper(private val playerView: PlayerView) {
                 playerView.playerCenterMenu?.isGone = false
                 playerView.playerVideoHolder?.isVisible = true
             }
-            // Always clear any stale fillAfter alpha so the button is visible during animation.
-            rewHolder.alpha = 1f
-            rewHolder.isVisible = true
+            // The flash doubles as the double-tap feedback, so skip it with the buttons off.
+            if (seekButtonsVisible) {
+                rewHolder.alpha = 1f
+                rewHolder.isVisible = true
+            }
 
             rew?.startAnimation(AnimationUtils.loadAnimation(context, R.anim.rotate_left))
             val goLeft = AnimationUtils.loadAnimation(context, R.anim.go_left)
@@ -953,9 +962,11 @@ class PlayerGestureHelper(private val playerView: PlayerView) {
                 playerView.playerCenterMenu?.isGone = false
                 playerView.playerVideoHolder?.isVisible = true
             }
-            // Always clear any stale fillAfter alpha so the button is visible during animation.
-            ffwdHolder.alpha = 1f
-            ffwdHolder.isVisible = true
+            // The flash doubles as the double-tap feedback, so skip it with the buttons off.
+            if (seekButtonsVisible) {
+                ffwdHolder.alpha = 1f
+                ffwdHolder.isVisible = true
+            }
 
             ffwd?.startAnimation(AnimationUtils.loadAnimation(context, R.anim.rotate_right))
             val goRight = AnimationUtils.loadAnimation(context, R.anim.go_right)
