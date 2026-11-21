@@ -258,6 +258,7 @@ class MangaReaderActivity : AppCompatActivity(), ReaderViewerHost {
                         currentChapters = chapters
                         if (viewer == null) createViewer()
                         viewer?.setChapters(chapters)
+                        chapterJumpTarget(currentPage, chapters)?.let { viewer?.moveToPage(it) }
                     }
                 }
             }

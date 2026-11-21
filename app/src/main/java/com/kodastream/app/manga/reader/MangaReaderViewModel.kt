@@ -23,6 +23,7 @@ import com.kodastream.app.ui.manga.toSChapter
 import com.kodastream.app.ui.manga.toSManga
 import com.kodastream.app.manga.MangaEntry
 import eu.kanade.tachiyomi.compat.MangaEngine
+import eu.kanade.tachiyomi.source.model.Page
 import eu.kanade.tachiyomi.source.online.HttpSource
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -31,6 +32,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -74,6 +76,7 @@ class MangaReaderViewModel(
     private var currentChapter: ReaderChapter? = null
     private var currentIndex = 0
     private var saveJob: Job? = null
+    private var nextChapterPreloadJob: Job? = null
 
     init {
         viewModelScope.launch {
@@ -231,6 +234,29 @@ class MangaReaderViewModel(
         viewerChapters = nextViewer
         currentChapter = chapter
         _viewer.value = ReaderViewerState(nextViewer, _viewer.value.version + 1)
+        preloadNextChapterAfter(nextViewer)
+    }
+
+    /**
+     * Ported from Mihon's `preloadNextChapterAfter`: loads the next chapter once
+     * the current one's pages are ready, so the reader doesn't reach the
+     * transition before the next chapter exists.
+     */
+    private fun preloadNextChapterAfter(chapters: ViewerChapters) {
+        nextChapterPreloadJob?.cancel()
+        val next = chapters.nextChapter ?: return
+        if (next.state is ReaderChapter.State.Loaded) return
+        nextChapterPreloadJob = viewModelScope.launch(Dispatchers.IO) {
+            val current = chapters.currChapter
+            if (current.pageLoader is HttpPageLoader) {
+                current.pages.orEmpty().forEach { page ->
+                    page.statusFlow.first {
+                        it == Page.State.Ready || it is Page.State.Error
+                    }
+                }
+            }
+            requestPreloadChapter(next)
+        }
     }
 
     /** The chapter drawer's rows, rebuilt only when the chapter list changes. */

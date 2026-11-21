@@ -171,6 +171,17 @@ fun viewerItems(
     return items
 }
 
+/**
+ * The page the viewer must show after an explicit chapter change, or null when
+ * the visible page already belongs to [chapters]. Without this jump the pager
+ * stays in the old chapter, so its next transition is met from the wrong side.
+ */
+fun chapterJumpTarget(shown: ReaderPage?, chapters: ViewerChapters): ReaderPage? {
+    if (shown != null && shown.chapter === chapters.currChapter) return null
+    val pages = chapters.currChapter.pages ?: return null
+    return pages.getOrNull(chapters.currChapter.requestedPage.coerceIn(0, pages.lastIndex))
+}
+
 /** True when the gap between [from] and [to] should be announced. */
 fun chapterGap(from: ReaderChapter?, to: ReaderChapter?): Int {
     if (from == null || to == null) return 0

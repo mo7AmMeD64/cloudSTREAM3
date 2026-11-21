@@ -20,6 +20,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.ComposeView
@@ -996,23 +997,33 @@ private fun ReaderTransitionContent(
                 style = MaterialTheme.typography.bodyMedium,
                 textAlign = TextAlign.Center,
             )
-            next.state is ReaderChapter.State.Error -> {
-                Text(
-                    text = (next.state as ReaderChapter.State.Error).error.message.orEmpty(),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.error,
-                    textAlign = TextAlign.Center,
-                )
-                Button(onClick = { next.let(host::requestPreloadChapter) }) {
-                    Text(stringResource(R.string.manga_reader_retry))
-                }
-            }
-            next.state !is ReaderChapter.State.Loaded -> Text(
-                text = stringResource(R.string.manga_reader_loading_chapter),
+            else -> ChapterTransitionStatus(next, host)
+        }
+    }
+}
+
+/** Observes the target chapter so loading and errors update the page in place. */
+@Composable
+private fun ChapterTransitionStatus(chapter: ReaderChapter, host: ReaderViewerHost) {
+    val state = chapter.stateFlow.collectAsState().value
+    when (state) {
+        is ReaderChapter.State.Error -> {
+            Text(
+                text = state.error.message.orEmpty(),
                 style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.error,
                 textAlign = TextAlign.Center,
             )
+            Button(onClick = { host.requestPreloadChapter(chapter) }) {
+                Text(stringResource(R.string.manga_reader_retry))
+            }
         }
+        is ReaderChapter.State.Loaded -> Unit
+        else -> Text(
+            text = stringResource(R.string.manga_reader_loading_chapter),
+            style = MaterialTheme.typography.bodyMedium,
+            textAlign = TextAlign.Center,
+        )
     }
 }
 
