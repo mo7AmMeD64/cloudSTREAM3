@@ -23,6 +23,7 @@ import android.view.animation.AnimationUtils
 import androidx.annotation.OptIn
 import androidx.core.content.ContextCompat
 import androidx.core.view.isGone
+import androidx.core.view.isInvisible
 import androidx.core.view.isVisible
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
@@ -238,8 +239,10 @@ class PlayerGestureHelper(private val playerView: PlayerView) {
         // views carry the double-tap seek feedback, so rewind() and fastForward() show
         // them for the length of that animation even while the buttons are hidden.
         seekButtonsVisible = AppPrefs.playerShowSeekButtons(context)
-        playerView.playerRewHolder?.isVisible = seekButtonsVisible
-        playerView.playerFfwdHolder?.isVisible = seekButtonsVisible
+        // INVISIBLE, not GONE: a GONE sibling collapses the other holder's 50% constraint
+        // to the centre, so the double-tap feedback icon would sit on top of the play icon.
+        playerView.playerRewHolder?.isInvisible = !seekButtonsVisible
+        playerView.playerFfwdHolder?.isInvisible = !seekButtonsVisible
 
         // Inject the brightness overlay into the ExoPlayer content frame so it sits
         // directly on top of the video surface.  Alpha is set by handleBrightnessAdjustment.
@@ -920,7 +923,7 @@ class PlayerGestureHelper(private val playerView: PlayerView) {
                 override fun onAnimationEnd(animation: Animation?) {
                     rewText?.post {
                         resetRewindText()
-                        rewHolder.isVisible = seekButtonsVisible
+                        rewHolder.isInvisible = !seekButtonsVisible
                         // Restore parent chain only if we changed it and controls are still hidden.
                         if (!wasShowing && !(playerView.callbacks?.isUIShowing() ?: false)) {
                             playerView.playerCenterMenu?.isGone = prevCenterMenuGone
@@ -962,7 +965,7 @@ class PlayerGestureHelper(private val playerView: PlayerView) {
                 override fun onAnimationEnd(animation: Animation?) {
                     ffwdText?.post {
                         resetFastForwardText()
-                        ffwdHolder.isVisible = seekButtonsVisible
+                        ffwdHolder.isInvisible = !seekButtonsVisible
                         if (!wasShowing && !(playerView.callbacks?.isUIShowing() ?: false)) {
                             playerView.playerCenterMenu?.isGone = prevCenterMenuGone
                             playerView.playerVideoHolder?.isVisible = prevVideoHolderVisible
