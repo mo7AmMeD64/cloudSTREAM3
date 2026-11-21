@@ -169,6 +169,9 @@ class DownloadService : Service() {
             NotificationManager.IMPORTANCE_LOW,
         )
         notifications.createNotificationChannel(channel)
+        // Promote before any disk/binder work: Android kills the service when
+        // startForeground is more than five seconds late.
+        promote()
 
         connectivityManager = getSystemService(ConnectivityManager::class.java)
         try {
@@ -284,7 +287,14 @@ class DownloadService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     private fun promote() {
-        val notification = buildNotification()
+        // Deliberately store-free and pref-free: the pump replaces this with
+        // the real progress notification as soon as the main thread is free.
+        val notification = NotificationCompat.Builder(this, CHANNEL_ID)
+            .setSmallIcon(android.R.drawable.stat_sys_download)
+            .setOnlyAlertOnce(true)
+            .setOngoing(true)
+            .setContentTitle(getString(R.string.download_notification_channel))
+            .build()
         if (Build.VERSION.SDK_INT >= 29) {
             startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
         } else {
@@ -457,6 +467,16 @@ class DownloadService : Service() {
                     updateNotification()
                     return
                 }
+                // A drop that advanced the file is not a failed attempt: keep
+                // resuming until five consecutive attempts stall.
+                val current = DownloadStore.find(this, id)
+                val currentBytes = current?.receivedBytes ?: 0L
+                val currentSegment = current?.hlsSegment ?: 0
+                if (downloadAdvanced(lastReceivedBytes, lastHlsSegment, currentBytes, currentSegment)) {
+                    attempt = 0
+                    lastReceivedBytes = currentBytes
+                    lastHlsSegment = currentSegment
+                }
                 attempt++
                 if (attempt >= 5) {
                     Log.e(TAG, "runDownload(): max attempts reached for id=$id", t)
@@ -536,22 +556,35 @@ class DownloadService : Service() {
             val input = response.body?.byteStream() ?: throw IOException("Empty body")
             var received = startOffset
             var lastPublish = 0L
-            DownloadLocations.openOutput(this, uri, append = startOffset > 0).use { output ->
-                val buffer = ByteArray(512 * 1024)
-                while (true) {
-                    checkAlive(job)
-                    val read = input.read(buffer)
-                    if (read < 0) break
-                    output.write(buffer, 0, read)
-                    received += read
-                    val now = System.currentTimeMillis()
-                    if (now - lastPublish > 900) {
-                        lastPublish = now
-                        DownloadStore.updateProgress(this, id, received, total)
-                        updateNotification()
+            try {
+                DownloadLocations.openOutput(this, uri, append = startOffset > 0).use { output ->
+                    val buffer = ByteArray(512 * 1024)
+                    while (true) {
+                        checkAlive(job)
+                        val read = input.read(buffer)
+                        if (read < 0) break
+                        output.write(buffer, 0, read)
+                        received += read
+                        val now = System.currentTimeMillis()
+                        if (now - lastPublish > 900) {
+                            lastPublish = now
+                            DownloadStore.updateProgress(this, id, received, total)
+                            updateNotification()
+                        }
                     }
+                    output.flush()
                 }
-                output.flush()
+            } catch (t: Throwable) {
+                // Persist exactly what reached the file so the retry resumes
+                // there instead of losing the last progress tick.
+                DownloadStore.update(this, id) { d ->
+                    d.copy(receivedBytes = DownloadLocations.fileLength(this@DownloadService, uri))
+                }
+                throw t
+            }
+            // A short body must retry, not pass as a finished download.
+            if (contentLength >= 0 && received < startOffset + contentLength) {
+                throw IOException("Incomplete download: $received/${startOffset + contentLength} bytes")
             }
             DownloadStore.updateProgress(this, id, received, total)
         }
@@ -872,6 +905,10 @@ internal fun resumeDecision(startOffset: Long, responseCode: Int): ResumeAction 
         else -> ResumeAction.ERROR
     }
 }
+
+/** True when a failed attempt left more on disk than the previous failure did. */
+internal fun downloadAdvanced(lastBytes: Long, lastSegment: Int, bytes: Long, segment: Int): Boolean =
+    bytes > lastBytes || segment > lastSegment
 
 /**
  * Extracts the URI attribute from the first #EXT-X-MAP tag in the playlist.
