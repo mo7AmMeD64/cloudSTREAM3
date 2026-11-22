@@ -34,7 +34,6 @@ import com.lagradost.cloudstream3.CommonActivity.screenHeightWithOrientation
 import com.lagradost.cloudstream3.CommonActivity.screenWidthWithOrientation
 import com.lagradost.cloudstream3.CommonActivity.showToast
 import com.kodastream.app.R
-import com.kodastream.app.data.AppPrefs
 import com.lagradost.cloudstream3.mvvm.logError
 import com.lagradost.cloudstream3.mvvm.safe
 import com.lagradost.cloudstream3.ui.settings.Globals.EMULATOR
@@ -217,13 +216,6 @@ class PlayerGestureHelper(private val playerView: PlayerView) {
     var lastPan: Vector2? = null
 
     private var overlayLayoutListener: View.OnLayoutChangeListener? = null
-
-    /**
-     * Whether the center rewind/forward buttons are shown. Read live instead of cached so
-     * toggling the setting applies without recreating the player.
-     */
-    private val seekButtonsVisible: Boolean
-        get() = AppPrefs.playerShowSeekButtons(context)
 
     /** Called from [PlayerView.initialize] after views are bound. */
     fun initialize() {
@@ -897,10 +889,10 @@ class PlayerGestureHelper(private val playerView: PlayerView) {
         playerView.playerPausePlay?.startAnimation(makeAnim())
     }
 
-    /** Shows or hides the center seek buttons; INVISIBLE keeps the pause icon centred. */
+    /** Shows the center seek buttons; INVISIBLE keeps the pause icon centred. */
     private fun applySeekButtonsVisibility() {
-        playerView.playerRewHolder?.isInvisible = !seekButtonsVisible
-        playerView.playerFfwdHolder?.isInvisible = !seekButtonsVisible
+        playerView.playerRewHolder?.isInvisible = false
+        playerView.playerFfwdHolder?.isInvisible = false
     }
 
     /** Plays the rewind animation and seeks back by [fastForwardTime]. */
@@ -918,11 +910,9 @@ class PlayerGestureHelper(private val playerView: PlayerView) {
                 playerView.playerCenterMenu?.isGone = false
                 playerView.playerVideoHolder?.isVisible = true
             }
-            // The flash doubles as the double-tap feedback, so skip it with the buttons off.
-            if (seekButtonsVisible) {
-                rewHolder.alpha = 1f
-                rewHolder.isVisible = true
-            }
+            // The flash doubles as the double-tap feedback.
+            rewHolder.alpha = 1f
+            rewHolder.isVisible = true
 
             rew?.startAnimation(AnimationUtils.loadAnimation(context, R.anim.rotate_left))
             val goLeft = AnimationUtils.loadAnimation(context, R.anim.go_left)
@@ -932,7 +922,7 @@ class PlayerGestureHelper(private val playerView: PlayerView) {
                 override fun onAnimationEnd(animation: Animation?) {
                     rewText?.post {
                         resetRewindText()
-                        rewHolder.isInvisible = !seekButtonsVisible
+                        rewHolder.isInvisible = false
                         // Restore parent chain only if we changed it and controls are still hidden.
                         if (!wasShowing && !(playerView.callbacks?.isUIShowing() ?: false)) {
                             playerView.playerCenterMenu?.isGone = prevCenterMenuGone
@@ -962,11 +952,9 @@ class PlayerGestureHelper(private val playerView: PlayerView) {
                 playerView.playerCenterMenu?.isGone = false
                 playerView.playerVideoHolder?.isVisible = true
             }
-            // The flash doubles as the double-tap feedback, so skip it with the buttons off.
-            if (seekButtonsVisible) {
-                ffwdHolder.alpha = 1f
-                ffwdHolder.isVisible = true
-            }
+            // The flash doubles as the double-tap feedback.
+            ffwdHolder.alpha = 1f
+            ffwdHolder.isVisible = true
 
             ffwd?.startAnimation(AnimationUtils.loadAnimation(context, R.anim.rotate_right))
             val goRight = AnimationUtils.loadAnimation(context, R.anim.go_right)
@@ -976,7 +964,7 @@ class PlayerGestureHelper(private val playerView: PlayerView) {
                 override fun onAnimationEnd(animation: Animation?) {
                     ffwdText?.post {
                         resetFastForwardText()
-                        ffwdHolder.isInvisible = !seekButtonsVisible
+                        ffwdHolder.isInvisible = false
                         if (!wasShowing && !(playerView.callbacks?.isUIShowing() ?: false)) {
                             playerView.playerCenterMenu?.isGone = prevCenterMenuGone
                             playerView.playerVideoHolder?.isVisible = prevVideoHolderVisible

@@ -44,7 +44,6 @@ object AppPrefs {
     private const val KEY_PLAYER_SHOW_ROTATE = "player_show_rotate_control"
     private const val KEY_PLAYER_SHOW_RESIZE = "player_show_resize_control"
     private const val KEY_PLAYER_SHOW_SUBTITLE_OFFSET = "player_show_subtitle_offset_control"
-    private const val KEY_PLAYER_SHOW_SEEK_BUTTONS = "player_show_seek_buttons"
     private const val KEY_PLAYER_COMPACT_CONTROLS = "player_compact_controls"
     private const val KEY_DL_TREE = "download_tree_uri"
     const val KEY_DL_WIFI = "download_wifi_only"
@@ -426,13 +425,6 @@ object AppPrefs {
 
     fun setPlayerShowSubtitleOffsetControl(context: Context, value: Boolean) {
         playerPrefs(context).edit { putBoolean(KEY_PLAYER_SHOW_SUBTITLE_OFFSET, value) }
-    }
-
-    fun playerShowSeekButtons(context: Context): Boolean =
-        playerPrefs(context).getBoolean(KEY_PLAYER_SHOW_SEEK_BUTTONS, true)
-
-    fun setPlayerShowSeekButtons(context: Context, value: Boolean) {
-        playerPrefs(context).edit { putBoolean(KEY_PLAYER_SHOW_SEEK_BUTTONS, value) }
     }
 
     /** Smaller control icons with the same touch targets. On by default. */

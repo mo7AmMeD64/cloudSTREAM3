@@ -947,8 +947,6 @@
     <string name="settings_player_show_resize_summary">إظهار الزر الذي يغيّر ملاءمة الفيديو للشاشة.</string>
     <string name="settings_player_show_subtitle_offset">زر توقيت الترجمة</string>
     <string name="settings_player_show_subtitle_offset_summary">إظهار زر توقيت الترجمة عندما تدعمه الترجمة المختارة.</string>
-    <string name="settings_player_show_seek_buttons">زرا الرجوع والتقديم</string>
-    <string name="settings_player_show_seek_buttons_summary">إظهار زري الرجوع والتقديم في وسط المشغّل.</string>
     <string name="settings_player_compact_controls">أيقونات مصغّرة</string>
     <string name="settings_player_compact_controls_summary">استخدام أيقونات أصغر لأزرار التحكم. تبقى مساحة اللمس بحجمها.</string>
     <string name="settings_player_progress_style">سماكة شريط التقدّم</string>

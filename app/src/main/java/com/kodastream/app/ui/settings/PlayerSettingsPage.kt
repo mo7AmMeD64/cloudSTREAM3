@@ -9,7 +9,6 @@ import androidx.compose.material.icons.rounded.Audiotrack
 import androidx.compose.material.icons.rounded.AvTimer
 import androidx.compose.material.icons.rounded.Dns
 import androidx.compose.material.icons.rounded.FastForward
-import androidx.compose.material.icons.rounded.Forward10
 import androidx.compose.material.icons.rounded.LinearScale
 import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.Memory
@@ -104,7 +103,6 @@ internal fun PlayerSettingsPage(onBack: () -> Unit) {
     var showRotate by remember { mutableStateOf(AppPrefs.playerShowRotateControl(context)) }
     var showResize by remember { mutableStateOf(AppPrefs.playerShowResizeControl(context)) }
     var showSubtitleOffset by remember { mutableStateOf(AppPrefs.playerShowSubtitleOffsetControl(context)) }
-    var showSeekButtons by remember { mutableStateOf(AppPrefs.playerShowSeekButtons(context)) }
     var compactControls by remember { mutableStateOf(AppPrefs.playerCompactControls(context)) }
     var progressStyle by remember { mutableStateOf(AppPrefs.playerProgressStyle(context)) }
 
@@ -279,7 +277,7 @@ internal fun PlayerSettingsPage(onBack: () -> Unit) {
             SettingsGroup(stringResource(R.string.settings_player_controls)) {
                 SwitchRow(
                     index = 0,
-                    count = 8,
+                    count = 7,
                     icon = Icons.Rounded.Dns,
                     title = stringResource(R.string.settings_player_show_source),
                     supporting = stringResource(R.string.settings_player_show_source_summary),
@@ -291,7 +289,7 @@ internal fun PlayerSettingsPage(onBack: () -> Unit) {
                 )
                 SwitchRow(
                     index = 1,
-                    count = 8,
+                    count = 7,
                     icon = Icons.Rounded.Lock,
                     title = stringResource(R.string.settings_player_show_lock),
                     supporting = stringResource(R.string.settings_player_show_lock_summary),
@@ -303,7 +301,7 @@ internal fun PlayerSettingsPage(onBack: () -> Unit) {
                 )
                 SwitchRow(
                     index = 2,
-                    count = 8,
+                    count = 7,
                     icon = Icons.Rounded.ScreenRotation,
                     title = stringResource(R.string.settings_player_show_rotate),
                     supporting = stringResource(R.string.settings_player_show_rotate_summary),
@@ -315,7 +313,7 @@ internal fun PlayerSettingsPage(onBack: () -> Unit) {
                 )
                 SwitchRow(
                     index = 3,
-                    count = 8,
+                    count = 7,
                     icon = Icons.Rounded.AspectRatio,
                     title = stringResource(R.string.settings_player_show_resize),
                     supporting = stringResource(R.string.settings_player_show_resize_summary),
@@ -327,7 +325,7 @@ internal fun PlayerSettingsPage(onBack: () -> Unit) {
                 )
                 SwitchRow(
                     index = 4,
-                    count = 8,
+                    count = 7,
                     icon = Icons.Rounded.Subtitles,
                     title = stringResource(R.string.settings_player_show_subtitle_offset),
                     supporting = stringResource(R.string.settings_player_show_subtitle_offset_summary),
@@ -339,19 +337,7 @@ internal fun PlayerSettingsPage(onBack: () -> Unit) {
                 )
                 SwitchRow(
                     index = 5,
-                    count = 8,
-                    icon = Icons.Rounded.Forward10,
-                    title = stringResource(R.string.settings_player_show_seek_buttons),
-                    supporting = stringResource(R.string.settings_player_show_seek_buttons_summary),
-                    checked = showSeekButtons,
-                    onCheckedChange = { value ->
-                        AppPrefs.setPlayerShowSeekButtons(context, value)
-                        showSeekButtons = value
-                    },
-                )
-                SwitchRow(
-                    index = 6,
-                    count = 8,
+                    count = 7,
                     icon = Icons.Rounded.Tune,
                     title = stringResource(R.string.settings_player_compact_controls),
                     supporting = stringResource(R.string.settings_player_compact_controls_summary),
@@ -362,8 +348,8 @@ internal fun PlayerSettingsPage(onBack: () -> Unit) {
                     },
                 )
                 ChoiceRow(
-                    index = 7,
-                    count = 8,
+                    index = 6,
+                    count = 7,
                     icon = Icons.Rounded.LinearScale,
                     title = stringResource(R.string.settings_player_progress_style),
                     options = listOf(

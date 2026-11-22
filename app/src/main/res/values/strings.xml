@@ -1055,8 +1055,6 @@
     <string name="settings_player_show_resize_summary">Show the button that changes how the video fits the screen.</string>
     <string name="settings_player_show_subtitle_offset">Subtitle timing button</string>
     <string name="settings_player_show_subtitle_offset_summary">Show the subtitle timing button when the chosen subtitles support it.</string>
-    <string name="settings_player_show_seek_buttons">Rewind and forward buttons</string>
-    <string name="settings_player_show_seek_buttons_summary">Show the rewind and forward buttons in the middle of the player.</string>
     <string name="settings_player_compact_controls">Compact icons</string>
     <string name="settings_player_compact_controls_summary">Use smaller control icons. The touch areas keep their size.</string>
     <string name="settings_player_progress_style">Progress bar thickness</string>
