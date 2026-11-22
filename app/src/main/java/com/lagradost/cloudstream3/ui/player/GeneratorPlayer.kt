@@ -1393,20 +1393,7 @@ class GeneratorPlayer : FullScreenPlayer() {
 
     private fun getAutoSelectSubtitle(
         subtitles: Set<SubtitleData>, settings: Boolean, downloads: Boolean
-    ): SubtitleData? {
-        val langCode = preferredAutoSelectSubtitles ?: return null
-        if (downloads) {
-            sortSubs(subtitles).firstOrNull {
-                it.origin == SubtitleOrigin.DOWNLOADED_FILE && it.matchesLanguageCode(
-                    langCode
-                )
-            }?.let { return it }
-        }
-
-        if (!settings) return null
-
-        return sortSubs(subtitles).firstOrNull { it.matchesLanguageCode(langCode) }
-    }
+    ): SubtitleData? = pickAutoSubtitle(subtitles, preferredAutoSelectSubtitles, settings, downloads)
 
     private fun autoSelectFromSettings(): Boolean {
         // auto select subtitle based on settings
@@ -1963,3 +1950,31 @@ inline fun <reified T : Serializable> Bundle.getSafeSerializable(key: String): T
         key,
         T::class.java
     )
+
+/**
+ * Picks the subtitle to enable automatically. The saved language wins; when
+ * nothing matches it falls back to the first track so subtitles do not start
+ * off. A blank language is an explicit "No subtitles".
+ */
+internal fun pickAutoSubtitle(
+    subtitles: Set<SubtitleData>,
+    langCode: String?,
+    settings: Boolean,
+    downloads: Boolean,
+): SubtitleData? {
+    if (langCode.isNullOrEmpty()) return null
+    val sorted = sortSubs(subtitles)
+    if (downloads) {
+        sorted.firstOrNull {
+            it.origin == SubtitleOrigin.DOWNLOADED_FILE && it.matchesLanguageCode(langCode)
+        }?.let { return it }
+    }
+    if (settings) {
+        sorted.firstOrNull { it.matchesLanguageCode(langCode) }?.let { return it }
+    }
+    return if (downloads) {
+        sorted.firstOrNull { it.origin == SubtitleOrigin.DOWNLOADED_FILE } ?: sorted.firstOrNull()
+    } else {
+        sorted.firstOrNull()
+    }
+}

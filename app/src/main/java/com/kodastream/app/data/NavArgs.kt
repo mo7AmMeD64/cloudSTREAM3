@@ -27,6 +27,8 @@ data class PlayerArgs(
     val history: HistoryStore.HistoryEntry? = null,
     /** A subtitle file downloaded beside the video, for offline playback. */
     val offlineSubtitleUri: String? = null,
+    /** Language of [offlineSubtitleUri], so the player can auto-select it. */
+    val offlineSubtitleLang: String? = null,
     /** The series' episode list when this is an episode, for prev/next and the episodes panel. */
     val queue: EpisodeQueue? = null,
     /** The original LoadResponse for metadata (e.g. skip intro timestamps, IMDb/TMDb/MAL IDs). */

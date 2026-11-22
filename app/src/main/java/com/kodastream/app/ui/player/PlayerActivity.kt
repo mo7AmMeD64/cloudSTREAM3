@@ -18,6 +18,7 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import com.kodastream.app.data.AppPrefs
+import com.kodastream.app.data.DownloadLocations
 import com.kodastream.app.data.DownloadStore
 import com.kodastream.app.data.HistoryStore
 import com.kodastream.app.data.NavArgs
@@ -87,11 +88,21 @@ class PlayerActivity : AppCompatActivity() {
 
         if (savedInstanceState == null) {
             val (episodes, index) = episodesFor(this)
+            // History/Continue Watching only carry the local video URI; recover
+            // the downloaded subtitle from the record so it follows the video.
+            val localDownload = args.resumeKey
+                .takeIf { it.startsWith("local|") }
+                ?.let { DownloadStore.find(this, it.removePrefix("local|")) }
+            val offlineSubUri = (args.offlineSubtitleUri ?: localDownload?.subtitleUri)
+                ?.takeIf { DownloadLocations.exists(this, it) }
             @Suppress("DEPRECATION")
-            val offlineSubs = args.offlineSubtitleUri?.let { uri ->
+            val offlineSubs = offlineSubUri?.let { uri ->
                 listOf(
                     PlayerSubtitleHelper.getSubtitleData(
-                        SubtitleFile(args.subtitle ?: "Subtitle", uri)
+                        SubtitleFile(
+                            args.offlineSubtitleLang ?: localDownload?.subLang ?: "Subtitle",
+                            uri,
+                        )
                     ).copy(origin = SubtitleOrigin.DOWNLOADED_FILE)
                 )
             } ?: emptyList()

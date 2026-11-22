@@ -333,6 +333,7 @@ private fun DownloadsList(
                                     subtitle = download.episodeTitle,
                                     resumeKey = "local|${download.id}",
                                     offlineSubtitleUri = offlineSub,
+                                    offlineSubtitleLang = download.subLang,
                                     history = HistoryEntry(
                                         key = "${download.apiName}|${download.url}",
                                         apiName = download.apiName,
