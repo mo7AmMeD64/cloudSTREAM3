@@ -512,6 +512,11 @@
     <string name="share_text">%1$s — %2$s</string>
     <string name="cd_share">Share</string>
     <string name="cd_poster">Poster for %1$s</string>
+    <string name="cd_poster_actions">Show actions</string>
+    <string name="poster_action_add_favorite">Add to favorites</string>
+    <string name="poster_action_remove_favorite">Remove from favorites</string>
+    <string name="poster_action_add_watchlist">Add to watchlist</string>
+    <string name="poster_action_remove_watchlist">Remove from watchlist</string>
     <string name="cd_trailer">Play trailer %1$d</string>
 
     <!-- Cinematic hero status labels -->

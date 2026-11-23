@@ -55,6 +55,7 @@ import com.kodastream.app.data.AppPrefs
 import com.kodastream.app.data.SearchHistoryStore
 import com.kodastream.app.engine.Engine
 import com.kodastream.app.ui.components.EmptyBox
+import com.kodastream.app.ui.components.PosterActionsSheet
 import com.kodastream.app.ui.components.PosterCard
 import com.kodastream.app.ui.components.SectionHeader
 import com.kodastream.app.ui.sources.SourceAvatar
@@ -208,6 +209,8 @@ fun SearchScreen(
     val lastPages by viewModel.lastPages.collectAsState()
     val loadingProviders by viewModel.loadingProviders.collectAsState()
     val scope by sourceViewModel.search.collectAsState()
+    var actionsItem by remember { mutableStateOf<SearchResponse?>(null) }
+    val longClickLabel = stringResource(R.string.cd_poster_actions)
     var query by rememberSaveable { mutableStateOf("") }
     // The scope lives in the shared holder so the source sheet can change it.
     var appliedScope by remember { mutableStateOf(scope) }
@@ -327,6 +330,8 @@ fun SearchScreen(
                                     PosterCard(
                                         item = item,
                                         onClick = { onOpenItem(item) },
+                                        onLongClick = { actionsItem = item },
+                                        onLongClickLabel = longClickLabel,
                                         cardWidth = 128.dp,
                                     )
                                 }
@@ -351,6 +356,10 @@ fun SearchScreen(
                 }
             }
         }
+    }
+
+    actionsItem?.let { item ->
+        PosterActionsSheet(item = item, onDismiss = { actionsItem = null })
     }
 }
 

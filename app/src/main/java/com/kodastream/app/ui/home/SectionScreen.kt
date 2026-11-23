@@ -29,7 +29,9 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -38,6 +40,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.kodastream.app.R
+import com.kodastream.app.ui.components.PosterActionsSheet
 import com.kodastream.app.ui.components.PosterCard
 import com.kodastream.app.ui.components.PosterShelfSkeleton
 import com.kodastream.app.ui.components.SkeletonPulseProvider
@@ -64,6 +67,8 @@ fun SectionScreen(
     }
 
     val gridState = rememberLazyGridState()
+    var actionsItem by remember { mutableStateOf<SearchResponse?>(null) }
+    val longClickLabel = stringResource(R.string.cd_poster_actions)
     val nearEnd by remember {
         derivedStateOf {
             val info = gridState.layoutInfo
@@ -121,6 +126,8 @@ fun SectionScreen(
                 PosterCard(
                     item = item,
                     onClick = { onOpenItem(item) },
+                    onLongClick = { actionsItem = item },
+                    onLongClickLabel = longClickLabel,
                     modifier = Modifier.fillMaxWidth(),
                     horizontal = section.horizontal,
                 )
@@ -151,5 +158,9 @@ fun SectionScreen(
                 }
             }
         }
+    }
+
+    actionsItem?.let { item ->
+        PosterActionsSheet(item = item, onDismiss = { actionsItem = null })
     }
 }

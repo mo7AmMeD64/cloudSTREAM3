@@ -154,6 +154,7 @@ fun PosterCard(
     horizontal: Boolean = false,
     cardWidth: Dp? = null,
     onLongClick: (() -> Unit)? = null,
+    onLongClickLabel: String? = null,
     selected: Boolean = false,
     selectionMode: Boolean = false,
 ) {
@@ -167,6 +168,7 @@ fun PosterCard(
         horizontal = horizontal,
         cardWidth = cardWidth,
         onLongClick = onLongClick,
+        onLongClickLabel = onLongClickLabel,
         selected = selected,
         selectionMode = selectionMode,
     )
@@ -187,6 +189,7 @@ fun PosterCard(
     horizontal: Boolean = false,
     cardWidth: Dp? = null,
     onLongClick: (() -> Unit)? = null,
+    onLongClickLabel: String? = null,
     selected: Boolean = false,
     selectionMode: Boolean = false,
 ) {
@@ -229,6 +232,7 @@ fun PosterCard(
                 interactionSource = interactionSource,
                 indication = null,
                 onClick = onClick,
+                onLongClickLabel = onLongClickLabel,
                 onLongClick = onLongClick ?: if (truncated) {
                     { scope.launch { tooltipState.show() } }
                 } else {

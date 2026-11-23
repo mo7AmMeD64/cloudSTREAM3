@@ -56,6 +56,7 @@ import com.kodastream.app.ui.components.EmptyBox
 import com.kodastream.app.ui.components.ErrorBox
 import com.kodastream.app.ui.components.ExpressivePullToRefresh
 import com.kodastream.app.ui.components.LoadingBox
+import com.kodastream.app.ui.components.PosterActionsSheet
 import com.kodastream.app.ui.components.PosterCard
 import com.kodastream.app.ui.components.PosterShelfSkeleton
 import com.kodastream.app.ui.components.SectionHeader
@@ -246,6 +247,7 @@ fun HomeScreen(
     val sections by expandedViewModel.sections.collectAsState()
     val startupDone by PluginManager.startupDone.collectAsState()
     val sourceName by sourceViewModel.home.collectAsState()
+    var actionsItem by remember { mutableStateOf<SearchResponse?>(null) }
 
     // One direction: the source owner resolves the name, Home only loads it.
     LaunchedEffect(sourceName) { viewModel.setSource(sourceName) }
@@ -290,6 +292,7 @@ fun HomeScreen(
                     onOpenDetails = onOpenDetails,
                     onResume = onResume,
                     onRetry = viewModel::retry,
+                    onPosterLongClick = { actionsItem = it },
                     onViewMore = { row ->
                         val provider = selected
                         if (provider != null) {
@@ -299,6 +302,9 @@ fun HomeScreen(
                     },
                 )
             }
+        }
+        actionsItem?.let { item ->
+            PosterActionsSheet(item = item, onDismiss = { actionsItem = null })
         }
     }
 }
@@ -322,6 +328,7 @@ private fun HomeShelves(
     onOpenDetails: (DetailsArgs) -> Unit,
     onResume: (PlayerArgs) -> Unit,
     onRetry: () -> Unit,
+    onPosterLongClick: (SearchResponse) -> Unit,
     onViewMore: (HomeRow) -> Unit,
 ) {
     val context = LocalContext.current
@@ -474,10 +481,20 @@ private fun HomeShelves(
                         visibleState = entrance,
                         enter = staggeredEnter(index),
                     ) {
-                        Shelf(row = row, onOpenItem = onOpenItem, onViewMore = viewMore)
+                        Shelf(
+                            row = row,
+                            onOpenItem = onOpenItem,
+                            onPosterLongClick = onPosterLongClick,
+                            onViewMore = viewMore,
+                        )
                     }
                 } else {
-                    Shelf(row = row, onOpenItem = onOpenItem, onViewMore = viewMore)
+                    Shelf(
+                        row = row,
+                        onOpenItem = onOpenItem,
+                        onPosterLongClick = onPosterLongClick,
+                        onViewMore = viewMore,
+                    )
                 }
             }
 
@@ -496,8 +513,10 @@ private fun HomeShelves(
 private fun Shelf(
     row: HomeRow,
     onOpenItem: (SearchResponse) -> Unit,
+    onPosterLongClick: (SearchResponse) -> Unit,
     onViewMore: (() -> Unit)?,
 ) {
+    val longClickLabel = stringResource(R.string.cd_poster_actions)
     Column {
         SectionHeader(row.title, onViewMore = onViewMore)
         LazyRow(
@@ -513,6 +532,8 @@ private fun Shelf(
                     item = item,
                     horizontal = row.horizontal,
                     onClick = { onOpenItem(item) },
+                    onLongClick = { onPosterLongClick(item) },
+                    onLongClickLabel = longClickLabel,
                     cardWidth = if (row.horizontal) 220.dp else 128.dp,
                 )
             }

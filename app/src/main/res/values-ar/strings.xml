@@ -394,6 +394,11 @@
     <string name="share_text">%1$s — %2$s</string>
     <string name="cd_share">مشاركة</string>
     <string name="cd_poster">ملصق %1$s</string>
+    <string name="cd_poster_actions">عرض الإجراءات</string>
+    <string name="poster_action_add_favorite">إضافة إلى المفضلة</string>
+    <string name="poster_action_remove_favorite">إزالة من المفضلة</string>
+    <string name="poster_action_add_watchlist">إضافة إلى المشاهدة لاحقًا</string>
+    <string name="poster_action_remove_watchlist">إزالة من المشاهدة لاحقًا</string>
     <string name="cd_trailer">تشغيل الإعلان %1$d</string>
 
     <!-- تسميات حالة الواجهة السينمائية -->
