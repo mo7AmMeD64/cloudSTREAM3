@@ -173,14 +173,26 @@ private fun IconChoice(
                     }
                 ),
         ) {
-            Image(
-                painter = painterResource(option.previewRes),
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
+            Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .scale(option.previewScale),
-            )
+            ) {
+                option.previewBackground?.let { background ->
+                    Image(
+                        painter = painterResource(background),
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                }
+                Image(
+                    painter = painterResource(option.previewRes),
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
             if (selected) {
                 Box(
                     modifier = Modifier

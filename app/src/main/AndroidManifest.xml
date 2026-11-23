@@ -133,13 +133,18 @@
             </intent-filter>
         </activity-alias>
 
+        <!--
+          Retired icon slots, kept so devices that had them selected still show
+          a launcher entry after the update; AppIcons.applyStored moves them to
+          the default icon on first launch.
+        -->
         <activity-alias
             android:name=".LauncherIcon4"
             android:targetActivity=".MainActivity"
             android:exported="true"
             android:enabled="false"
-            android:icon="@mipmap/ic_launcher_4"
-            android:roundIcon="@mipmap/ic_launcher_4">
+            android:icon="@mipmap/ic_launcher_1"
+            android:roundIcon="@mipmap/ic_launcher_1">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -151,8 +156,8 @@
             android:targetActivity=".MainActivity"
             android:exported="true"
             android:enabled="false"
-            android:icon="@mipmap/ic_launcher_5"
-            android:roundIcon="@mipmap/ic_launcher_5">
+            android:icon="@mipmap/ic_launcher_2"
+            android:roundIcon="@mipmap/ic_launcher_2">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />

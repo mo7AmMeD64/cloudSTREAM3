@@ -18,18 +18,38 @@ object AppIcons {
          * margin, so the picker scales that margin away to fill the tile.
          */
         val previewScale: Float = 1f,
+        /** The adaptive background layer, drawn behind the preview. */
+        @DrawableRes val previewBackground: Int? = null,
     )
 
     const val DEFAULT = "default"
 
     val options = listOf(
         Option(DEFAULT, R.drawable.ic_launcher_foreground, ".LauncherDefault"),
-        Option("1", R.drawable.ic_launcher_fg_1, ".LauncherIcon1", 1.5f),
-        Option("2", R.drawable.ic_launcher_fg_2, ".LauncherIcon2", 1.5f),
-        Option("3", R.drawable.ic_launcher_fg_3, ".LauncherIcon3", 1.5f),
-        Option("4", R.drawable.ic_launcher_fg_4, ".LauncherIcon4", 1.5f),
-        Option("5", R.drawable.ic_launcher_fg_5, ".LauncherIcon5", 1.5f),
+        Option("1", R.drawable.ic_launcher_fg_1, ".LauncherIcon1", 1.5f, R.drawable.ic_launcher_bg_1),
+        Option("2", R.drawable.ic_launcher_fg_2, ".LauncherIcon2", 1.5f, R.drawable.ic_launcher_bg_2),
+        Option("3", R.drawable.ic_launcher_fg_3, ".LauncherIcon3", 1.5f, R.drawable.ic_launcher_bg_3),
     )
+
+    /** Aliases removed from the picker; kept in the manifest so an update never loses the launcher entry. */
+    private val retiredAliases = listOf(".LauncherIcon4", ".LauncherIcon5")
+
+    /**
+     * Re-applies the saved alias after an update. If the saved icon no longer
+     * exists, the launcher would have no enabled entry at all, so fall back to
+     * the default icon.
+     */
+    fun applyStored(context: Context) {
+        val saved = AppPrefs.appIcon(context)
+        val id = resolve(saved)
+        if (id == saved) return
+        AppPrefs.setAppIcon(context, id)
+        apply(context, id)
+    }
+
+    /** A saved id whose icon was removed maps to the default icon. */
+    internal fun resolve(saved: String?): String =
+        saved?.takeIf { id -> options.any { it.id == id } } ?: DEFAULT
 
     /**
      * Enables the chosen alias before disabling the others, so the launcher
@@ -43,6 +63,7 @@ object AppIcons {
         options.forEach { option ->
             if (option.id != id) setEnabled(context, option.alias, false)
         }
+        retiredAliases.forEach { setEnabled(context, it, false) }
     }
 
     private fun setEnabled(context: Context, alias: String, enabled: Boolean) {

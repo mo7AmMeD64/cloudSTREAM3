@@ -1,6 +1,7 @@
 package com.kodastream.app.engine
 
 import android.content.Context
+import com.kodastream.app.data.AppIcons
 import com.kodastream.app.data.AppPrefs
 import com.lagradost.cloudstream3.mvvm.logError
 import com.lagradost.cloudstream3.plugins.PluginManager
@@ -25,6 +26,7 @@ object AppBootstrap {
         val appContext = context.applicationContext
         // Before any player reads the key; a user turning it off later sticks.
         AppPrefs.ensureHoldToSpeedUp(appContext)
+        AppIcons.applyStored(appContext)
         scope.launch {
             try {
                 PluginManager.loadAllInstalled(appContext)
