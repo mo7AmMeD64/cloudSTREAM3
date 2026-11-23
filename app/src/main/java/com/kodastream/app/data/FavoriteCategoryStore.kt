@@ -39,18 +39,35 @@ object FavoriteCategoryStore {
     private const val CATEGORIES = "favorite_categories"
     private const val MAPPINGS = "favorite_category_of"
 
+    private val cache = StoreCache<List<FavoriteCategory>>()
+    private val mappingsCache = StoreCache<Map<String, String>>()
+
+    private fun invalidate() {
+        cache.clear()
+        mappingsCache.clear()
+    }
+
+    private fun notifyChanged() {
+        invalidate()
+        LibraryStore.notifyChanged()
+    }
+
     fun categories(context: Context): List<FavoriteCategory> =
-        context.getKeys(CATEGORIES)
-            .mapNotNull { path -> context.getKey<FavoriteCategory>(path) }
-            .sortedWith(compareBy({ it.order }, { it.createdAt }))
+        cache.get("categories") {
+            context.getKeys(CATEGORIES)
+                .mapNotNull { path -> context.getKey<FavoriteCategory>(path) }
+                .sortedWith(compareBy({ it.order }, { it.createdAt }))
+        }
 
     /** Every mapping, including orphans; callers validate against the live lists. */
     fun mappings(context: Context): Map<String, String> =
-        context.getKeys(MAPPINGS).mapNotNull { path ->
-            context.getKey<String>(path)?.let { id ->
-                path.removePrefix("$MAPPINGS/") to id
-            }
-        }.toMap()
+        mappingsCache.get("mappings") {
+            context.getKeys(MAPPINGS).mapNotNull { path ->
+                context.getKey<String>(path)?.let { id ->
+                    path.removePrefix("$MAPPINGS/") to id
+                }
+            }.toMap()
+        }
 
     fun categoryOf(context: Context, apiName: String, url: String): String? =
         context.getKey<String>(MAPPINGS, LibraryStore.storageKey(apiName, url))
@@ -64,7 +81,7 @@ object FavoriteCategoryStore {
         )
         if (result is CategoryResult.Created) {
             context.setKey(CATEGORIES, result.category.id, result.category)
-            LibraryStore.notifyChanged()
+            notifyChanged()
         }
         return result
     }
@@ -73,7 +90,7 @@ object FavoriteCategoryStore {
         val result = FavoriteCategoryLogic.rename(categories(context), id, rawName)
         if (result is CategoryResult.Renamed) {
             context.setKey(CATEGORIES, result.category.id, result.category)
-            LibraryStore.notifyChanged()
+            notifyChanged()
         }
         return result
     }
@@ -88,7 +105,7 @@ object FavoriteCategoryStore {
         context.getKeys(MAPPINGS).forEach { path ->
             if (context.getKey<String>(path) == id) context.removeKey(path)
         }
-        LibraryStore.notifyChanged()
+        notifyChanged()
     }
 
     /** Moves keys to a category; null removes the mapping (Uncategorized). */
@@ -108,7 +125,7 @@ object FavoriteCategoryStore {
     fun restore(context: Context, category: FavoriteCategory, keys: Collection<String>) {
         writeCategories(context, FavoriteCategoryLogic.restore(categories(context), category))
         keys.forEach { context.setKey(MAPPINGS, it, category.id) }
-        LibraryStore.notifyChanged()
+        notifyChanged()
     }
 
     /** Replaces or merges categories and mappings during data import. */
@@ -121,12 +138,13 @@ object FavoriteCategoryStore {
         mappings.forEach { (key, catId) ->
             context.setKey(MAPPINGS, key, catId)
         }
-        LibraryStore.notifyChanged()
+        notifyChanged()
     }
 
     /** Removes one mapping without a revision bump; the caller already bumps. */
     internal fun forget(context: Context, key: String) {
         context.removeKey(MAPPINGS, key)
+        invalidate()
     }
 
     /** Drops mappings whose favorite or category is gone; safe to call on start. */
@@ -142,6 +160,7 @@ object FavoriteCategoryStore {
                 context.removeKey(path)
             }
         }
+        invalidate()
     }
 
     private fun setMappings(context: Context, mappings: Map<String, String?>) {
@@ -152,7 +171,7 @@ object FavoriteCategoryStore {
                 context.setKey(MAPPINGS, key, categoryId)
             }
         }
-        LibraryStore.notifyChanged()
+        notifyChanged()
     }
 
     private fun writeCategories(context: Context, categories: List<FavoriteCategory>) {

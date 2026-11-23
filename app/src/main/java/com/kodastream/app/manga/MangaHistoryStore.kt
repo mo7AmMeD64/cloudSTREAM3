@@ -1,6 +1,7 @@
 package com.kodastream.app.manga
 
 import android.content.Context
+import com.kodastream.app.data.StoreCache
 import com.lagradost.cloudstream3.utils.DataStore.getKey
 import com.lagradost.cloudstream3.utils.DataStore.getKeys
 import com.lagradost.cloudstream3.utils.DataStore.removeKey
@@ -18,38 +19,46 @@ object MangaHistoryStore {
     internal const val HISTORY = "manga_history"
 
     private val _revision = MutableStateFlow(0L)
+    private val cache = StoreCache<List<MangaHistoryEntry>>()
     val revision: StateFlow<Long> = _revision.asStateFlow()
 
+    private fun notifyChanged() {
+        cache.clear()
+        _revision.value++
+    }
+
     fun entries(context: Context): List<MangaHistoryEntry> =
-        context.getKeys(HISTORY)
-            .mapNotNull { path -> context.getKey<MangaHistoryEntry>(path) }
-            .filter { it.mangaUrl.isNotBlank() }
-            .sortedByDescending { it.readAt }
+        cache.get("entries") {
+            context.getKeys(HISTORY)
+                .mapNotNull { path -> context.getKey<MangaHistoryEntry>(path) }
+                .filter { it.mangaUrl.isNotBlank() }
+                .sortedByDescending { it.readAt }
+        }
 
     /** One entry per title; a newer read replaces the older one. */
     fun record(context: Context, entry: MangaHistoryEntry) {
         if (entry.mangaUrl.isBlank()) return
         context.setKey(HISTORY, entry.key(), entry)
-        _revision.value++
+        notifyChanged()
     }
 
     fun remove(context: Context, entry: MangaHistoryEntry) {
         context.removeKey(HISTORY, entry.key())
-        _revision.value++
+        notifyChanged()
     }
 
     fun remove(context: Context, entries: Collection<MangaHistoryEntry>) {
         entries.forEach { context.removeKey(HISTORY, it.key()) }
-        if (entries.isNotEmpty()) _revision.value++
+        if (entries.isNotEmpty()) notifyChanged()
     }
 
     fun restore(context: Context, entries: Collection<MangaHistoryEntry>) {
         entries.forEach { context.setKey(HISTORY, it.key(), it) }
-        if (entries.isNotEmpty()) _revision.value++
+        if (entries.isNotEmpty()) notifyChanged()
     }
 
     fun clear(context: Context) {
         context.removeKeys(HISTORY)
-        _revision.value++
+        notifyChanged()
     }
 }

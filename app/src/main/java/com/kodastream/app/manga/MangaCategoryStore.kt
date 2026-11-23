@@ -4,6 +4,7 @@ import android.content.Context
 import com.kodastream.app.data.CategoryResult
 import com.kodastream.app.data.FavoriteCategory
 import com.kodastream.app.data.FavoriteCategoryLogic
+import com.kodastream.app.data.StoreCache
 import com.lagradost.cloudstream3.utils.DataStore.getKey
 import com.lagradost.cloudstream3.utils.DataStore.getKeys
 import com.lagradost.cloudstream3.utils.DataStore.removeKey
@@ -19,17 +20,34 @@ object MangaCategoryStore {
     internal const val CATEGORIES = "manga_categories"
     internal const val MAPPINGS = "manga_category_of"
 
+    private val cache = StoreCache<List<FavoriteCategory>>()
+    private val mappingsCache = StoreCache<Map<String, String>>()
+
+    private fun invalidate() {
+        cache.clear()
+        mappingsCache.clear()
+    }
+
+    private fun notifyChanged() {
+        invalidate()
+        MangaLibraryStore.notifyChanged()
+    }
+
     fun categories(context: Context): List<FavoriteCategory> =
-        context.getKeys(CATEGORIES)
-            .mapNotNull { path -> context.getKey<FavoriteCategory>(path) }
-            .sortedWith(compareBy({ it.order }, { it.createdAt }))
+        cache.get("categories") {
+            context.getKeys(CATEGORIES)
+                .mapNotNull { path -> context.getKey<FavoriteCategory>(path) }
+                .sortedWith(compareBy({ it.order }, { it.createdAt }))
+        }
 
     fun mappings(context: Context): Map<String, String> =
-        context.getKeys(MAPPINGS).mapNotNull { path ->
-            context.getKey<String>(path)?.let { id ->
-                path.removePrefix("$MAPPINGS/") to id
-            }
-        }.toMap()
+        mappingsCache.get("mappings") {
+            context.getKeys(MAPPINGS).mapNotNull { path ->
+                context.getKey<String>(path)?.let { id ->
+                    path.removePrefix("$MAPPINGS/") to id
+                }
+            }.toMap()
+        }
 
     fun categoryOf(context: Context, sourceId: Long, url: String): String? =
         context.getKey<String>(MAPPINGS, mangaKey(sourceId, url))
@@ -43,7 +61,7 @@ object MangaCategoryStore {
         )
         if (result is CategoryResult.Created) {
             context.setKey(CATEGORIES, result.category.id, result.category)
-            MangaLibraryStore.notifyChanged()
+            notifyChanged()
         }
         return result
     }
@@ -52,7 +70,7 @@ object MangaCategoryStore {
         val result = FavoriteCategoryLogic.rename(categories(context), id, rawName)
         if (result is CategoryResult.Renamed) {
             context.setKey(CATEGORIES, result.category.id, result.category)
-            MangaLibraryStore.notifyChanged()
+            notifyChanged()
         }
         return result
     }
@@ -66,7 +84,7 @@ object MangaCategoryStore {
         context.getKeys(MAPPINGS).forEach { path ->
             if (context.getKey<String>(path) == id) context.removeKey(path)
         }
-        MangaLibraryStore.notifyChanged()
+        notifyChanged()
     }
 
     fun move(context: Context, keys: Collection<String>, categoryId: String?) {
@@ -85,11 +103,12 @@ object MangaCategoryStore {
             context.setKey(CATEGORIES, it.id, it)
         }
         keys.forEach { context.setKey(MAPPINGS, it, category.id) }
-        MangaLibraryStore.notifyChanged()
+        notifyChanged()
     }
 
     internal fun forget(context: Context, key: String) {
         context.removeKey(MAPPINGS, key)
+        invalidate()
     }
 
     private fun setMappings(context: Context, mappings: Map<String, String?>) {
@@ -97,7 +116,7 @@ object MangaCategoryStore {
             if (categoryId == null) context.removeKey(MAPPINGS, key)
             else context.setKey(MAPPINGS, key, categoryId)
         }
-        MangaLibraryStore.notifyChanged()
+        notifyChanged()
     }
 
     /** Drops mappings whose title or category is gone. */
@@ -111,6 +130,7 @@ object MangaCategoryStore {
                 context.removeKey(path)
             }
         }
+        invalidate()
     }
 
     fun itemsIn(

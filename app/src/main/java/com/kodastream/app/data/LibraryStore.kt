@@ -44,11 +44,13 @@ object LibraryStore {
     )
 
     private val _revision = MutableStateFlow(0L)
+    private val cache = StoreCache<List<LibraryItem>>()
 
     /** Bumped on every change; screens collect it and reload, like PluginManager.revision. */
     val revision: StateFlow<Long> = _revision.asStateFlow()
 
     internal fun notifyChanged() {
+        cache.clear()
         _revision.value++
     }
 
@@ -86,7 +88,7 @@ object LibraryStore {
         watchlist.forEach { item ->
             context.setKey(WATCHLIST, key(item.apiName, item.url), item)
         }
-        _revision.value++
+        notifyChanged()
     }
 
     /** Drops the entry from both lists, whatever it was in (library swipe-away). */
@@ -123,17 +125,19 @@ object LibraryStore {
         return if (context.containsKey(folder, itemKey)) {
             context.removeKey(folder, itemKey)
             if (folder == FAVORITES) FavoriteCategoryStore.forget(context, itemKey)
-            _revision.value++
+            notifyChanged()
             false
         } else {
             context.setKey(folder, itemKey, item)
-            _revision.value++
+            notifyChanged()
             true
         }
     }
 
     private fun read(context: Context, folder: String): List<LibraryItem> =
-        context.getKeys(folder)
-            .mapNotNull { path -> context.getKey<LibraryItem>(path) }
-            .sortedByDescending { it.addedAt }
+        cache.get(folder) {
+            context.getKeys(folder)
+                .mapNotNull { path -> context.getKey<LibraryItem>(path) }
+                .sortedByDescending { it.addedAt }
+        }
 }

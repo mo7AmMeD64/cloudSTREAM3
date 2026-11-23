@@ -1,6 +1,7 @@
 package com.kodastream.app.manga
 
 import android.content.Context
+import com.kodastream.app.data.StoreCache
 import com.lagradost.cloudstream3.utils.DataStore.containsKey
 import com.lagradost.cloudstream3.utils.DataStore.getKey
 import com.lagradost.cloudstream3.utils.DataStore.getKeys
@@ -19,17 +20,21 @@ object MangaLibraryStore {
     internal const val LIBRARY = "manga_library"
 
     private val _revision = MutableStateFlow(0L)
+    private val cache = StoreCache<List<MangaEntry>>()
     val revision: StateFlow<Long> = _revision.asStateFlow()
 
     internal fun notifyChanged() {
+        cache.clear()
         _revision.value++
     }
 
     fun entries(context: Context): List<MangaEntry> =
-        context.getKeys(LIBRARY)
-            .mapNotNull { path -> context.getKey<MangaEntry>(path) }
-            .filter { it.url.isNotBlank() }
-            .sortedByDescending { it.addedAt }
+        cache.get("entries") {
+            context.getKeys(LIBRARY)
+                .mapNotNull { path -> context.getKey<MangaEntry>(path) }
+                .filter { it.url.isNotBlank() }
+                .sortedByDescending { it.addedAt }
+        }
 
     fun entry(context: Context, sourceId: Long, url: String): MangaEntry? =
         context.getKey<MangaEntry>(LIBRARY, mangaKey(sourceId, url))
