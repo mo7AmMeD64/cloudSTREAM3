@@ -24,6 +24,9 @@ object AppIcons {
 
     const val DEFAULT = "default"
 
+    /** The icon a fresh install (or a removed choice) falls back to. */
+    const val DEFAULT_ID = "1"
+
     val options = listOf(
         Option(DEFAULT, R.drawable.ic_launcher_foreground, ".LauncherDefault"),
         Option("1", R.drawable.ic_launcher_fg_1, ".LauncherIcon1", 1.5f, R.drawable.ic_launcher_bg_1),
@@ -35,21 +38,20 @@ object AppIcons {
     private val retiredAliases = listOf(".LauncherIcon4", ".LauncherIcon5")
 
     /**
-     * Re-applies the saved alias after an update. If the saved icon no longer
-     * exists, the launcher would have no enabled entry at all, so fall back to
-     * the default icon.
+     * Keeps the enabled alias in sync with the saved icon. Also fills in the
+     * default on a fresh install and after an update, so the launcher and the
+     * picker can never disagree.
      */
     fun applyStored(context: Context) {
         val saved = AppPrefs.appIcon(context)
         val id = resolve(saved)
-        if (id == saved) return
-        AppPrefs.setAppIcon(context, id)
+        if (id != saved) AppPrefs.setAppIcon(context, id)
         apply(context, id)
     }
 
     /** A saved id whose icon was removed maps to the default icon. */
     internal fun resolve(saved: String?): String =
-        saved?.takeIf { id -> options.any { it.id == id } } ?: DEFAULT
+        saved?.takeIf { id -> options.any { it.id == id } } ?: DEFAULT_ID
 
     /**
      * Enables the chosen alias before disabling the others, so the launcher

@@ -14,8 +14,8 @@ class AppIconsTest {
 
     @Test
     fun removedIconFallsBackToDefault() {
-        assertEquals(AppIcons.DEFAULT, AppIcons.resolve("4"))
-        assertEquals(AppIcons.DEFAULT, AppIcons.resolve("5"))
-        assertEquals(AppIcons.DEFAULT, AppIcons.resolve(null))
+        assertEquals(AppIcons.DEFAULT_ID, AppIcons.resolve("4"))
+        assertEquals(AppIcons.DEFAULT_ID, AppIcons.resolve("5"))
+        assertEquals(AppIcons.DEFAULT_ID, AppIcons.resolve(null))
     }
 }

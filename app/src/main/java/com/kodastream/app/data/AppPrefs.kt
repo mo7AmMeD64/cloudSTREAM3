@@ -82,11 +82,11 @@ object AppPrefs {
     /** The UI style ("material" or "glass"), as a flow so the shell can update immediately. */
     val uiStyle: StateFlow<String?> = _uiStyle.asStateFlow()
 
-    /** Where the navigation bar sits. Side (left) is the default. */
+    /** Where the navigation bar sits. Bottom is the default. */
     fun navPosition(context: Context): String =
         _navPosition.value
             ?: prefs(context).getString(KEY_NAV_POSITION, null)?.also { _navPosition.value = it }
-            ?: NAV_SIDE
+            ?: NAV_BOTTOM
 
     fun setNavPosition(context: Context, value: String) {
         _navPosition.value = value
@@ -266,7 +266,7 @@ object AppPrefs {
     fun appIcon(context: Context): String =
         _appIcon.value
             ?: prefs(context).getString(KEY_APP_ICON, null)?.also { _appIcon.value = it }
-            ?: AppIcons.DEFAULT
+            ?: AppIcons.DEFAULT_ID
 
     fun setAppIcon(context: Context, value: String) {
         _appIcon.value = value
