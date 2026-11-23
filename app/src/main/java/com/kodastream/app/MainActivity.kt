@@ -1,5 +1,6 @@
 package com.kodastream.app
 
+import android.animation.ValueAnimator
 import android.content.Intent
 import android.content.res.Configuration
 import android.graphics.Color
@@ -10,12 +11,15 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
@@ -37,6 +41,7 @@ import com.kodastream.app.engine.AppBootstrap
 import com.kodastream.app.ui.AppRoot
 import com.kodastream.app.ui.crash.CrashReportDialog
 import com.kodastream.app.ui.setup.SetupWizard
+import com.kodastream.app.ui.splash.SplashOverlay
 import com.kodastream.app.ui.theme.KodaStreamTheme
 import com.kodastream.app.ui.theme.ThemeMode
 import com.kodastream.app.ui.theme.ThemeViewModel
@@ -79,11 +84,20 @@ class MainActivity : AppCompatActivity() {
             DownloadService.ensure(this)
         }
 
+        // Once per cold start: a recreation or a return from the background
+        // must not replay the intro. Also skipped when the user removed
+        // system animations.
+        val showSplashOnce = savedInstanceState == null &&
+            !splashConsumed &&
+            ValueAnimator.areAnimatorsEnabled()
+        if (showSplashOnce) splashConsumed = true
+
         setContent {
             val themeViewModel: ThemeViewModel = viewModel()
             // Activity-scoped: once per process, and survives recreation.
             val updateViewModel: UpdateViewModel = viewModel()
             var setupDone by remember { mutableStateOf(AppPrefs.setupDone(this@MainActivity)) }
+            var showSplash by remember { mutableStateOf(showSplashOnce) }
             val hideStatusBar by AppPrefs.hideStatusBar.collectAsState(
                 initial = AppPrefs.hideStatusBar(this@MainActivity)
             )
@@ -110,34 +124,40 @@ class MainActivity : AppCompatActivity() {
                         allowDelete = false,
                     )
                 }
-                if (setupDone) {
-                    AppRoot(themeViewModel)
-                    update?.let { available ->
-                        UpdateDialog(
-                            update = available,
-                            currentVersion = BuildConfig.VERSION_NAME,
-                            onUpdate = {
-                                if (openLink(available.url)) {
-                                    updateViewModel.dismiss()
-                                } else {
-                                    CommonActivity.showToast(R.string.update_link_failed)
-                                }
-                            },
-                            onDonate = {
-                                if (!openLink(DONATE_URL)) {
-                                    CommonActivity.showToast(R.string.update_link_failed)
-                                }
-                            },
-                            onLater = updateViewModel::dismiss,
-                            onDontShowAgain = updateViewModel::skip,
-                        )
+                Box(Modifier.fillMaxSize()) {
+                    if (setupDone) {
+                        AppRoot(themeViewModel)
+                        // The splash owns the screen; the update prompt waits.
+                        if (!showSplash) update?.let { available ->
+                            UpdateDialog(
+                                update = available,
+                                currentVersion = BuildConfig.VERSION_NAME,
+                                onUpdate = {
+                                    if (openLink(available.url)) {
+                                        updateViewModel.dismiss()
+                                    } else {
+                                        CommonActivity.showToast(R.string.update_link_failed)
+                                    }
+                                },
+                                onDonate = {
+                                    if (!openLink(DONATE_URL)) {
+                                        CommonActivity.showToast(R.string.update_link_failed)
+                                    }
+                                },
+                                onLater = updateViewModel::dismiss,
+                                onDontShowAgain = updateViewModel::skip,
+                            )
+                        }
+                    } else {
+                        SetupWizard(themeViewModel) { language ->
+                            AppPrefs.setSetupDone(this@MainActivity, true)
+                            AppPrefs.setAppLanguage(this@MainActivity, language)
+                            AppPrefs.applyAppLanguage(this@MainActivity)
+                            setupDone = true
+                        }
                     }
-                } else {
-                    SetupWizard(themeViewModel) { language ->
-                        AppPrefs.setSetupDone(this@MainActivity, true)
-                        AppPrefs.setAppLanguage(this@MainActivity, language)
-                        AppPrefs.applyAppLanguage(this@MainActivity)
-                        setupDone = true
+                    if (showSplash) {
+                        SplashOverlay(onDone = { showSplash = false })
                     }
                 }
             }
@@ -215,5 +235,8 @@ class MainActivity : AppCompatActivity() {
     private companion object {
         const val DONATE_URL = "https://linktr.ee/x3onq"
         var imageLoaderInstalled = false
+
+        /** True once the intro has played in this process; not persisted. */
+        var splashConsumed = false
     }
 }

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Matches the top of the animated splash so the hand-off from the system
+     splash (API < 31 starting window) shows no white flash. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <gradient
+        android:angle="270"
+        android:startColor="#FF000010"
+        android:centerColor="#FF011360"
+        android:endColor="#FF024EEC" />
+</shape>

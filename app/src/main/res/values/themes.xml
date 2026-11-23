@@ -13,6 +13,12 @@
         <item name="android:enforceStatusBarContrast">false</item>
         <item name="android:enforceNavigationBarContrast">false</item>
 
+        <!-- The window exists before Compose draws; keep it on the splash's
+             navy so no white frame flashes at launch. The API 31 system
+             splash reads the flat color. -->
+        <item name="android:windowBackground">@drawable/splash_window_background</item>
+        <item name="android:windowSplashScreenBackground">#FF000010</item>
+
         <!-- ==== the ported CloudStream player's XML UI (Theme.AppTheme items) ==== -->
         <!-- Static dark colors, the same set the original app theme applies. -->
         <item name="textColor">@color/textColor</item>
