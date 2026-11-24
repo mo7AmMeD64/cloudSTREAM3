@@ -69,6 +69,9 @@ import java.io.File
 import java.text.DateFormat
 import java.util.Date
 
+private const val MAX_CODE_ATTEMPTS = 3
+private const val RESEND_COOLDOWN_MS = 60_000L
+
 /** Local name and photo plus the email/password account that backs favorites up. */
 @Composable
 internal fun AccountSettingsPage(onBack: () -> Unit) {
@@ -87,6 +90,10 @@ internal fun AccountSettingsPage(onBack: () -> Unit) {
     var choice by remember { mutableStateOf<AuthChoice?>(null) }
     var confirmRestore by remember { mutableStateOf(false) }
     var lastSync by remember { mutableStateOf(SupabaseAuth.lastSync(context)) }
+    var pendingEmail by remember { mutableStateOf<String?>(null) }
+    var code by remember { mutableStateOf("") }
+    var codeAttempts by remember { mutableStateOf(0) }
+    var resendAllowedAt by remember { mutableStateOf(0L) }
 
     val pickAvatar = rememberLauncherForActivityResult(
         ActivityResultContracts.PickVisualMedia(),
@@ -98,6 +105,41 @@ internal fun AccountSettingsPage(onBack: () -> Unit) {
                     avatar = path
                     AppPrefs.setProfileAvatar(context, path)
                 }
+            }
+        }
+    }
+
+    suspend fun afterSignIn(guestFavorites: List<LibraryStore.LibraryItem>) {
+        account = SupabaseAuth.account(context)
+        LibraryStore.notifyChanged()
+        FavoritesSync.schedule(context)
+        when (val download = FavoritesBackup.download(context)) {
+            is DownloadResult.Success -> {
+                val remote = download.backup?.favorites.orEmpty()
+                when {
+                    remote.isEmpty() && guestFavorites.isNotEmpty() -> {
+                        LibraryStore.replaceFavorites(context, guestFavorites)
+                        SupabaseAuth.setCloudReady(context, true)
+                        if (FavoritesBackup.upload(context) is UploadResult.Success) {
+                            lastSync = SupabaseAuth.lastSync(context)
+                            notice = R.string.account_sync_ok
+                        }
+                    }
+                    remote.isNotEmpty() && guestFavorites.isEmpty() -> {
+                        LibraryStore.replaceFavorites(context, remote)
+                        SupabaseAuth.setCloudReady(context, true)
+                        notice = R.string.account_restore_ok
+                    }
+                    remote.isNotEmpty() && guestFavorites.isNotEmpty() -> {
+                        choice = AuthChoice(guestFavorites, remote)
+                    }
+                    else -> {
+                        SupabaseAuth.setCloudReady(context, true)
+                    }
+                }
+            }
+            is DownloadResult.Failed -> {
+                error = cloudError(download.error)
             }
         }
     }
@@ -121,48 +163,102 @@ internal fun AccountSettingsPage(onBack: () -> Unit) {
             password = ""
             when (result) {
                 AuthResult.SignedIn -> {
-                    account = SupabaseAuth.account(context)
-                    LibraryStore.notifyChanged()
-                    FavoritesSync.schedule(context)
-                    when (val download = FavoritesBackup.download(context)) {
-                        is DownloadResult.Success -> {
-                            val remote = download.backup?.favorites.orEmpty()
-                            when {
-                                remote.isEmpty() && guestFavorites.isNotEmpty() -> {
-                                    LibraryStore.replaceFavorites(context, guestFavorites)
-                                    SupabaseAuth.setCloudReady(context, true)
-                                    if (FavoritesBackup.upload(context) is UploadResult.Success) {
-                                        lastSync = SupabaseAuth.lastSync(context)
-                                        notice = R.string.account_sync_ok
-                                    }
-                                }
-                                remote.isNotEmpty() && guestFavorites.isEmpty() -> {
-                                    LibraryStore.replaceFavorites(context, remote)
-                                    SupabaseAuth.setCloudReady(context, true)
-                                    notice = R.string.account_restore_ok
-                                }
-                                remote.isNotEmpty() && guestFavorites.isNotEmpty() -> {
-                                    choice = AuthChoice(guestFavorites, remote)
-                                }
-                                else -> {
-                                    SupabaseAuth.setCloudReady(context, true)
-                                }
-                            }
-                        }
-                        is DownloadResult.Failed -> {
-                            error = cloudError(download.error)
-                        }
-                    }
+                    pendingEmail = null
+                    code = ""
+                    afterSignIn(guestFavorites)
                 }
                 AuthResult.ConfirmationSent -> {
-                    notice = R.string.account_check_email
+                    pendingEmail = mail
+                    code = ""
+                    codeAttempts = 0
+                    resendAllowedAt = System.currentTimeMillis() + RESEND_COOLDOWN_MS
+                    notice = R.string.account_code_sent
                 }
                 is AuthResult.Failed -> {
-                    error = authError(result.error)
+                    if (result.error == AuthError.EMAIL_NOT_CONFIRMED) {
+                        pendingEmail = mail
+                        code = ""
+                        codeAttempts = 0
+                        resendAllowedAt = System.currentTimeMillis() + RESEND_COOLDOWN_MS
+                        if (SupabaseAuth.resendSignup(mail)) {
+                            notice = R.string.account_code_resent
+                        } else {
+                            error = R.string.account_err_rate
+                        }
+                    } else {
+                        error = authError(result.error)
+                    }
                 }
             }
             busy = false
         }
+    }
+
+    fun verifyCode() {
+        if (busy) return
+        val mail = pendingEmail ?: return
+        if (code.length < 6 || codeAttempts >= MAX_CODE_ATTEMPTS) return
+        busy = true
+        notice = null
+        error = null
+        // Still the guest folder: the session only exists after verification.
+        val guestFavorites = LibraryStore.favorites(context)
+        scope.launch {
+            when (val result = SupabaseAuth.verifySignup(context, mail, code.trim())) {
+                AuthResult.SignedIn -> {
+                    pendingEmail = null
+                    code = ""
+                    codeAttempts = 0
+                    afterSignIn(guestFavorites)
+                }
+                is AuthResult.Failed -> {
+                    if (result.error == AuthError.INVALID_CODE) {
+                        codeAttempts++
+                        error = if (codeAttempts >= MAX_CODE_ATTEMPTS) {
+                            R.string.account_err_attempts
+                        } else {
+                            R.string.account_err_code
+                        }
+                    } else {
+                        error = authError(result.error)
+                    }
+                }
+                AuthResult.ConfirmationSent -> error = R.string.account_err_unknown
+            }
+            busy = false
+        }
+    }
+
+    fun resendCode() {
+        if (busy) return
+        val mail = pendingEmail ?: return
+        if (System.currentTimeMillis() < resendAllowedAt) {
+            error = R.string.account_err_wait
+            return
+        }
+        busy = true
+        notice = null
+        error = null
+        scope.launch {
+            if (SupabaseAuth.resendSignup(mail)) {
+                code = ""
+                codeAttempts = 0
+                resendAllowedAt = System.currentTimeMillis() + RESEND_COOLDOWN_MS
+                notice = R.string.account_code_resent
+            } else {
+                error = R.string.account_err_rate
+            }
+            busy = false
+        }
+    }
+
+    fun cancelCode() {
+        if (busy) return
+        pendingEmail = null
+        code = ""
+        codeAttempts = 0
+        error = null
+        notice = null
     }
 
     fun syncNow() {
@@ -292,6 +388,41 @@ internal fun AccountSettingsPage(onBack: () -> Unit) {
                             text = stringResource(R.string.account_disabled),
                             color = MaterialTheme.colorScheme.error,
                         )
+                    } else if (account == null && pendingEmail != null) {
+                        Text(
+                            text = stringResource(
+                                R.string.account_code_hint,
+                                pendingEmail.orEmpty(),
+                            ),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        OutlinedTextField(
+                            value = code,
+                            onValueChange = { value ->
+                                if (value.length <= 8 && value.all { it.isDigit() }) code = value
+                            },
+                            label = { Text(stringResource(R.string.account_code)) },
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            modifier = Modifier.fillMaxWidth(),
+                            enabled = !busy && codeAttempts < MAX_CODE_ATTEMPTS,
+                        )
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Button(
+                                onClick = { verifyCode() },
+                                enabled = !busy && code.length >= 6 &&
+                                    codeAttempts < MAX_CODE_ATTEMPTS,
+                            ) {
+                                Text(stringResource(R.string.account_verify))
+                            }
+                            TextButton(onClick = { resendCode() }, enabled = !busy) {
+                                Text(stringResource(R.string.account_resend))
+                            }
+                        }
+                        TextButton(onClick = { cancelCode() }, enabled = !busy) {
+                            Text(stringResource(R.string.account_change_email))
+                        }
                     } else if (account == null) {
                         Text(
                             text = stringResource(R.string.account_cloud_hint),
@@ -526,11 +657,13 @@ private fun formatDate(value: Long): String =
 private fun authError(error: AuthError): Int = when (error) {
     AuthError.NETWORK -> R.string.account_err_network
     AuthError.INVALID_CREDENTIALS -> R.string.account_err_credentials
+    AuthError.EMAIL_TAKEN -> R.string.account_err_exists
     AuthError.EMAIL_NOT_CONFIRMED -> R.string.account_err_unconfirmed
     AuthError.WEAK_PASSWORD -> R.string.account_err_weak
     AuthError.RATE_LIMITED -> R.string.account_err_rate
     AuthError.SIGNUP_DISABLED -> R.string.account_err_signup
     AuthError.NOT_CONFIGURED -> R.string.account_disabled
+    AuthError.INVALID_CODE -> R.string.account_err_code
     AuthError.UNKNOWN -> R.string.account_err_unknown
 }
 

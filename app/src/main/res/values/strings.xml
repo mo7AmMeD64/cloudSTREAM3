@@ -169,7 +169,16 @@
     <string name="account_restore_body">This replaces the favorites on this device with the cloud backup.</string>
     <string name="account_restore_confirm">Restore</string>
     <string name="account_sign_out">Sign out</string>
-    <string name="account_check_email">Check your email to confirm the account, then sign in.</string>
+    <string name="account_code_hint">Enter the code sent to %1$s</string>
+    <string name="account_code">Verification code</string>
+    <string name="account_verify">Verify</string>
+    <string name="account_resend">Resend code</string>
+    <string name="account_change_email">Use another email</string>
+    <string name="account_code_sent">Code sent. Check your email.</string>
+    <string name="account_code_resent">A new code was sent.</string>
+    <string name="account_err_code">Wrong or expired code.</string>
+    <string name="account_err_attempts">Too many attempts. Request a new code.</string>
+    <string name="account_err_wait">Wait a moment before resending.</string>
     <string name="account_sync_ok">Favorites backed up.</string>
     <string name="account_restore_ok">Favorites restored.</string>
     <string name="account_no_backup">No cloud backup yet.</string>
@@ -180,6 +189,7 @@
     <string name="account_disabled">Sign-in is not configured in this build.</string>
     <string name="account_err_network">No connection. Try again.</string>
     <string name="account_err_credentials">Wrong email or password.</string>
+    <string name="account_err_exists">This email is already registered. Sign in instead.</string>
     <string name="account_err_unconfirmed">Confirm your email first, then sign in.</string>
     <string name="account_err_weak">Password is too weak. Use at least 10 characters.</string>
     <string name="account_err_rate">Too many emails. Wait a few minutes.</string>

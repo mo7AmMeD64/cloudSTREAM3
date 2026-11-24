@@ -166,7 +166,16 @@
     <string name="account_restore_body">سيستبدل هذا مفضلة هذا الجهاز بنسخة السحابة.</string>
     <string name="account_restore_confirm">استعادة</string>
     <string name="account_sign_out">تسجيل الخروج</string>
-    <string name="account_check_email">تحقق من بريدك لتأكيد الحساب ثم سجّل الدخول.</string>
+    <string name="account_code_hint">أدخل الرمز المرسل إلى %1$s</string>
+    <string name="account_code">رمز التحقق</string>
+    <string name="account_verify">تحقق</string>
+    <string name="account_resend">إعادة إرسال الرمز</string>
+    <string name="account_change_email">استخدام بريد آخر</string>
+    <string name="account_code_sent">أرسلنا الرمز. تحقق من بريدك.</string>
+    <string name="account_code_resent">أرسلنا رمزاً جديداً.</string>
+    <string name="account_err_code">الرمز غير صحيح أو منتهي.</string>
+    <string name="account_err_attempts">محاولات كثيرة. اطلب رمزاً جديداً.</string>
+    <string name="account_err_wait">انتظر قليلاً قبل إعادة الإرسال.</string>
     <string name="account_sync_ok">تم نسخ المفضلة احتياطياً.</string>
     <string name="account_restore_ok">تمت استعادة المفضلة.</string>
     <string name="account_no_backup">لا توجد نسخة سحابية بعد.</string>
@@ -177,6 +186,7 @@
     <string name="account_disabled">تسجيل الدخول غير مُفعّل في هذا الإصدار.</string>
     <string name="account_err_network">لا يوجد اتصال. حاول مجدداً.</string>
     <string name="account_err_credentials">البريد أو كلمة السر غير صحيحة.</string>
+    <string name="account_err_exists">هذا البريد مسجل مسبقاً. سجّل الدخول بدلاً من ذلك.</string>
     <string name="account_err_unconfirmed">أكّد بريدك أولاً ثم سجّل الدخول.</string>
     <string name="account_err_weak">كلمة السر ضعيفة. استخدم 10 أحرف على الأقل.</string>
     <string name="account_err_rate">رسائل كثيرة. انتظر بضع دقائق.</string>

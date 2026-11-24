@@ -11,11 +11,13 @@ data class Account(val userId: String, val email: String)
 enum class AuthError {
     NETWORK,
     INVALID_CREDENTIALS,
+    EMAIL_TAKEN,
     EMAIL_NOT_CONFIRMED,
     WEAK_PASSWORD,
     RATE_LIMITED,
     SIGNUP_DISABLED,
     NOT_CONFIGURED,
+    INVALID_CODE,
     UNKNOWN,
 }
 
@@ -90,6 +92,10 @@ object SupabaseAuth {
             body = JSONObject().put("email", email).put("password", password),
         )
         if (!reply.ok) return AuthResult.Failed(errorOf(reply))
+        // Supabase hides existing accounts behind a fake user with no identity.
+        if (reply.json.optJSONArray("identities")?.length() == 0) {
+            return AuthResult.Failed(AuthError.EMAIL_TAKEN)
+        }
         return if (reply.json.optString("access_token").isBlank()) {
             AuthResult.ConfirmationSent
         } else {
@@ -111,8 +117,34 @@ object SupabaseAuth {
             ?: AuthResult.Failed(AuthError.UNKNOWN)
     }
 
+    /** Confirms a new account with the code from the signup email. */
+    suspend fun verifySignup(context: Context, email: String, code: String): AuthResult {
+        if (!enabled) return AuthResult.Failed(AuthError.NOT_CONFIGURED)
+        val reply = SupabaseHttp.send(
+            "POST",
+            "/auth/v1/verify",
+            body = JSONObject()
+                .put("type", "signup")
+                .put("email", email)
+                .put("token", code),
+        )
+        if (!reply.ok) return AuthResult.Failed(errorOf(reply))
+        return remember(context, reply.json)?.let { AuthResult.SignedIn }
+            ?: AuthResult.Failed(AuthError.UNKNOWN)
+    }
+
+    /** Sends a fresh signup code; false when the request was rejected. */
+    suspend fun resendSignup(email: String): Boolean {
+        if (!enabled) return false
+        return SupabaseHttp.send(
+            "POST",
+            "/auth/v1/resend",
+            body = JSONObject().put("type", "signup").put("email", email),
+        ).ok
+    }
+
     suspend fun signOut(context: Context) {
-        val token = cachedAccess
+        val token = accessToken(context)
         if (token != null && enabled) {
             SupabaseHttp.send("POST", "/auth/v1/logout", body = JSONObject(), bearer = token)
         }
@@ -149,7 +181,11 @@ object SupabaseAuth {
             query = "grant_type=refresh_token",
         )
         if (!reply.ok) {
-            clearSession(context)
+            // Only a rejected token means the session is gone; offline and
+            // server errors must not delete it.
+            if (reply.code == 400 || reply.code == 401 || reply.code == 403) {
+                clearSession(context)
+            }
             return null
         }
         return remember(context, reply.json)
@@ -188,6 +224,12 @@ object SupabaseAuth {
             code == "email_not_confirmed" ||
                 message.contains("not confirmed", ignoreCase = true) ->
                 AuthError.EMAIL_NOT_CONFIRMED
+            code == "user_already_exists" ||
+                message.contains("already registered", ignoreCase = true) ->
+                AuthError.EMAIL_TAKEN
+            code == "otp_expired" || code == "invalid_otp" ||
+                message.contains("Token has expired", ignoreCase = true) ->
+                AuthError.INVALID_CODE
             code == "invalid_credentials" || code == "invalid_grant" ||
                 message.contains("Invalid login credentials", ignoreCase = true) ->
                 AuthError.INVALID_CREDENTIALS
