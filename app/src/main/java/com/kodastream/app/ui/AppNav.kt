@@ -393,7 +393,9 @@ fun AppRoot(themeViewModel: ThemeViewModel) {
         initial = AppPrefs.animatedBackground(context)
     )
     val navBarStyle by AppPrefs.navBarStyle.collectAsState(initial = AppPrefs.navBarStyle(context))
-    val sideMode = showBar && navPosition != AppPrefs.NAV_BOTTOM
+    // The flow is nullable and emits null before anything is saved: only an
+    // explicit "side" switches shells, so an unset pref lands on the bottom bar.
+    val sideMode = showBar && navPosition == AppPrefs.NAV_SIDE
     val nuvioBar = showBar && !sideMode && navBarStyle == AppPrefs.NAV_BAR_NUVIO
     val navBarScrollState = rememberNuvioNavBarScrollState()
 
