@@ -3,6 +3,7 @@ package com.kodastream.app.ui.settings
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AppShortcut
+import androidx.compose.material.icons.rounded.Animation
 import androidx.compose.material.icons.rounded.AspectRatio
 import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.Contrast
@@ -45,6 +46,7 @@ internal fun AppearanceSettingsPage(
     var hideStatusBar by remember { mutableStateOf(AppPrefs.hideStatusBar(context)) }
     var hidePosterTitles by remember { mutableStateOf(AppPrefs.hidePosterTitles(context)) }
     var animatedBackground by remember { mutableStateOf(AppPrefs.animatedBackground(context)) }
+    var splashEnabled by remember { mutableStateOf(AppPrefs.splashEnabled(context)) }
     var navBarIconSize by remember { mutableStateOf(AppPrefs.navBarIconSize(context)) }
     var navBarWidth by remember { mutableStateOf(AppPrefs.navBarWidth(context)) }
     var navBarHeight by remember { mutableStateOf(AppPrefs.navBarHeight(context)) }
@@ -64,7 +66,7 @@ internal fun AppearanceSettingsPage(
         onBack = onBack,
     ) {
         item(key = "appearance") {
-            val count = 9 + if (resolvedDark) 1 else 0
+            val count = 10 + if (resolvedDark) 1 else 0
             SettingsGroup(stringResource(R.string.settings_group_general)) {
                 ChoiceRow(
                     index = 0,
@@ -206,6 +208,18 @@ internal fun AppearanceSettingsPage(
                     onCheckedChange = { checked ->
                         AppPrefs.setAnimatedBackground(context, checked)
                         animatedBackground = checked
+                    },
+                )
+                SwitchRow(
+                    index = if (resolvedDark) 10 else 9,
+                    count = count,
+                    icon = Icons.Rounded.Animation,
+                    title = stringResource(R.string.settings_splash),
+                    supporting = stringResource(R.string.settings_splash_summary),
+                    checked = splashEnabled,
+                    onCheckedChange = { checked ->
+                        AppPrefs.setSplashEnabled(context, checked)
+                        splashEnabled = checked
                     },
                 )
             }

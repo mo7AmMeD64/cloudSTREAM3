@@ -21,6 +21,7 @@ object AppPrefs {
     private const val KEY_HIDE_STATUS_BAR = "hide_status_bar"
     internal const val KEY_HIDE_POSTER_TITLES = "hide_poster_titles"
     internal const val KEY_ANIMATED_BACKGROUND = "animated_background"
+    private const val KEY_SPLASH_ENABLED = "splash_enabled"
     internal const val KEY_TRANSLATION_API_KEY = "translation_api_key"
     internal const val KEY_TRANSLATION_TARGET = "translation_target"
     internal const val KEY_TRANSLATION_MODEL = "translation_model"
@@ -173,6 +174,14 @@ object AppPrefs {
     fun setAnimatedBackground(context: Context, value: Boolean) {
         _animatedBackground.value = value
         prefs(context).edit { putBoolean(KEY_ANIMATED_BACKGROUND, value) }
+    }
+
+    /** The launch intro; read once in onCreate, so no flow is needed. */
+    fun splashEnabled(context: Context): Boolean =
+        prefs(context).getBoolean(KEY_SPLASH_ENABLED, true)
+
+    fun setSplashEnabled(context: Context, value: Boolean) {
+        prefs(context).edit { putBoolean(KEY_SPLASH_ENABLED, value) }
     }
 
     /** The selected backend; existing installs keep Gemini. */

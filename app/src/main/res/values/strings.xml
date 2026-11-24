@@ -144,6 +144,8 @@
     <string name="settings_home_hero">Home hero</string>
     <string name="settings_animated_background">Animated background</string>
     <string name="settings_animated_background_summary">Slow glowing particles behind every screen. Turn off to save battery.</string>
+    <string name="settings_splash">Launch animation</string>
+    <string name="settings_splash_summary">Show the animated intro and its sound when the app opens.</string>
     <string name="hero_style_carousel">Carousel</string>
     <string name="hero_style_carousel_desc">Material carousel with neighbouring posters</string>
     <string name="hero_style_cinematic">Cinematic</string>

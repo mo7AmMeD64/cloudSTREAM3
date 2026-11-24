@@ -141,6 +141,8 @@
     <string name="settings_home_hero">شكل الرئيسية</string>
     <string name="settings_animated_background">الخلفية المتحركة</string>
     <string name="settings_animated_background_summary">جسيمات متوهجة بطيئة خلف كل الشاشات. أوقفها لتوفير البطارية.</string>
+    <string name="settings_splash">أنيميشن البدء</string>
+    <string name="settings_splash_summary">عرض المقدمة المتحركة وصوتها عند فتح التطبيق.</string>
     <string name="hero_style_carousel">دوّار</string>
     <string name="hero_style_carousel_desc">دوّار من مواد مع بوسترات مجاورة</string>
     <string name="hero_style_cinematic">سينمائي</string>

@@ -86,9 +86,10 @@ class MainActivity : AppCompatActivity() {
 
         // Once per cold start: a recreation or a return from the background
         // must not replay the intro. Also skipped when the user removed
-        // system animations.
+        // system animations or turned the intro off in settings.
         val showSplashOnce = savedInstanceState == null &&
             !splashConsumed &&
+            AppPrefs.splashEnabled(this) &&
             ValueAnimator.areAnimatorsEnabled()
         if (showSplashOnce) splashConsumed = true
 
