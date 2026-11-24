@@ -9,6 +9,8 @@ plugins {
 }
 
 val javaTarget = JvmTarget.fromTarget(libs.versions.jvmTarget.get())
+val supabaseUrl = providers.gradleProperty("SUPABASE_URL").orElse("").get()
+val supabaseAnonKey = providers.gradleProperty("SUPABASE_ANON_KEY").orElse("").get()
 
 android {
     namespace = "com.kodastream.app"
@@ -23,6 +25,9 @@ android {
         targetSdk = libs.versions.targetSdk.get().toInt()
         versionCode = 23
         versionName = "0.13.0"
+        // Empty on forks that do not configure Supabase; the account page says so.
+        buildConfigField("String", "SUPABASE_URL", "\"$supabaseUrl\"")
+        buildConfigField("String", "SUPABASE_ANON_KEY", "\"$supabaseAnonKey\"")
     }
 
     // CI decodes the stable release keystore from secrets. There is deliberately no

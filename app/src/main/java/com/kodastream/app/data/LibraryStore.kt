@@ -20,6 +20,16 @@ object LibraryStore {
     private const val FAVORITES = "favorites"
     private const val WATCHLIST = "watchlist"
 
+    /**
+     * Favorites are per account; signing out leaves the account's copy intact
+     * and returns to the guest folder, so two people never see each other's list.
+     */
+    private fun favoritesFolder(context: Context): String =
+        SupabaseAuth.userId(context)?.let { "$FAVORITES@$it" } ?: FAVORITES
+
+    private fun folderFor(context: Context, folder: String): String =
+        if (folder == FAVORITES) favoritesFolder(context) else folder
+
     private fun key(apiName: String, url: String) = storageKey(apiName, url)
 
     internal fun storageKey(apiName: String, url: String) = "$apiName|$url"
@@ -54,12 +64,13 @@ object LibraryStore {
         _revision.value++
     }
 
-    fun favorites(context: Context): List<LibraryItem> = read(context, FAVORITES)
+    fun favorites(context: Context): List<LibraryItem> =
+        read(context, favoritesFolder(context))
 
     fun watchlist(context: Context): List<LibraryItem> = read(context, WATCHLIST)
 
     fun isFavorite(context: Context, apiName: String, url: String): Boolean =
-        context.containsKey(FAVORITES, key(apiName, url))
+        context.containsKey(favoritesFolder(context), key(apiName, url))
 
     fun isWatchlisted(context: Context, apiName: String, url: String): Boolean =
         context.containsKey(WATCHLIST, key(apiName, url))
@@ -80,10 +91,11 @@ object LibraryStore {
 
     /** Replaces all favorites and watchlist items (data import). */
     fun restore(context: Context, favorites: List<LibraryItem>, watchlist: List<LibraryItem>) {
-        context.getKeys(FAVORITES).forEach { context.removeKey(it) }
+        val favoritesFolder = favoritesFolder(context)
+        context.getKeys(favoritesFolder).forEach { context.removeKey(it) }
         context.getKeys(WATCHLIST).forEach { context.removeKey(it) }
         favorites.forEach { item ->
-            context.setKey(FAVORITES, key(item.apiName, item.url), item)
+            context.setKey(favoritesFolder, key(item.apiName, item.url), item)
         }
         watchlist.forEach { item ->
             context.setKey(WATCHLIST, key(item.apiName, item.url), item)
@@ -91,13 +103,22 @@ object LibraryStore {
         notifyChanged()
     }
 
+    /** Replaces the active account's favorites only (cloud restore, sign-in hand-off). */
+    fun replaceFavorites(context: Context, items: List<LibraryItem>) {
+        val folder = favoritesFolder(context)
+        context.getKeys(folder).forEach { context.removeKey(it) }
+        items.forEach { context.setKey(folder, keyOf(it), it) }
+        notifyChanged()
+    }
+
     /** Drops the entry from both lists, whatever it was in (library swipe-away). */
     fun remove(context: Context, item: LibraryItem) = remove(context, listOf(item))
 
     fun remove(context: Context, items: Collection<LibraryItem>) {
+        val favoritesFolder = favoritesFolder(context)
         items.forEach { item ->
             val itemKey = keyOf(item)
-            context.removeKey(FAVORITES, itemKey)
+            context.removeKey(favoritesFolder, itemKey)
             context.removeKey(WATCHLIST, itemKey)
             FavoriteCategoryStore.forget(context, itemKey)
         }
@@ -106,7 +127,8 @@ object LibraryStore {
 
     /** Undo support: put favorites back with their original addedAt. */
     fun restore(context: Context, items: Collection<LibraryItem>) {
-        items.forEach { context.setKey(FAVORITES, keyOf(it), it) }
+        val folder = favoritesFolder(context)
+        items.forEach { context.setKey(folder, keyOf(it), it) }
         if (items.isNotEmpty()) notifyChanged()
     }
 
@@ -122,13 +144,14 @@ object LibraryStore {
 
     private fun toggle(context: Context, folder: String, item: LibraryItem): Boolean {
         val itemKey = keyOf(item)
-        return if (context.containsKey(folder, itemKey)) {
-            context.removeKey(folder, itemKey)
-            if (folder == FAVORITES) FavoriteCategoryStore.forget(context, itemKey)
+        val storage = folderFor(context, folder)
+        return if (context.containsKey(storage, itemKey)) {
+            context.removeKey(storage, itemKey)
+            if (storage != WATCHLIST) FavoriteCategoryStore.forget(context, itemKey)
             notifyChanged()
             false
         } else {
-            context.setKey(folder, itemKey, item)
+            context.setKey(storage, itemKey, item)
             notifyChanged()
             true
         }

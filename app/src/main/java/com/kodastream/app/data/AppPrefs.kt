@@ -22,6 +22,8 @@ object AppPrefs {
     internal const val KEY_HIDE_POSTER_TITLES = "hide_poster_titles"
     internal const val KEY_ANIMATED_BACKGROUND = "animated_background"
     private const val KEY_SPLASH_ENABLED = "splash_enabled"
+    private const val KEY_PROFILE_NAME = "profile_name"
+    private const val KEY_PROFILE_AVATAR = "profile_avatar"
     internal const val KEY_TRANSLATION_API_KEY = "translation_api_key"
     internal const val KEY_TRANSLATION_TARGET = "translation_target"
     internal const val KEY_TRANSLATION_MODEL = "translation_model"
@@ -182,6 +184,24 @@ object AppPrefs {
 
     fun setSplashEnabled(context: Context, value: Boolean) {
         prefs(context).edit { putBoolean(KEY_SPLASH_ENABLED, value) }
+    }
+
+    /** The local display name; never uploaded. */
+    fun profileName(context: Context): String =
+        prefs(context).getString(KEY_PROFILE_NAME, "").orEmpty()
+
+    fun setProfileName(context: Context, value: String) {
+        prefs(context).edit { putString(KEY_PROFILE_NAME, value.trim().take(40)) }
+    }
+
+    /** Absolute path of the copied avatar inside app storage, or null. */
+    fun profileAvatar(context: Context): String? =
+        prefs(context).getString(KEY_PROFILE_AVATAR, null)?.takeIf { it.isNotBlank() }
+
+    fun setProfileAvatar(context: Context, path: String?) {
+        prefs(context).edit {
+            if (path == null) remove(KEY_PROFILE_AVATAR) else putString(KEY_PROFILE_AVATAR, path)
+        }
     }
 
     /** The selected backend; existing installs keep Gemini. */

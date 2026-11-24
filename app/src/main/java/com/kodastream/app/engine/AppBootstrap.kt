@@ -3,6 +3,8 @@ package com.kodastream.app.engine
 import android.content.Context
 import com.kodastream.app.data.AppIcons
 import com.kodastream.app.data.AppPrefs
+import com.kodastream.app.data.FavoritesSync
+import com.kodastream.app.data.SupabaseAuth
 import com.lagradost.cloudstream3.mvvm.logError
 import com.lagradost.cloudstream3.plugins.PluginManager
 import kotlinx.coroutines.CoroutineScope
@@ -27,6 +29,8 @@ object AppBootstrap {
         // Before any player reads the key; a user turning it off later sticks.
         AppPrefs.ensureHoldToSpeedUp(appContext)
         AppIcons.applyStored(appContext)
+        FavoritesSync.start(appContext)
+        if (SupabaseAuth.isSignedIn(appContext)) FavoritesSync.schedule(appContext)
         scope.launch {
             try {
                 PluginManager.loadAllInstalled(appContext)

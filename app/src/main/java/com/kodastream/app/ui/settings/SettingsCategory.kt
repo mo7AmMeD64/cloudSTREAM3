@@ -9,6 +9,7 @@ package com.kodastream.app.ui.settings
  * are attached in the UI layer.
  */
 enum class SettingsCategory(val id: String) {
+    ACCOUNT("account"),
     APPEARANCE("appearance"),
     PLAYER("player"),
     DOWNLOADS("downloads"),
@@ -41,6 +42,7 @@ enum class SettingsCategory(val id: String) {
          * the clusters only decide where the larger gaps go.
          */
         val clusters: List<List<SettingsCategory>> = listOf(
+            listOf(ACCOUNT),
             listOf(APPEARANCE, PLAYER, DOWNLOADS),
             listOf(PRIVACY, STATISTICS),
             listOf(EXTENSIONS, MANGA),

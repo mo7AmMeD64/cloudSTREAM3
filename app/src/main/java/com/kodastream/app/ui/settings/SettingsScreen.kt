@@ -15,6 +15,7 @@ import androidx.compose.material.icons.rounded.Extension
 import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Palette
+import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.PlayCircle
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.ListItemDefaults
@@ -102,6 +103,7 @@ fun SettingsCategoryScreen(
     onMangaSectionChanged: (Boolean) -> Unit,
 ) {
     when (category) {
+        SettingsCategory.ACCOUNT -> AccountSettingsPage(onBack = onBack)
         SettingsCategory.APPEARANCE -> AppearanceSettingsPage(
             themeViewModel = themeViewModel,
             onOpenColors = onOpenColors,
@@ -126,6 +128,7 @@ fun SettingsCategoryScreen(
 
 @StringRes
 private fun categoryTitle(category: SettingsCategory): Int = when (category) {
+    SettingsCategory.ACCOUNT -> R.string.settings_account
     SettingsCategory.APPEARANCE -> R.string.settings_appearance
     SettingsCategory.PLAYER -> R.string.settings_cat_player
     SettingsCategory.DOWNLOADS -> R.string.settings_downloads
@@ -138,6 +141,7 @@ private fun categoryTitle(category: SettingsCategory): Int = when (category) {
 
 @StringRes
 private fun categorySummary(category: SettingsCategory): Int = when (category) {
+    SettingsCategory.ACCOUNT -> R.string.settings_cat_account_summary
     SettingsCategory.APPEARANCE -> R.string.settings_cat_appearance_summary
     SettingsCategory.PLAYER -> R.string.settings_cat_player_summary
     SettingsCategory.DOWNLOADS -> R.string.settings_cat_downloads_summary
@@ -149,6 +153,7 @@ private fun categorySummary(category: SettingsCategory): Int = when (category) {
 }
 
 private fun categoryIcon(category: SettingsCategory): ImageVector = when (category) {
+    SettingsCategory.ACCOUNT -> Icons.Rounded.Person
     SettingsCategory.APPEARANCE -> Icons.Rounded.Palette
     SettingsCategory.PLAYER -> Icons.Rounded.PlayCircle
     SettingsCategory.DOWNLOADS -> Icons.Rounded.Download
