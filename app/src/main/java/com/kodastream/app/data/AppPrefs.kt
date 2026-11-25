@@ -58,6 +58,8 @@ object AppPrefs {
     const val KEY_ALLOW_INVALID_SSL = "allow_invalid_ssl"
     private const val KEY_POSTER_SIZE = "poster_size_step"
     private const val KEY_SETUP_DONE = "setup_done"
+    internal const val KEY_NOTIFICATIONS = "notifications_enabled"
+    internal const val KEY_NOTIFICATIONS_PROMPT = "notifications_prompt_shown"
     private const val KEY_APP_LANGUAGE = "app_language"
     private const val KEY_UPDATE_CHECK = "update_last_check"
     private const val KEY_UPDATE_SKIPPED = "update_skipped_version"
@@ -653,6 +655,22 @@ object AppPrefs {
 
     fun setSetupDone(context: Context, value: Boolean) {
         prefs(context).edit { putBoolean(KEY_SETUP_DONE, value) }
+    }
+
+    // ---- Announcements ----
+
+    fun notificationsEnabled(context: Context): Boolean =
+        prefs(context).getBoolean(KEY_NOTIFICATIONS, false)
+
+    fun setNotificationsEnabled(context: Context, value: Boolean) {
+        prefs(context).edit { putBoolean(KEY_NOTIFICATIONS, value) }
+    }
+
+    fun notificationsPromptShown(context: Context): Boolean =
+        prefs(context).getBoolean(KEY_NOTIFICATIONS_PROMPT, false)
+
+    fun setNotificationsPromptShown(context: Context) {
+        prefs(context).edit { putBoolean(KEY_NOTIFICATIONS_PROMPT, true) }
     }
 
     /** "system" or a BCP 47 language tag such as "en" / "ar". */

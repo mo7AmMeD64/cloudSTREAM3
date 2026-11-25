@@ -1024,6 +1024,17 @@
     <string name="settings_ui_style_material">Material 3</string>
     <string name="settings_ui_style_glass">زجاجي</string>
     <string name="settings_data">البيانات</string>
+    <!-- الإعلانات (بث FCM؛ لا يخزّن بيانات جهاز أو حساب) -->
+    <string name="settings_notifications">الإشعارات</string>
+    <string name="settings_notifications_announcements">الإعلانات والتحديثات</string>
+    <string name="settings_notifications_announcements_summary">أخبار التطبيق من حين لآخر. لا تُرسل بيانات حسابك.</string>
+    <string name="notifications_channel_name">الإعلانات</string>
+    <string name="notifications_channel_description">أخبار التطبيق والتحديثات المهمة</string>
+    <string name="notifications_prompt_title">ابقَ على اطلاع</string>
+    <string name="notifications_prompt_message">تصلك إعلانات من حين لآخر وتحديثات مهمة للتطبيق. يمكنك إيقافها متى شئت من الإعدادات.</string>
+    <string name="notifications_prompt_enable">تفعيل</string>
+    <string name="notifications_prompt_later">ليس الآن</string>
+    <string name="notifications_permission_needed">اسمح بالإشعارات من إعدادات النظام لتفعيلها.</string>
     <string name="settings_export_data">تصدير البيانات</string>
     <string name="settings_export_data_summary">حفظ المكتبة وسجل المشاهدة والإعدادات في ملف JSON</string>
     <string name="settings_import_data">استيراد البيانات</string>

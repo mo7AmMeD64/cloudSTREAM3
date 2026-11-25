@@ -1,5 +1,8 @@
 package com.kodastream.app.ui.settings
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -9,6 +12,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.History
+import androidx.compose.material.icons.rounded.Notifications
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Upload
 import androidx.compose.material3.AlertDialog
@@ -25,6 +29,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import com.kodastream.app.R
 import com.kodastream.app.data.AppPrefs
 import com.kodastream.app.data.DataExport
@@ -33,6 +38,7 @@ import com.kodastream.app.data.DataExportManager
 import com.kodastream.app.data.ImportMode
 import com.kodastream.app.data.ImportSummary
 import com.kodastream.app.data.SearchHistoryStore
+import com.kodastream.app.push.Push
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -44,6 +50,23 @@ internal fun PrivacySettingsPage(onBack: () -> Unit) {
     val scope = rememberCoroutineScope()
     var pauseHistory by remember { mutableStateOf(AppPrefs.pauseHistory(context)) }
     var pendingImport by remember { mutableStateOf<Pair<DataExport, ImportSummary>?>(null) }
+    var notificationsOn by remember { mutableStateOf(Push.isOn(context)) }
+
+    val notificationPermission = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) {
+            Push.setEnabled(context, true)
+            notificationsOn = Push.isOn(context)
+        } else {
+            notificationsOn = false
+            Toast.makeText(
+                context,
+                R.string.notifications_permission_needed,
+                Toast.LENGTH_SHORT,
+            ).show()
+        }
+    }
 
     val exportLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.CreateDocument("application/json")
@@ -86,6 +109,44 @@ internal fun PrivacySettingsPage(onBack: () -> Unit) {
         title = stringResource(R.string.settings_privacy_history),
         onBack = onBack,
     ) {
+        item(key = "notifications") {
+            SettingsGroup(stringResource(R.string.settings_notifications)) {
+                SwitchRow(
+                    index = 0,
+                    count = 1,
+                    icon = Icons.Rounded.Notifications,
+                    title = stringResource(R.string.settings_notifications_announcements),
+                    supporting = stringResource(R.string.settings_notifications_announcements_summary),
+                    checked = notificationsOn,
+                    onCheckedChange = { value ->
+                        AppPrefs.setNotificationsPromptShown(context)
+                        if (!value) {
+                            Push.setEnabled(context, false)
+                            notificationsOn = false
+                        } else if (
+                            Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                            ContextCompat.checkSelfPermission(
+                                context,
+                                Manifest.permission.POST_NOTIFICATIONS,
+                            ) != PackageManager.PERMISSION_GRANTED
+                        ) {
+                            notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+                        } else {
+                            Push.setEnabled(context, true)
+                            notificationsOn = Push.isOn(context)
+                            if (!notificationsOn) {
+                                Toast.makeText(
+                                    context,
+                                    R.string.notifications_permission_needed,
+                                    Toast.LENGTH_SHORT,
+                                ).show()
+                            }
+                        }
+                    },
+                )
+            }
+        }
+
         item(key = "privacy") {
             SettingsGroup(stringResource(R.string.settings_privacy_history)) {
                 SwitchRow(

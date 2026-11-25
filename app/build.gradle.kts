@@ -6,6 +6,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.compose.compiler)
     alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.google.services)
 }
 
 val javaTarget = JvmTarget.fromTarget(libs.versions.jvmTarget.get())
@@ -127,6 +128,10 @@ dependencies {
     testImplementation(libs.ax.okhttp.mockwebserver4)
 
     coreLibraryDesugaring(libs.desugar.jdk.libs.nio) // NIO flavour needed by NewPipeExtractor
+
+    // ---- Broadcast announcements (FCM topic only; no token registry) ----
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.messaging)
 
     // ---- The CloudStream engine (MainAPI, extractors, networking) ----
     implementation(project(":library"))

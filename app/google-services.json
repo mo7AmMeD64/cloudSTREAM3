@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "816059335498",
+    "project_id": "cloud3-9a0ef",
+    "storage_bucket": "cloud3-9a0ef.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:816059335498:android:a8d500d94b742bb4a6b7b3",
+        "android_client_info": {
+          "package_name": "com.kodastream.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDWrbXMdz_S7-jI6Z4u4xWFFmFBtF_esLw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

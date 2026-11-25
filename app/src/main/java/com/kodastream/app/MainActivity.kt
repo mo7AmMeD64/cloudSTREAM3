@@ -38,7 +38,9 @@ import com.kodastream.app.data.DownloadStore
 import com.kodastream.app.downloads.DownloadMigration
 import com.kodastream.app.downloads.DownloadService
 import com.kodastream.app.engine.AppBootstrap
+import com.kodastream.app.push.Push
 import com.kodastream.app.ui.AppRoot
+import com.kodastream.app.ui.components.NotificationPrompt
 import com.kodastream.app.ui.crash.CrashReportDialog
 import com.kodastream.app.ui.setup.SetupWizard
 import com.kodastream.app.ui.splash.SplashOverlay
@@ -71,6 +73,7 @@ class MainActivity : AppCompatActivity() {
         CommonActivity.setActivityInstance(this)
         installImageLoader()
         AppBootstrap.start(this)
+        Push.sync(this)
         handleIntent(intent)
 
         // One-time: older downloads move into their title folders.
@@ -148,6 +151,10 @@ class MainActivity : AppCompatActivity() {
                                 onLater = updateViewModel::dismiss,
                                 onDontShowAgain = updateViewModel::skip,
                             )
+                        }
+                        // One-time opt-in; the update dialog, when present, goes first.
+                        if (!showSplash && update == null) {
+                            NotificationPrompt()
                         }
                     } else {
                         SetupWizard(themeViewModel) { language ->

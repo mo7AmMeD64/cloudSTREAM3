@@ -50,4 +50,10 @@ class AppPrefsTest {
     fun appIconKeyConstant() {
         assertEquals("app_icon", AppPrefs.KEY_APP_ICON)
     }
+
+    @Test
+    fun notificationsKeyConstants() {
+        assertEquals("notifications_enabled", AppPrefs.KEY_NOTIFICATIONS)
+        assertEquals("notifications_prompt_shown", AppPrefs.KEY_NOTIFICATIONS_PROMPT)
+    }
 }

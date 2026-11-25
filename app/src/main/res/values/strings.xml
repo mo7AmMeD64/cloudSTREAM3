@@ -1132,6 +1132,17 @@
     <string name="settings_ui_style_material">Material 3</string>
     <string name="settings_ui_style_glass">Glass</string>
     <string name="settings_data">Data</string>
+    <!-- Announcements (FCM broadcast topic; stores no device or account data) -->
+    <string name="settings_notifications">Notifications</string>
+    <string name="settings_notifications_announcements">Announcements and updates</string>
+    <string name="settings_notifications_announcements_summary">Occasional app news. No account data is sent.</string>
+    <string name="notifications_channel_name">Announcements</string>
+    <string name="notifications_channel_description">App news and important updates</string>
+    <string name="notifications_prompt_title">Stay up to date</string>
+    <string name="notifications_prompt_message">Get occasional announcements and important app updates. You can turn this off anytime in Settings.</string>
+    <string name="notifications_prompt_enable">Turn on</string>
+    <string name="notifications_prompt_later">Not now</string>
+    <string name="notifications_permission_needed">Allow notifications in system settings to turn this on.</string>
     <string name="settings_export_data">Export data</string>
     <string name="settings_export_data_summary">Save library, history, and settings to a JSON file</string>
     <string name="settings_import_data">Import data</string>
