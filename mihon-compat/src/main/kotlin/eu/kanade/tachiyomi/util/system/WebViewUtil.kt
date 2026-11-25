@@ -54,6 +54,10 @@ fun WebView.setDefaultSettings() {
         cacheMode = WebSettings.LOAD_DEFAULT
         setSupportMultipleWindows(true)
         setSupportZoom(true)
+        // Every WebView here loads remote pages with JavaScript on (Cloudflare,
+        // source checks); none needs local files or content providers.
+        allowFileAccess = false
+        allowContentAccess = false
         builtInZoomControls = true
         displayZoomControls = false
     }
