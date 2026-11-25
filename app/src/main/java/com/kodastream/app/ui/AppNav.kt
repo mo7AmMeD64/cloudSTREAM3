@@ -1,5 +1,6 @@
 package com.kodastream.app.ui
 
+import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
@@ -11,7 +12,9 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.border
 import androidx.compose.foundation.horizontalScroll
@@ -88,6 +91,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
@@ -98,6 +102,7 @@ import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
@@ -106,6 +111,7 @@ import android.app.Application
 import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.APPLICATION_KEY
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
@@ -240,6 +246,44 @@ private val mangaTopLevelDestinations = listOf(
         R.drawable.sidebar_settings,
     ),
 )
+
+private val watchTabs = watchTopLevelDestinations.mapTo(HashSet()) { it.route }
+private val mangaTabs = mangaTopLevelDestinations.mapTo(HashSet()) { it.route }
+
+/** Tab switches cross-fade; pushed screens slide in from the reading edge. */
+private fun AnimatedContentTransitionScope<NavBackStackEntry>.isTabSwitch(
+    tabs: Set<String>,
+): Boolean {
+    val from = initialState.destination.route
+    val to = targetState.destination.route
+    return from != null && from in tabs && to != null && to in tabs
+}
+
+private fun AnimatedContentTransitionScope<NavBackStackEntry>.enterScreen(
+    tabs: Set<String>,
+    forward: Int,
+) = if (isTabSwitch(tabs)) {
+    fadeIn(tween(160))
+} else {
+    slideInHorizontally(softSpring()) { forward * it / 5 } + fadeIn(tween(200))
+}
+
+private fun AnimatedContentTransitionScope<NavBackStackEntry>.exitScreen(
+    tabs: Set<String>,
+) = fadeOut(tween(if (isTabSwitch(tabs)) 100 else 150))
+
+private fun AnimatedContentTransitionScope<NavBackStackEntry>.popEnterScreen(
+    tabs: Set<String>,
+) = fadeIn(tween(if (isTabSwitch(tabs)) 160 else 200))
+
+private fun AnimatedContentTransitionScope<NavBackStackEntry>.popExitScreen(
+    tabs: Set<String>,
+    forward: Int,
+) = if (isTabSwitch(tabs)) {
+    fadeOut(tween(100))
+} else {
+    slideOutHorizontally(softSpring()) { forward * it / 5 } + fadeOut(tween(150))
+}
 
 // ------------------------------------------------------------------ shared nav motion
 
@@ -553,6 +597,7 @@ private fun AppNavGraph(
     onMangaSectionChanged: (Boolean) -> Unit,
 ) {
     val context = LocalContext.current
+    val forward = if (LocalLayoutDirection.current == LayoutDirection.Rtl) -1 else 1
     fun openPlayer(playerArgs: PlayerArgs) {
         context.startActivity(PlayerActivity.newIntent(context, NavArgs.put(playerArgs)))
     }
@@ -561,6 +606,10 @@ private fun AppNavGraph(
         navController = navController,
         startDestination = Routes.HOME,
         modifier = Modifier.fillMaxSize(),
+        enterTransition = { enterScreen(watchTabs, forward) },
+        exitTransition = { exitScreen(watchTabs) },
+        popEnterTransition = { popEnterScreen(watchTabs) },
+        popExitTransition = { popExitScreen(watchTabs, forward) },
     ) {
         composable(Routes.HOME) { entry ->
             val lifecycleState by entry.lifecycle.currentStateFlow.collectAsState()
@@ -671,10 +720,15 @@ private fun MangaNavGraph(
     contentPadding: PaddingValues,
     onMangaSectionChanged: (Boolean) -> Unit,
 ) {
+    val forward = if (LocalLayoutDirection.current == LayoutDirection.Rtl) -1 else 1
     NavHost(
         navController = navController,
         startDestination = MangaRoutes.BROWSE,
         modifier = Modifier.fillMaxSize(),
+        enterTransition = { enterScreen(mangaTabs, forward) },
+        exitTransition = { exitScreen(mangaTabs) },
+        popEnterTransition = { popEnterScreen(mangaTabs) },
+        popExitTransition = { popExitScreen(mangaTabs, forward) },
     ) {
         composable(MangaRoutes.BROWSE) { entry ->
             val genre = entry.savedStateHandle.get<String>(GenreQueryKey)
