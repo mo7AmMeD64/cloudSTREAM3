@@ -24,8 +24,8 @@ android {
         // desugaring enabled below on anything older than API 33.
         minSdk = 26
         targetSdk = libs.versions.targetSdk.get().toInt()
-        versionCode = 23
-        versionName = "0.13.0"
+        versionCode = 24
+        versionName = "0.13.1"
         // Empty on forks that do not configure Supabase; the account page says so.
         buildConfigField("String", "SUPABASE_URL", "\"$supabaseUrl\"")
         buildConfigField("String", "SUPABASE_ANON_KEY", "\"$supabaseAnonKey\"")
