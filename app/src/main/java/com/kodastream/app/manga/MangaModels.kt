@@ -144,6 +144,42 @@ fun progressKey(sourceId: Long, mangaUrl: String, chapterUrl: String): String =
 
 fun MangaChapter.isRecognizedNumber(): Boolean = number >= 0f
 
+private val chapterMarker = Regex(
+    """(?:^|[^\p{L}])(?:chapter|chap|ch|episode|ep|الفصل|فصل)\s*[.:#\-_]*\s*(\d+(?:\.\d+)?)""",
+    RegexOption.IGNORE_CASE,
+)
+private val anyNumber = Regex("""\d+(?:\.\d+)?""")
+private val prologue = Regex("""\b(?:prologue|one.?shot|pilot)\b""", RegexOption.IGNORE_CASE)
+
+/**
+ * Mihon reads a missing chapter number from the chapter name during sync.
+ * Without this, a source that lists newest first and leaves `chapter_number`
+ * at -1 makes the reader's "next" the previous chapter.
+ */
+fun recognizedChapterNumber(name: String, number: Float): Float {
+    if (number >= 0f || number == -2f) return number
+    val text = name.asciiDigits().lowercase()
+    if (prologue.containsMatchIn(text) && anyNumber.find(text) == null) return 0f
+    val marked = chapterMarker.find(text)?.groupValues?.get(1)
+    return (marked ?: anyNumber.find(text)?.value)?.toFloatOrNull() ?: number
+}
+
+/** A cached row with its number read from the name when the source gave none. */
+fun MangaChapter.withRecognizedNumber(): MangaChapter =
+    if (isRecognizedNumber()) this else copy(number = recognizedChapterNumber(name, number))
+
+private fun String.asciiDigits(): String = buildString(length) {
+    for (c in this@asciiDigits) {
+        append(
+            when (c) {
+                in '\u0660'..'\u0669' -> '0' + (c - '\u0660')
+                in '\u06F0'..'\u06F9' -> '0' + (c - '\u06F0')
+                else -> c
+            },
+        )
+    }
+}
+
 /**
  * Mihon's chapter gap rule: only whole numbers count, and a chapter 2.5 after
  * 1 does not leave a hole. Returns 0 when either side is unnumbered.

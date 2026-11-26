@@ -65,4 +65,14 @@ class MangaChapterMappingTest {
         assertEquals("Team", model?.scanlator)
         assertEquals(123L, model?.dateUpload)
     }
+
+    @Test
+    fun missingChapterNumberIsReadFromTheName() {
+        val chapter = SChapter.create().apply {
+            url = "/chapter/60"
+            name = "Chapter 60"
+        }
+
+        assertEquals(60f, chapter.toModel(0)?.number)
+    }
 }

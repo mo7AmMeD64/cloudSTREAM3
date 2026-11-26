@@ -109,6 +109,34 @@ class MangaModelsTest {
     }
 
     @Test
+    fun numbersMissingFromTheSourceAreReadFromTheName() {
+        // A source that lists newest first and leaves chapter_number at -1.
+        val chapters = listOf(
+            MangaChapter(url = "c61", name = "Chapter 61", number = -1f, sourceOrder = 0),
+            MangaChapter(url = "c60", name = "الفصل 60", number = -1f, sourceOrder = 1),
+            MangaChapter(url = "c59", name = "Ch. 59", number = -1f, sourceOrder = 2),
+        ).map { it.withRecognizedNumber() }
+
+        assertEquals(listOf("c59", "c60", "c61"), readingOrder(chapters).map { it.url })
+        assertEquals("c61", nextChapter(chapters, "c60")?.url)
+        assertEquals("c59", previousChapter(chapters, "c60")?.url)
+    }
+
+    @Test
+    fun chapterNumberRecognitionHandlesNamesAndKeepsSourceNumbers() {
+        assertEquals(60f, recognizedChapterNumber("Chapter 60", -1f))
+        assertEquals(60.5f, recognizedChapterNumber("Ch. 60.5", -1f))
+        assertEquals(4f, recognizedChapterNumber("Manga Vol. 1 Ch. 4", -1f))
+        assertEquals(60f, recognizedChapterNumber("Bleach 2 Chapter 60", -1f))
+        assertEquals(567f, recognizedChapterNumber("Bleach 567", -1f))
+        assertEquals(60f, recognizedChapterNumber("الفصل ٦٠", -1f))
+        assertEquals(0f, recognizedChapterNumber("Prologue", -1f))
+        assertEquals(-1f, recognizedChapterNumber("Bonus", -1f))
+        assertEquals(-2f, recognizedChapterNumber("Chapter 60", -2f))
+        assertEquals(12f, recognizedChapterNumber("Chapter 60", 12f))
+    }
+
+    @Test
     fun chaptersBeforeFollowsReadingOrderAndStopsAtTheCurrentChapter() {
         val chapters = listOf(chapter("c", 3f), chapter("a", 1f), chapter("b", 2f))
 

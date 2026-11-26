@@ -22,6 +22,7 @@ import com.kodastream.app.manga.extension.MangaSourceManager
 import com.kodastream.app.manga.key
 import com.kodastream.app.manga.mangaKey
 import com.kodastream.app.manga.nameOrNull
+import com.kodastream.app.manga.recognizedChapterNumber
 import com.kodastream.app.manga.rootMessage
 import com.kodastream.app.manga.syncChapters
 import com.kodastream.app.manga.urlOrNull
@@ -383,7 +384,7 @@ internal fun SChapter.toModel(sourceOrder: Int): MangaChapter? {
     return MangaChapter(
         url = chapterUrl,
         name = chapterName,
-        number = chapter_number,
+        number = recognizedChapterNumber(chapterName, chapter_number),
         scanlator = scanlator,
         dateUpload = date_upload,
         sourceOrder = sourceOrder,

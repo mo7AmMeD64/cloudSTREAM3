@@ -29,7 +29,9 @@ object MangaChapterStore {
     private var progressKeysLoaded = false
 
     fun chapters(context: Context, sourceId: Long, mangaUrl: String): List<MangaChapter> =
-        context.getKey<MangaChapterList>(CHAPTERS, mangaKey(sourceId, mangaUrl))?.chapters.orEmpty()
+        context.getKey<MangaChapterList>(CHAPTERS, mangaKey(sourceId, mangaUrl))
+            ?.chapters.orEmpty()
+            .map { it.withRecognizedNumber() }
 
     fun saveChapters(
         context: Context,
