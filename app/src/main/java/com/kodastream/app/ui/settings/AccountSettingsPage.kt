@@ -8,8 +8,12 @@ import android.view.WindowManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,22 +22,33 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.material.icons.rounded.ErrorOutline
 import androidx.compose.material.icons.rounded.Person
+import androidx.compose.material.icons.rounded.Visibility
+import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
@@ -44,12 +59,20 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.kodastream.app.R
 import com.kodastream.app.data.AppPrefs
@@ -88,6 +111,7 @@ internal fun AccountSettingsPage(onBack: () -> Unit) {
     var notice by remember { mutableStateOf<Int?>(null) }
     var error by remember { mutableStateOf<Int?>(null) }
     var choice by remember { mutableStateOf<AuthChoice?>(null) }
+    var createAccount by remember { mutableStateOf(false) }
     var confirmRestore by remember { mutableStateOf(false) }
     var lastSync by remember { mutableStateOf(SupabaseAuth.lastSync(context)) }
     var pendingEmail by remember { mutableStateOf<String?>(null) }
@@ -351,7 +375,7 @@ internal fun AccountSettingsPage(onBack: () -> Unit) {
                             },
                         )
                         Spacer(Modifier.width(16.dp))
-                        OutlinedTextField(
+                        AuthField(
                             value = name,
                             onValueChange = {
                                 if (it.length <= 40) {
@@ -359,9 +383,8 @@ internal fun AccountSettingsPage(onBack: () -> Unit) {
                                     AppPrefs.setProfileName(context, it)
                                 }
                             },
-                            label = { Text(stringResource(R.string.account_name)) },
-                            supportingText = { Text(stringResource(R.string.account_name_hint)) },
-                            singleLine = true,
+                            label = stringResource(R.string.account_name),
+                            supporting = stringResource(R.string.account_name_hint),
                             modifier = Modifier.weight(1f),
                         )
                     }
@@ -397,31 +420,39 @@ internal fun AccountSettingsPage(onBack: () -> Unit) {
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
-                        OutlinedTextField(
+                        AuthField(
                             value = code,
                             onValueChange = { value ->
                                 if (value.length <= 8 && value.all { it.isDigit() }) code = value
                             },
-                            label = { Text(stringResource(R.string.account_code)) },
-                            singleLine = true,
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            modifier = Modifier.fillMaxWidth(),
+                            label = stringResource(R.string.account_code),
                             enabled = !busy && codeAttempts < MAX_CODE_ATTEMPTS,
+                            keyboardType = KeyboardType.Number,
+                            textStyle = MaterialTheme.typography.headlineSmall.copy(
+                                textAlign = TextAlign.Center,
+                                letterSpacing = 8.sp,
+                            ),
                         )
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Button(
-                                onClick = { verifyCode() },
-                                enabled = !busy && code.length >= 6 &&
-                                    codeAttempts < MAX_CODE_ATTEMPTS,
-                            ) {
-                                Text(stringResource(R.string.account_verify))
-                            }
+                        Button(
+                            onClick = { verifyCode() },
+                            enabled = !busy && code.length >= 6 &&
+                                codeAttempts < MAX_CODE_ATTEMPTS,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(56.dp),
+                        ) {
+                            Text(stringResource(R.string.account_verify))
+                        }
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.Center,
+                        ) {
                             TextButton(onClick = { resendCode() }, enabled = !busy) {
                                 Text(stringResource(R.string.account_resend))
                             }
-                        }
-                        TextButton(onClick = { cancelCode() }, enabled = !busy) {
-                            Text(stringResource(R.string.account_change_email))
+                            TextButton(onClick = { cancelCode() }, enabled = !busy) {
+                                Text(stringResource(R.string.account_change_email))
+                            }
                         }
                     } else if (account == null) {
                         Text(
@@ -429,41 +460,66 @@ internal fun AccountSettingsPage(onBack: () -> Unit) {
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
-                        OutlinedTextField(
+                        val modes = listOf(
+                            R.string.account_sign_in to false,
+                            R.string.account_sign_up to true,
+                        )
+                        SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
+                            modes.forEachIndexed { index, (label, isCreate) ->
+                                SegmentedButton(
+                                    selected = createAccount == isCreate,
+                                    onClick = {
+                                        createAccount = isCreate
+                                        notice = null
+                                        error = null
+                                    },
+                                    shape = SegmentedButtonDefaults.itemShape(index, modes.size),
+                                ) {
+                                    Text(stringResource(label))
+                                }
+                            }
+                        }
+                        AuthField(
                             value = email,
                             onValueChange = { email = it },
-                            label = { Text(stringResource(R.string.account_email)) },
-                            singleLine = true,
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-                            modifier = Modifier.fillMaxWidth(),
+                            label = stringResource(R.string.account_email),
                             enabled = !busy,
+                            keyboardType = KeyboardType.Email,
                         )
-                        OutlinedTextField(
+                        AuthField(
                             value = password,
                             onValueChange = { password = it },
-                            label = { Text(stringResource(R.string.account_password)) },
-                            supportingText = {
-                                Text(stringResource(R.string.account_password_hint))
-                            },
-                            singleLine = true,
-                            visualTransformation = PasswordVisualTransformation(),
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                            modifier = Modifier.fillMaxWidth(),
+                            label = stringResource(R.string.account_password),
                             enabled = !busy,
+                            keyboardType = KeyboardType.Password,
+                            password = true,
+                            supporting = if (createAccount) {
+                                stringResource(R.string.account_password_hint)
+                            } else {
+                                null
+                            },
                         )
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Button(
-                                onClick = { submit(create = false) },
-                                enabled = !busy && email.contains('@') && password.isNotEmpty(),
-                            ) {
-                                Text(stringResource(R.string.account_sign_in))
-                            }
-                            TextButton(
-                                onClick = { submit(create = true) },
-                                enabled = !busy && email.contains('@') && password.length >= 10,
-                            ) {
-                                Text(stringResource(R.string.account_sign_up))
-                            }
+                        Button(
+                            onClick = { submit(create = createAccount) },
+                            enabled = !busy && email.trim().contains('@') &&
+                                (if (createAccount) {
+                                    password.length >= 10
+                                } else {
+                                    password.isNotEmpty()
+                                }),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(56.dp),
+                        ) {
+                            Text(
+                                stringResource(
+                                    if (createAccount) {
+                                        R.string.account_sign_up
+                                    } else {
+                                        R.string.account_sign_in
+                                    },
+                                ),
+                            )
                         }
                     } else {
                         Text(
@@ -500,30 +556,14 @@ internal fun AccountSettingsPage(onBack: () -> Unit) {
                             Text(stringResource(R.string.account_sign_out))
                         }
                     }
+                    notice?.let { StatusBanner(stringResource(it), error = false) }
+                    error?.let { StatusBanner(stringResource(it), error = true) }
                 }
             }
         }
 
         if (busy) {
             item { LinearProgressIndicator(modifier = Modifier.fillMaxWidth()) }
-        }
-        notice?.let { id ->
-            item {
-                Text(
-                    text = stringResource(id),
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.padding(horizontal = 16.dp),
-                )
-            }
-        }
-        error?.let { id ->
-            item {
-                Text(
-                    text = stringResource(id),
-                    color = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.padding(horizontal = 16.dp),
-                )
-            }
         }
     }
 
@@ -590,10 +630,127 @@ private fun AccountCard(content: @Composable ColumnScope.() -> Unit) {
         modifier = Modifier.fillMaxWidth(),
     ) {
         Column(
-            modifier = Modifier.padding(16.dp),
+            modifier = Modifier
+                .padding(16.dp)
+                // Switching between sign in, sign up and the code step changes the
+                // card's height; letting it flow keeps the shift from jumping.
+                .animateContentSize(
+                    animationSpec = MaterialTheme.motionScheme.fastSpatialSpec(),
+                ),
             verticalArrangement = Arrangement.spacedBy(12.dp),
             content = content,
         )
+    }
+}
+
+/** Filled field whose corner relaxes open on focus, in the expressive form language. */
+@Composable
+private fun AuthField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    label: String,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    keyboardType: KeyboardType = KeyboardType.Text,
+    password: Boolean = false,
+    supporting: String? = null,
+    textStyle: TextStyle = MaterialTheme.typography.bodyLarge,
+) {
+    var revealed by remember { mutableStateOf(false) }
+    val interaction = remember { MutableInteractionSource() }
+    val focused by interaction.collectIsFocusedAsState()
+    val corner by animateDpAsState(
+        targetValue = if (focused) 20.dp else 12.dp,
+        animationSpec = MaterialTheme.motionScheme.fastSpatialSpec(),
+        label = "accountFieldCorner",
+    )
+    val supportingContent: (@Composable () -> Unit)? = if (supporting == null) {
+        null
+    } else {
+        { Text(supporting) }
+    }
+    val trailing: (@Composable () -> Unit)? = if (password) {
+        {
+            IconButton(onClick = { revealed = !revealed }) {
+                Icon(
+                    imageVector = if (revealed) {
+                        Icons.Rounded.VisibilityOff
+                    } else {
+                        Icons.Rounded.Visibility
+                    },
+                    contentDescription = stringResource(
+                        if (revealed) {
+                            R.string.account_hide_password
+                        } else {
+                            R.string.account_show_password
+                        },
+                    ),
+                )
+            }
+        }
+    } else {
+        null
+    }
+    TextField(
+        value = value,
+        onValueChange = onValueChange,
+        label = { Text(label) },
+        supportingText = supportingContent,
+        trailingIcon = trailing,
+        singleLine = true,
+        enabled = enabled,
+        visualTransformation = if (password && !revealed) {
+            PasswordVisualTransformation()
+        } else {
+            VisualTransformation.None
+        },
+        keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
+        interactionSource = interaction,
+        shape = RoundedCornerShape(corner),
+        colors = TextFieldDefaults.colors(
+            focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainer,
+            disabledContainerColor = MaterialTheme.colorScheme.surfaceContainer,
+            focusedIndicatorColor = MaterialTheme.colorScheme.primary,
+            unfocusedIndicatorColor = Color.Transparent,
+            disabledIndicatorColor = Color.Transparent,
+        ),
+        textStyle = textStyle,
+        modifier = modifier.fillMaxWidth(),
+    )
+}
+
+/** Inline result message: tonal for success, error container for failures. */
+@Composable
+private fun StatusBanner(text: String, error: Boolean) {
+    Surface(
+        shape = MaterialTheme.shapes.medium,
+        color = if (error) {
+            MaterialTheme.colorScheme.errorContainer
+        } else {
+            MaterialTheme.colorScheme.secondaryContainer
+        },
+        contentColor = if (error) {
+            MaterialTheme.colorScheme.onErrorContainer
+        } else {
+            MaterialTheme.colorScheme.onSecondaryContainer
+        },
+        modifier = Modifier
+            .fillMaxWidth()
+            .semantics { liveRegion = LiveRegionMode.Polite },
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                imageVector = if (error) Icons.Rounded.ErrorOutline else Icons.Rounded.CheckCircle,
+                contentDescription = null,
+                modifier = Modifier.size(20.dp),
+            )
+            Text(text = text, style = MaterialTheme.typography.bodyMedium)
+        }
     }
 }
 

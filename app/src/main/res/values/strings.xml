@@ -158,6 +158,8 @@
     <string name="account_email">Email</string>
     <string name="account_password">Password</string>
     <string name="account_password_hint">At least 10 characters for a new account</string>
+    <string name="account_show_password">Show password</string>
+    <string name="account_hide_password">Hide password</string>
     <string name="account_sign_in">Sign in</string>
     <string name="account_sign_up">Create account</string>
     <string name="account_signed_in">Signed in as %1$s</string>

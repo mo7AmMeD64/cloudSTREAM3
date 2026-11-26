@@ -155,6 +155,8 @@
     <string name="account_email">البريد الإلكتروني</string>
     <string name="account_password">كلمة السر</string>
     <string name="account_password_hint">10 أحرف على الأقل للحساب الجديد</string>
+    <string name="account_show_password">إظهار كلمة السر</string>
+    <string name="account_hide_password">إخفاء كلمة السر</string>
     <string name="account_sign_in">تسجيل الدخول</string>
     <string name="account_sign_up">إنشاء حساب</string>
     <string name="account_signed_in">مسجّل الدخول باسم %1$s</string>
