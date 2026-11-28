@@ -11,6 +11,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
@@ -19,13 +20,12 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -63,12 +63,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
@@ -76,6 +78,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
@@ -367,33 +370,23 @@ internal fun AccountSettingsPage(onBack: () -> Unit) {
     ) {
         item {
             SettingsGroup(title = stringResource(R.string.account_profile)) {
-                AccountCard {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Avatar(
-                            path = avatar,
-                            onClick = {
-                                pickAvatar.launch(
-                                    PickVisualMediaRequest(
-                                        ActivityResultContracts.PickVisualMedia.ImageOnly,
-                                    ),
-                                )
-                            },
+                ProfileCard(
+                    avatar = avatar,
+                    onPickPhoto = {
+                        pickAvatar.launch(
+                            PickVisualMediaRequest(
+                                ActivityResultContracts.PickVisualMedia.ImageOnly,
+                            ),
                         )
-                        Spacer(Modifier.width(16.dp))
-                        AuthField(
-                            value = name,
-                            onValueChange = {
-                                if (it.length <= 40) {
-                                    name = it
-                                    AppPrefs.setProfileName(context, it)
-                                }
-                            },
-                            label = stringResource(R.string.account_name),
-                            supporting = stringResource(R.string.account_name_hint),
-                            modifier = Modifier.weight(1f),
-                        )
-                    }
-                }
+                    },
+                    name = name,
+                    onNameChange = {
+                        if (it.length <= 40) {
+                            name = it
+                            AppPrefs.setProfileName(context, it)
+                        }
+                    },
+                )
             }
         }
 
@@ -449,11 +442,30 @@ internal fun AccountSettingsPage(onBack: () -> Unit) {
                             }
                         }
                     } else if (account == null) {
-                        Text(
-                            text = stringResource(R.string.account_cloud_hint),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
+                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Text(
+                                text = stringResource(
+                                    if (createAccount) {
+                                        R.string.account_welcome_new
+                                    } else {
+                                        R.string.account_welcome_back
+                                    },
+                                ),
+                                style = MaterialTheme.typography.titleLarge,
+                                modifier = Modifier.semantics { heading() },
+                            )
+                            Text(
+                                text = stringResource(
+                                    if (createAccount) {
+                                        R.string.account_cloud_hint_new
+                                    } else {
+                                        R.string.account_cloud_hint
+                                    },
+                                ),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
                         val modes = listOf(
                             R.string.account_sign_in to false,
                             R.string.account_sign_up to true,
@@ -468,6 +480,7 @@ internal fun AccountSettingsPage(onBack: () -> Unit) {
                                         error = null
                                     },
                                     shape = SegmentedButtonDefaults.itemShape(index, modes.size),
+                                    modifier = Modifier.weight(1f),
                                 ) {
                                     Text(stringResource(label))
                                 }
@@ -615,6 +628,88 @@ private data class AuthChoice(
     val local: List<LibraryStore.LibraryItem>,
     val remote: List<LibraryStore.LibraryItem>,
 )
+
+/**
+ * Profile hero: the avatar on a sunburst over a tonal banner, with the shapes
+ * from the expressive reference, and the editable name underneath.
+ */
+@Composable
+private fun ProfileCard(
+    avatar: String?,
+    onPickPhoto: () -> Unit,
+    name: String,
+    onNameChange: (String) -> Unit,
+) {
+    Surface(
+        shape = MaterialTheme.shapes.large,
+        color = MaterialTheme.colorScheme.surfaceBright,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(128.dp)
+                    .background(MaterialTheme.colorScheme.surfaceContainer),
+            ) {
+                // Both shapes bleed past the card edge; the Surface clips them.
+                BannerShape(
+                    shape = MaterialShapes.Flower.toShape(),
+                    color = MaterialTheme.colorScheme.primaryContainer,
+                    size = 112.dp,
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .offset(x = 48.dp, y = (-56).dp),
+                )
+                BannerShape(
+                    shape = MaterialShapes.Clover4Leaf.toShape(),
+                    color = MaterialTheme.colorScheme.tertiaryContainer,
+                    size = 64.dp,
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .offset(x = 24.dp),
+                )
+                BannerShape(
+                    shape = MaterialShapes.Sunny.toShape(),
+                    color = MaterialTheme.colorScheme.primary,
+                    size = 104.dp,
+                    modifier = Modifier
+                        .align(Alignment.BottomStart)
+                        .offset(x = 8.dp, y = (-8).dp),
+                )
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.BottomStart)
+                        .padding(16.dp),
+                ) {
+                    Avatar(path = avatar, onClick = onPickPhoto)
+                }
+            }
+            AuthField(
+                value = name,
+                onValueChange = onNameChange,
+                label = stringResource(R.string.account_name),
+                supporting = stringResource(R.string.account_name_hint),
+                modifier = Modifier.padding(16.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun BannerShape(
+    shape: Shape,
+    color: Color,
+    size: Dp,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier
+            .size(size)
+            .clip(shape)
+            .background(color),
+    )
+}
 
 @Composable
 private fun AccountCard(content: @Composable ColumnScope.() -> Unit) {
@@ -785,7 +880,9 @@ private fun Avatar(path: String?, onClick: () -> Unit) {
                 .align(Alignment.BottomEnd)
                 .size(28.dp)
                 .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.primary),
+                .background(MaterialTheme.colorScheme.primary)
+                // Separates the badge from the sunburst it sits on.
+                .border(2.dp, MaterialTheme.colorScheme.surfaceContainer, CircleShape),
             contentAlignment = Alignment.Center,
         ) {
             Icon(

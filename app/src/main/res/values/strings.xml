@@ -154,7 +154,10 @@
     <string name="account_change_photo">Change photo</string>
     <string name="account_photo">Profile photo</string>
     <string name="account_cloud">Cloud backup</string>
+    <string name="account_welcome_back">Welcome back</string>
+    <string name="account_welcome_new">Create your account</string>
     <string name="account_cloud_hint">Sign in to save your favorites and get them back after reinstalling.</string>
+    <string name="account_cloud_hint_new">Save your favorites and get them back after reinstalling.</string>
     <string name="account_email">Email</string>
     <string name="account_password">Password</string>
     <string name="account_password_hint">At least 10 characters for a new account</string>

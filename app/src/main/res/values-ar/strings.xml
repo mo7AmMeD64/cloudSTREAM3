@@ -151,7 +151,10 @@
     <string name="account_change_photo">تغيير الصورة</string>
     <string name="account_photo">صورة الملف الشخصي</string>
     <string name="account_cloud">النسخ الاحتياطي السحابي</string>
+    <string name="account_welcome_back">أهلاً بعودتك</string>
+    <string name="account_welcome_new">أنشئ حسابك</string>
     <string name="account_cloud_hint">سجّل الدخول لحفظ مفضلتك واستعادتها بعد إعادة تثبيت التطبيق.</string>
+    <string name="account_cloud_hint_new">احفظ مفضلتك واستعدها بعد إعادة تثبيت التطبيق.</string>
     <string name="account_email">البريد الإلكتروني</string>
     <string name="account_password">كلمة السر</string>
     <string name="account_password_hint">10 أحرف على الأقل للحساب الجديد</string>
