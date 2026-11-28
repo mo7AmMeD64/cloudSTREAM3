@@ -12,31 +12,43 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.input.clearText
+import androidx.compose.foundation.text.input.rememberTextFieldState
+import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Apps
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.History
+import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material3.ExpandedDockedSearchBarWithGap
+import androidx.compose.material3.ExpandedFullScreenContainedSearchBar
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SearchBar
+import androidx.compose.material3.SearchBarDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberContainedSearchBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -50,7 +62,6 @@ import com.kodastream.app.engine.Engine
 import com.kodastream.app.ui.components.EmptyBox
 import com.kodastream.app.ui.components.PosterActionsSheet
 import com.kodastream.app.ui.components.PosterCard
-import com.kodastream.app.ui.components.SearchField
 import com.kodastream.app.ui.components.SectionHeader
 import com.kodastream.app.ui.sources.SourceAvatar
 import com.kodastream.app.ui.sources.SourceChip
@@ -205,14 +216,61 @@ fun SearchScreen(
     val scope by sourceViewModel.search.collectAsState()
     var actionsItem by remember { mutableStateOf<SearchResponse?>(null) }
     val longClickLabel = stringResource(R.string.cd_poster_actions)
-    var query by rememberSaveable { mutableStateOf("") }
+    val textFieldState = rememberTextFieldState()
+    val searchBarState = rememberContainedSearchBarState()
+    val searchScope = rememberCoroutineScope()
     // The scope lives in the shared holder so the source sheet can change it.
     var appliedScope by remember { mutableStateOf(scope) }
+
+    // Typing keeps the results of the old query until the new one is sent, so
+    // only an empty field drops them.
+    LaunchedEffect(Unit) {
+        snapshotFlow { textFieldState.text.isNotBlank() }
+            .collect { if (!it) viewModel.clear() }
+    }
+
     LaunchedEffect(scope) {
         if (scope != appliedScope) {
             appliedScope = scope
-            if (query.isNotBlank()) viewModel.submit(query, scope) else viewModel.clear()
+            val text = textFieldState.text.toString()
+            if (text.isNotBlank()) viewModel.submit(text, scope) else viewModel.clear()
         }
+    }
+
+    // Sending collapses the surface: the results live under the collapsed bar.
+    val submit: (String) -> Unit = { text ->
+        viewModel.submit(text, scope)
+        searchScope.launch { searchBarState.animateToCollapsed() }
+    }
+
+    val inputField: @Composable () -> Unit = {
+        SearchBarDefaults.InputField(
+            textFieldState = textFieldState,
+            searchBarState = searchBarState,
+            onSearch = submit,
+            colors = SearchBarDefaults.containedColors(searchBarState).inputFieldColors,
+            placeholder = { Text(stringResource(R.string.search_hint)) },
+            leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null) },
+            trailingIcon = {
+                if (textFieldState.text.isNotEmpty()) {
+                    IconButton(onClick = { textFieldState.clearText() }) {
+                        Icon(
+                            imageVector = Icons.Rounded.Close,
+                            contentDescription = stringResource(R.string.cd_clear_search),
+                        )
+                    }
+                }
+            },
+        )
+    }
+
+    val typed = textFieldState.text.toString().trim()
+    val recentSearches = history.orEmpty().filter { entry ->
+        typed.isEmpty() || entry.contains(typed, ignoreCase = true)
+    }
+    val pickHistory: (String) -> Unit = { entry ->
+        textFieldState.setTextAndPlaceCursorAtEnd(entry)
+        submit(entry)
     }
 
     Column(
@@ -220,17 +278,50 @@ fun SearchScreen(
             .fillMaxSize()
             .padding(top = contentPadding.calculateTopPadding()),
     ) {
-        SearchField(
-            query = query,
-            onQueryChange = { text ->
-                query = text
-                // Clearing the text drops the old results with it.
-                if (text.isBlank()) viewModel.clear()
-            },
-            placeholder = stringResource(R.string.search_hint),
-            onSearch = { viewModel.submit(query, scope) },
+        Text(
+            text = stringResource(R.string.nav_search),
+            style = MaterialTheme.typography.headlineSmall,
+            modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 16.dp),
+        )
+
+        SearchBar(
+            state = searchBarState,
+            inputField = inputField,
+            colors = SearchBarDefaults.containedColors(searchBarState),
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
         )
+
+        // M3 uses a full-screen surface on phones and a docked dropdown from
+        // medium widths up, where a full screen would waste the space.
+        if (LocalConfiguration.current.screenWidthDp >= 600) {
+            ExpandedDockedSearchBarWithGap(
+                state = searchBarState,
+                inputField = inputField,
+                colors = SearchBarDefaults.containedColors(searchBarState),
+            ) {
+                SearchHistory(
+                    entries = recentSearches,
+                    onPick = pickHistory,
+                    onRemove = viewModel::removeHistory,
+                    onClearAll = viewModel::clearHistory,
+                    modifier = Modifier.heightIn(max = 360.dp),
+                )
+            }
+        } else {
+            ExpandedFullScreenContainedSearchBar(
+                state = searchBarState,
+                inputField = inputField,
+                colors = SearchBarDefaults.containedColors(searchBarState),
+            ) {
+                SearchHistory(
+                    entries = recentSearches,
+                    onPick = pickHistory,
+                    onRemove = viewModel::removeHistory,
+                    onClearAll = viewModel::clearHistory,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
+        }
 
         SourceChip(
             label = scope ?: stringResource(R.string.search_scope_all),
@@ -251,7 +342,7 @@ fun SearchScreen(
                     },
                 )
             },
-            modifier = Modifier.padding(start = 16.dp, bottom = 4.dp),
+            modifier = Modifier.padding(start = 16.dp, top = 4.dp, bottom = 4.dp),
         )
 
         Box(Modifier.fillMaxSize()) {
@@ -263,19 +354,6 @@ fun SearchScreen(
                 groups.isEmpty() && searched -> EmptyBox(
                     title = stringResource(R.string.search_no_results),
                     hint = stringResource(R.string.search_no_results_hint),
-                )
-
-                !searched && !history.isNullOrEmpty() -> SearchHistory(
-                    entries = history.orEmpty().filter { entry ->
-                        query.isBlank() || entry.contains(query.trim(), ignoreCase = true)
-                    },
-                    contentPadding = contentPadding,
-                    onPick = { entry ->
-                        query = entry
-                        viewModel.submit(entry, scope)
-                    },
-                    onRemove = viewModel::removeHistory,
-                    onClearAll = viewModel::clearHistory,
                 )
 
                 groups.isEmpty() -> EmptyBox(
@@ -323,7 +401,13 @@ fun SearchScreen(
                     } else if (shouldShowLoadMore(lastPages)) {
                         item(key = "load_more") {
                             Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
-                                TextButton(onClick = { viewModel.submit(query, scope, reset = false) }) {
+                                TextButton(onClick = {
+                                    viewModel.submit(
+                                        textFieldState.text.toString(),
+                                        scope,
+                                        reset = false,
+                                    )
+                                }) {
                                     Text(stringResource(R.string.search_load_more))
                                 }
                             }
@@ -339,43 +423,41 @@ fun SearchScreen(
     }
 }
 
-/** Recent searches: a suggestion list while nothing has been searched yet. */
+/** Recent searches, shown inside the expanded search surface. */
 @Composable
 private fun SearchHistory(
     entries: List<String>,
-    contentPadding: PaddingValues,
     onPick: (String) -> Unit,
     onRemove: (String) -> Unit,
     onClearAll: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
-        LazyColumn(
-            modifier = Modifier
-                .widthIn(max = 600.dp)
-                .fillMaxWidth(),
-            contentPadding = PaddingValues(
-                bottom = contentPadding.calculateBottomPadding() + 16.dp,
-            ),
-        ) {
-            item(key = "history-header") {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(start = 16.dp, end = 8.dp, top = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        text = stringResource(R.string.search_history_title),
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onBackground,
-                        modifier = Modifier.weight(1f),
-                    )
-                    TextButton(onClick = onClearAll) {
-                        Text(stringResource(R.string.search_history_clear))
-                    }
+    Column(modifier = modifier.verticalScroll(rememberScrollState())) {
+        if (entries.isEmpty()) {
+            Text(
+                text = stringResource(R.string.search_idle_hint),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(16.dp),
+            )
+        } else {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 16.dp, end = 8.dp, top = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = stringResource(R.string.search_history_title),
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.weight(1f),
+                )
+                TextButton(onClick = onClearAll) {
+                    Text(stringResource(R.string.search_history_clear))
                 }
             }
-            items(entries, key = { it }) { entry ->
+            entries.forEach { entry ->
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()

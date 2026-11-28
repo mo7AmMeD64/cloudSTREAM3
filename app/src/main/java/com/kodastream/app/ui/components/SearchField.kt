@@ -2,6 +2,7 @@ package com.kodastream.app.ui.components
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
@@ -38,6 +39,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -91,6 +93,12 @@ fun SearchField(
     val scheme = MaterialTheme.colorScheme
     val shape = RoundedCornerShape(28.dp)
 
+    // One-shot entrance: the field settles into place instead of popping in.
+    val appear = remember { Animatable(0f) }
+    LaunchedEffect(Unit) {
+        appear.animateTo(1f, MaterialTheme.motionScheme.defaultSpatialSpec())
+    }
+
     val container by animateColorAsState(
         targetValue = if (isFocused) {
             lerp(scheme.surfaceContainerHigh, scheme.primary, 0.1f)
@@ -119,6 +127,10 @@ fun SearchField(
     Row(
         modifier = modifier
             .fillMaxWidth()
+            .graphicsLayer {
+                alpha = appear.value
+                translationY = (1f - appear.value) * 8.dp.toPx()
+            }
             .clip(shape)
             .background(container)
             .border(borderWidth, borderColor, shape)
