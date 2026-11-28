@@ -25,7 +25,6 @@ import androidx.compose.material.icons.rounded.Apps
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.Search
-import androidx.compose.material3.ExpandedDockedSearchBarWithGap
 import androidx.compose.material3.ExpandedFullScreenContainedSearchBar
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -48,7 +47,6 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -288,39 +286,30 @@ fun SearchScreen(
             state = searchBarState,
             inputField = inputField,
             colors = SearchBarDefaults.containedColors(searchBarState),
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+            // `SearchBar` wraps its input in a `Surface`, which sizes to the
+            // field's 360dp min width unless the bar is told to fill the row.
+            modifier = Modifier
+                .padding(horizontal = 16.dp, vertical = 8.dp)
+                .fillMaxWidth(),
         )
 
-        // M3 uses a full-screen surface on phones and a docked dropdown from
-        // medium widths up, where a full screen would waste the space.
-        if (LocalConfiguration.current.screenWidthDp >= 600) {
-            ExpandedDockedSearchBarWithGap(
-                state = searchBarState,
-                inputField = inputField,
-                colors = SearchBarDefaults.containedColors(searchBarState),
-            ) {
-                SearchHistory(
-                    entries = recentSearches,
-                    onPick = pickHistory,
-                    onRemove = viewModel::removeHistory,
-                    onClearAll = viewModel::clearHistory,
-                    modifier = Modifier.heightIn(max = 360.dp),
-                )
-            }
-        } else {
-            ExpandedFullScreenContainedSearchBar(
-                state = searchBarState,
-                inputField = inputField,
-                colors = SearchBarDefaults.containedColors(searchBarState),
-            ) {
-                SearchHistory(
-                    entries = recentSearches,
-                    onPick = pickHistory,
-                    onRemove = viewModel::removeHistory,
-                    onClearAll = viewModel::clearHistory,
-                    modifier = Modifier.fillMaxSize(),
-                )
-            }
+        // One surface for every width. The docked variant draws a second copy
+        // of the input field in a popup anchored to the collapsed bar's bounds;
+        // when those bounds are not the bar's real width (tablets, RTL) both
+        // fields stay visible. A full-screen surface has a single field, so it
+        // cannot duplicate in either direction or on any screen size.
+        ExpandedFullScreenContainedSearchBar(
+            state = searchBarState,
+            inputField = inputField,
+            colors = SearchBarDefaults.containedColors(searchBarState),
+        ) {
+            SearchHistory(
+                entries = recentSearches,
+                onPick = pickHistory,
+                onRemove = viewModel::removeHistory,
+                onClearAll = viewModel::clearHistory,
+                modifier = Modifier.fillMaxSize(),
+            )
         }
 
         SourceChip(
