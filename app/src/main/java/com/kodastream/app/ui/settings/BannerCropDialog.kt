@@ -180,6 +180,9 @@ private fun CropArea(
         val frameHeight = (maxWidth * 0.92f / safeAspect).coerceAtMost(maxHeight * 0.6f)
         val frameWidth = frameHeight * safeAspect
         val dim = Color.Black.copy(alpha = 0.62f)
+        // BoxScope shadows the constraints receiver inside the Box below.
+        val areaWidth = maxWidth
+        val areaHeight = maxHeight
         var areaSize by remember { mutableStateOf(IntSize.Zero) }
 
         Box(
@@ -242,27 +245,27 @@ private fun CropArea(
                 modifier = Modifier
                     .align(Alignment.TopCenter)
                     .fillMaxWidth()
-                    .height(((maxHeight - frameHeight) / 2).coerceAtLeast(0.dp))
+                    .height(((areaHeight - frameHeight) / 2).coerceAtLeast(0.dp))
                     .background(dim),
             )
             Box(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .fillMaxWidth()
-                    .height(((maxHeight - frameHeight) / 2).coerceAtLeast(0.dp))
+                    .height(((areaHeight - frameHeight) / 2).coerceAtLeast(0.dp))
                     .background(dim),
             )
             Box(
                 modifier = Modifier
                     .align(Alignment.CenterStart)
-                    .width(((maxWidth - frameWidth) / 2).coerceAtLeast(0.dp))
+                    .width(((areaWidth - frameWidth) / 2).coerceAtLeast(0.dp))
                     .height(frameHeight)
                     .background(dim),
             )
             Box(
                 modifier = Modifier
                     .align(Alignment.CenterEnd)
-                    .width(((maxWidth - frameWidth) / 2).coerceAtLeast(0.dp))
+                    .width(((areaWidth - frameWidth) / 2).coerceAtLeast(0.dp))
                     .height(frameHeight)
                     .background(dim),
             )
