@@ -94,9 +94,10 @@ fun SearchField(
     val shape = RoundedCornerShape(28.dp)
 
     // One-shot entrance: the field settles into place instead of popping in.
+    val appearSpec = MaterialTheme.motionScheme.defaultSpatialSpec<Float>()
     val appear = remember { Animatable(0f) }
     LaunchedEffect(Unit) {
-        appear.animateTo(1f, MaterialTheme.motionScheme.defaultSpatialSpec())
+        appear.animateTo(1f, appearSpec)
     }
 
     val container by animateColorAsState(
