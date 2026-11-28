@@ -3,6 +3,7 @@ package com.kodastream.app.ui.settings
 import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
+import android.graphics.Bitmap
 import android.net.Uri
 import android.view.WindowManager
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -32,6 +33,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AddPhotoAlternate
 import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.ErrorOutline
 import androidx.compose.material.icons.rounded.Person
@@ -40,6 +42,7 @@ import androidx.compose.material.icons.rounded.Visibility
 import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -68,6 +71,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
@@ -82,6 +86,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
@@ -116,6 +121,8 @@ internal fun AccountSettingsPage(onBack: () -> Unit) {
     var name by remember { mutableStateOf(AppPrefs.profileName(context)) }
     var avatar by remember { mutableStateOf(AppPrefs.profileAvatar(context)) }
     var banner by remember { mutableStateOf(AppPrefs.profileBanner(context)) }
+    var cropUri by remember { mutableStateOf<Uri?>(null) }
+    var bannerSize by remember { mutableStateOf(IntSize.Zero) }
     var account by remember { mutableStateOf(SupabaseAuth.account(context)) }
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
@@ -148,15 +155,8 @@ internal fun AccountSettingsPage(onBack: () -> Unit) {
     val pickBanner = rememberLauncherForActivityResult(
         ActivityResultContracts.PickVisualMedia(),
     ) { uri ->
-        if (uri != null) {
-            scope.launch {
-                val path = withContext(Dispatchers.IO) { copyProfileImage(context, uri, "banner") }
-                if (path != null) {
-                    banner = path
-                    AppPrefs.setProfileBanner(context, path)
-                }
-            }
-        }
+        // The crop step decides what is stored, so hold the pick instead of copying it.
+        if (uri != null) cropUri = uri
     }
 
     suspend fun afterSignIn(guestFavorites: List<LibraryStore.LibraryItem>) {
@@ -405,6 +405,15 @@ internal fun AccountSettingsPage(onBack: () -> Unit) {
                             ),
                         )
                     },
+                    onRemoveBanner = {
+                        val path = banner
+                        banner = null
+                        AppPrefs.setProfileBanner(context, null)
+                        if (path != null) {
+                            scope.launch(Dispatchers.IO) { File(path).delete() }
+                        }
+                    },
+                    onBannerSize = { bannerSize = it },
                     name = name,
                     onNameChange = {
                         if (it.length <= 40) {
@@ -648,6 +657,30 @@ internal fun AccountSettingsPage(onBack: () -> Unit) {
             },
         )
     }
+
+    cropUri?.let { uri ->
+        BannerCropDialog(
+            uri = uri,
+            aspect = if (bannerSize.height > 0) {
+                bannerSize.width.toFloat() / bannerSize.height
+            } else {
+                3f
+            },
+            onCancel = { cropUri = null },
+            onCropped = { bitmap ->
+                cropUri = null
+                scope.launch {
+                    val path = withContext(Dispatchers.IO) {
+                        saveBannerBitmap(context, bitmap)
+                    }
+                    if (path != null) {
+                        banner = path
+                        AppPrefs.setProfileBanner(context, path)
+                    }
+                }
+            },
+        )
+    }
 }
 
 private data class AuthChoice(
@@ -665,6 +698,8 @@ private fun ProfileCard(
     banner: String?,
     onPickPhoto: () -> Unit,
     onPickBanner: () -> Unit,
+    onRemoveBanner: () -> Unit,
+    onBannerSize: (IntSize) -> Unit,
     name: String,
     onNameChange: (String) -> Unit,
 ) {
@@ -679,7 +714,8 @@ private fun ProfileCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(128.dp)
-                    .background(MaterialTheme.colorScheme.surfaceContainer),
+                    .background(MaterialTheme.colorScheme.surfaceContainer)
+                    .onSizeChanged(onBannerSize),
             ) {
                 if (bannerFile != null) {
                     AsyncImage(
@@ -715,26 +751,39 @@ private fun ProfileCard(
                         .align(Alignment.BottomStart)
                         .offset(x = 8.dp, y = (-8).dp),
                 )
-                FilledTonalIconButton(
-                    onClick = onPickBanner,
+                Row(
                     modifier = Modifier
-                        .align(Alignment.TopStart)
+                        .align(Alignment.TopEnd)
                         .padding(12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Icon(
-                        imageVector = if (bannerFile == null) {
-                            Icons.Rounded.AddPhotoAlternate
-                        } else {
-                            Icons.Rounded.Edit
-                        },
-                        contentDescription = stringResource(
-                            if (bannerFile == null) {
-                                R.string.account_banner_add
+                    if (bannerFile != null) {
+                        FilledTonalIconButton(onClick = onRemoveBanner) {
+                            Icon(
+                                imageVector = Icons.Rounded.Close,
+                                contentDescription = stringResource(
+                                    R.string.account_banner_remove,
+                                ),
+                            )
+                        }
+                    }
+                    FilledIconButton(onClick = onPickBanner) {
+                        Icon(
+                            imageVector = if (bannerFile == null) {
+                                Icons.Rounded.AddPhotoAlternate
                             } else {
-                                R.string.account_banner_change
+                                Icons.Rounded.Edit
                             },
-                        ),
-                    )
+                            contentDescription = stringResource(
+                                if (bannerFile == null) {
+                                    R.string.account_banner_add
+                                } else {
+                                    R.string.account_banner_change
+                                },
+                            ),
+                        )
+                    }
                 }
                 Box(
                     modifier = Modifier
@@ -978,6 +1027,16 @@ private fun copyProfileImage(context: Context, uri: Uri, prefix: String): String
     val input = context.contentResolver.openInputStream(uri) ?: return@runCatching null
     input.use { source ->
         target.outputStream().use { sink -> source.copyTo(sink) }
+    }
+    target.absolutePath
+}.getOrNull()
+
+private fun saveBannerBitmap(context: Context, bitmap: Bitmap): String? = runCatching {
+    val dir = File(context.filesDir, "profile").apply { mkdirs() }
+    dir.listFiles()?.filter { it.name.startsWith("banner") }?.forEach { it.delete() }
+    val target = File(dir, "banner-${System.currentTimeMillis()}.jpg")
+    target.outputStream().use { sink ->
+        bitmap.compress(Bitmap.CompressFormat.JPEG, 90, sink)
     }
     target.absolutePath
 }.getOrNull()

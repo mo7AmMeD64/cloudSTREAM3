@@ -154,6 +154,10 @@
     <string name="account_change_photo">Change photo</string>
     <string name="account_banner_add">Add banner photo</string>
     <string name="account_banner_change">Change banner photo</string>
+    <string name="account_banner_remove">Remove banner photo</string>
+    <string name="account_crop_title">Crop banner</string>
+    <string name="account_crop_done">Done</string>
+    <string name="account_crop_failed">Couldn\'t open this image.</string>
     <string name="account_photo">Profile photo</string>
     <string name="account_cloud">Cloud backup</string>
     <string name="account_welcome_back">Welcome back</string>

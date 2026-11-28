@@ -210,8 +210,10 @@ object AppPrefs {
     fun profileBanner(context: Context): String? =
         prefs(context).getString(KEY_PROFILE_BANNER, null)?.takeIf { it.isNotBlank() }
 
-    fun setProfileBanner(context: Context, path: String) {
-        prefs(context).edit { putString(KEY_PROFILE_BANNER, path) }
+    fun setProfileBanner(context: Context, path: String?) {
+        prefs(context).edit {
+            if (path == null) remove(KEY_PROFILE_BANNER) else putString(KEY_PROFILE_BANNER, path)
+        }
     }
 
     /** The selected backend; existing installs keep Gemini. */
