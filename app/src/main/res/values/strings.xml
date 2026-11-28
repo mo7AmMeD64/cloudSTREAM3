@@ -152,6 +152,8 @@
     <string name="account_name">Name</string>
     <string name="account_name_hint">Shown on this device only</string>
     <string name="account_change_photo">Change photo</string>
+    <string name="account_banner_add">Add banner photo</string>
+    <string name="account_banner_change">Change banner photo</string>
     <string name="account_photo">Profile photo</string>
     <string name="account_cloud">Cloud backup</string>
     <string name="account_welcome_back">Welcome back</string>

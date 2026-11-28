@@ -30,7 +30,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.AddPhotoAlternate
 import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.ErrorOutline
 import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.PhotoCamera
@@ -38,6 +40,7 @@ import androidx.compose.material.icons.rounded.Visibility
 import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -112,6 +115,7 @@ internal fun AccountSettingsPage(onBack: () -> Unit) {
 
     var name by remember { mutableStateOf(AppPrefs.profileName(context)) }
     var avatar by remember { mutableStateOf(AppPrefs.profileAvatar(context)) }
+    var banner by remember { mutableStateOf(AppPrefs.profileBanner(context)) }
     var account by remember { mutableStateOf(SupabaseAuth.account(context)) }
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
@@ -132,10 +136,24 @@ internal fun AccountSettingsPage(onBack: () -> Unit) {
     ) { uri ->
         if (uri != null) {
             scope.launch {
-                val path = withContext(Dispatchers.IO) { copyAvatar(context, uri) }
+                val path = withContext(Dispatchers.IO) { copyProfileImage(context, uri, "avatar") }
                 if (path != null) {
                     avatar = path
                     AppPrefs.setProfileAvatar(context, path)
+                }
+            }
+        }
+    }
+
+    val pickBanner = rememberLauncherForActivityResult(
+        ActivityResultContracts.PickVisualMedia(),
+    ) { uri ->
+        if (uri != null) {
+            scope.launch {
+                val path = withContext(Dispatchers.IO) { copyProfileImage(context, uri, "banner") }
+                if (path != null) {
+                    banner = path
+                    AppPrefs.setProfileBanner(context, path)
                 }
             }
         }
@@ -372,8 +390,16 @@ internal fun AccountSettingsPage(onBack: () -> Unit) {
             SettingsGroup(title = stringResource(R.string.account_profile)) {
                 ProfileCard(
                     avatar = avatar,
+                    banner = banner,
                     onPickPhoto = {
                         pickAvatar.launch(
+                            PickVisualMediaRequest(
+                                ActivityResultContracts.PickVisualMedia.ImageOnly,
+                            ),
+                        )
+                    },
+                    onPickBanner = {
+                        pickBanner.launch(
                             PickVisualMediaRequest(
                                 ActivityResultContracts.PickVisualMedia.ImageOnly,
                             ),
@@ -630,16 +656,19 @@ private data class AuthChoice(
 )
 
 /**
- * Profile hero: the avatar on a sunburst over a tonal banner, with the shapes
- * from the expressive reference, and the editable name underneath.
+ * Profile hero: the avatar on a sunburst, over a banner that is either the
+ * expressive shapes or a photo the user picked, with the name underneath.
  */
 @Composable
 private fun ProfileCard(
     avatar: String?,
+    banner: String?,
     onPickPhoto: () -> Unit,
+    onPickBanner: () -> Unit,
     name: String,
     onNameChange: (String) -> Unit,
 ) {
+    val bannerFile = banner?.let { File(it) }?.takeIf { it.exists() }
     Surface(
         shape = MaterialTheme.shapes.large,
         color = MaterialTheme.colorScheme.surfaceBright,
@@ -652,23 +681,32 @@ private fun ProfileCard(
                     .height(128.dp)
                     .background(MaterialTheme.colorScheme.surfaceContainer),
             ) {
-                // Both shapes bleed past the card edge; the Surface clips them.
-                BannerShape(
-                    shape = MaterialShapes.Flower.toShape(),
-                    color = MaterialTheme.colorScheme.primaryContainer,
-                    size = 112.dp,
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .offset(x = 48.dp, y = (-56).dp),
-                )
-                BannerShape(
-                    shape = MaterialShapes.Clover4Leaf.toShape(),
-                    color = MaterialTheme.colorScheme.tertiaryContainer,
-                    size = 64.dp,
-                    modifier = Modifier
-                        .align(Alignment.BottomEnd)
-                        .offset(x = 24.dp),
-                )
+                if (bannerFile != null) {
+                    AsyncImage(
+                        model = bannerFile,
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                } else {
+                    // Both shapes bleed past the card edge; the Surface clips them.
+                    BannerShape(
+                        shape = MaterialShapes.Flower.toShape(),
+                        color = MaterialTheme.colorScheme.primaryContainer,
+                        size = 112.dp,
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .offset(x = 48.dp, y = (-56).dp),
+                    )
+                    BannerShape(
+                        shape = MaterialShapes.Clover4Leaf.toShape(),
+                        color = MaterialTheme.colorScheme.tertiaryContainer,
+                        size = 64.dp,
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .offset(x = 24.dp),
+                    )
+                }
                 BannerShape(
                     shape = MaterialShapes.Sunny.toShape(),
                     color = MaterialTheme.colorScheme.primary,
@@ -677,6 +715,27 @@ private fun ProfileCard(
                         .align(Alignment.BottomStart)
                         .offset(x = 8.dp, y = (-8).dp),
                 )
+                FilledTonalIconButton(
+                    onClick = onPickBanner,
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .padding(12.dp),
+                ) {
+                    Icon(
+                        imageVector = if (bannerFile == null) {
+                            Icons.Rounded.AddPhotoAlternate
+                        } else {
+                            Icons.Rounded.Edit
+                        },
+                        contentDescription = stringResource(
+                            if (bannerFile == null) {
+                                R.string.account_banner_add
+                            } else {
+                                R.string.account_banner_change
+                            },
+                        ),
+                    )
+                }
                 Box(
                     modifier = Modifier
                         .align(Alignment.BottomStart)
@@ -911,10 +970,11 @@ private tailrec fun Context.findActivity(): Activity? = when (this) {
     else -> null
 }
 
-private fun copyAvatar(context: Context, uri: Uri): String? = runCatching {
+private fun copyProfileImage(context: Context, uri: Uri, prefix: String): String? = runCatching {
     val dir = File(context.filesDir, "profile").apply { mkdirs() }
-    dir.listFiles()?.forEach { it.delete() }
-    val target = File(dir, "avatar-${System.currentTimeMillis()}.jpg")
+    // Replace only the previous image of this kind, so avatar and banner coexist.
+    dir.listFiles()?.filter { it.name.startsWith(prefix) }?.forEach { it.delete() }
+    val target = File(dir, "$prefix-${System.currentTimeMillis()}.jpg")
     val input = context.contentResolver.openInputStream(uri) ?: return@runCatching null
     input.use { source ->
         target.outputStream().use { sink -> source.copyTo(sink) }

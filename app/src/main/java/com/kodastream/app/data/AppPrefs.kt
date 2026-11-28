@@ -24,6 +24,7 @@ object AppPrefs {
     private const val KEY_SPLASH_ENABLED = "splash_enabled"
     private const val KEY_PROFILE_NAME = "profile_name"
     private const val KEY_PROFILE_AVATAR = "profile_avatar"
+    private const val KEY_PROFILE_BANNER = "profile_banner"
     internal const val KEY_TRANSLATION_API_KEY = "translation_api_key"
     internal const val KEY_TRANSLATION_TARGET = "translation_target"
     internal const val KEY_TRANSLATION_MODEL = "translation_model"
@@ -204,6 +205,13 @@ object AppPrefs {
         prefs(context).edit {
             if (path == null) remove(KEY_PROFILE_AVATAR) else putString(KEY_PROFILE_AVATAR, path)
         }
+    }
+
+    fun profileBanner(context: Context): String? =
+        prefs(context).getString(KEY_PROFILE_BANNER, null)?.takeIf { it.isNotBlank() }
+
+    fun setProfileBanner(context: Context, path: String) {
+        prefs(context).edit { putString(KEY_PROFILE_BANNER, path) }
     }
 
     /** The selected backend; existing installs keep Gemini. */
